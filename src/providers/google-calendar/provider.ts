@@ -58,6 +58,7 @@ export class GoogleCalendarProvider implements Provider {
         const { calendarId, ...rest } = params;
         const res = await calendar.events.insert({
           calendarId: calendarId as string,
+          sendUpdates: 'none',
           requestBody: rest as Record<string, unknown>,
         });
         return res.data;
@@ -65,9 +66,23 @@ export class GoogleCalendarProvider implements Provider {
 
       case 'calendar_update_event': {
         const { calendarId, eventId, ...rest } = params;
+
+        // Guard: only allow modifying events the user organizes
+        const existing = await calendar.events.get({
+          calendarId: calendarId as string,
+          eventId: eventId as string,
+        });
+        if (!existing.data.organizer?.self) {
+          throw new Error(
+            'Cannot modify events organized by others. This event is organized by ' +
+            `${existing.data.organizer?.email ?? 'an external user'}.`,
+          );
+        }
+
         const res = await calendar.events.patch({
           calendarId: calendarId as string,
           eventId: eventId as string,
+          sendUpdates: 'none',
           requestBody: rest as Record<string, unknown>,
         });
         return res.data;

@@ -35,6 +35,18 @@ export function listConnections(): Connection[] {
   return rows;
 }
 
+export function findConnectionByProviderAccount(
+  providerId: string,
+  accountName: string,
+): Connection | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      'SELECT id, provider_id, account_name, policy_yaml, created_at, updated_at FROM connections WHERE provider_id = ? AND account_name = ?',
+    )
+    .get(providerId, accountName) as Connection | undefined;
+}
+
 export function getConnection(id: string): Connection | undefined {
   const db = getDb();
   return db

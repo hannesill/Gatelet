@@ -4,6 +4,9 @@ import {
   listConnections,
   createConnection,
   deleteConnection,
+  findConnectionByProviderAccount,
+  updateConnectionCredentials,
+  updateConnectionPolicy,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
 import { getGoogleClientId, getGoogleClientSecret } from '../../db/settings.js';
@@ -23,6 +26,16 @@ app.post('/connections', async (c) => {
 
   if (!provider_id || !account_name || !credentials) {
     return c.json({ error: 'Missing required fields: provider_id, account_name, credentials' }, 400);
+  }
+
+  const existing = findConnectionByProviderAccount(provider_id, account_name);
+  if (existing) {
+    updateConnectionCredentials(existing.id, credentials);
+    if (policy_yaml) {
+      updateConnectionPolicy(existing.id, policy_yaml);
+    }
+    refreshToolRegistry();
+    return c.json({ ...existing, updated: true }, 200);
   }
 
   const provider = getProvider(provider_id);
@@ -112,18 +125,27 @@ app.get('/connections/oauth/google/callback', async (c) => {
     // Fall back to 'unknown' if we can't fetch the account name
   }
 
-  const provider = getProvider('google_calendar')!;
-  const conn = createConnection({
-    provider_id: 'google_calendar',
-    account_name: accountName,
-    credentials: {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expiry_date: tokens.expiry_date,
-      token_type: tokens.token_type,
-    },
-    policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),
-  });
+  const newCredentials = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expiry_date: tokens.expiry_date,
+    token_type: tokens.token_type,
+  };
+
+  const existing = findConnectionByProviderAccount('google_calendar', accountName);
+  let conn;
+  if (existing) {
+    updateConnectionCredentials(existing.id, newCredentials);
+    conn = existing;
+  } else {
+    const provider = getProvider('google_calendar')!;
+    conn = createConnection({
+      provider_id: 'google_calendar',
+      account_name: accountName,
+      credentials: newCredentials,
+      policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),
+    });
+  }
 
   refreshToolRegistry();
 
