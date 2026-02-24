@@ -4,6 +4,12 @@ import { defaultPolicyYaml } from './default-policy.js';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
+function validatePathSegment(value: string, name: string): void {
+  if (value.includes('/') || value.includes('\\') || value.includes('..')) {
+    throw new Error(`Invalid ${name}: must not contain path separators`);
+  }
+}
+
 export class OutlookCalendarProvider implements Provider {
   id = 'outlook_calendar';
   displayName = 'Outlook Calendar';
@@ -34,12 +40,17 @@ export class OutlookCalendarProvider implements Provider {
     credentials: Record<string, unknown>,
     options?: { method?: string; body?: unknown },
   ): Promise<unknown> {
+    const method = options?.method ?? 'GET';
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${credentials.access_token as string}`,
+    };
+    if (options?.body) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const res = await fetch(`${GRAPH_BASE}${path}`, {
-      method: options?.method ?? 'GET',
-      headers: {
-        Authorization: `Bearer ${credentials.access_token as string}`,
-        'Content-Type': 'application/json',
-      },
+      method,
+      headers,
       body: options?.body ? JSON.stringify(options.body) : undefined,
     });
 
@@ -64,6 +75,7 @@ export class OutlookCalendarProvider implements Provider {
 
       case 'outlook_list_events': {
         const calendarId = params.calendarId as string;
+        validatePathSegment(calendarId, 'calendarId');
         const startDateTime = params.startDateTime as string | undefined;
         const endDateTime = params.endDateTime as string | undefined;
         const top = (params.top as number) ?? 50;
@@ -89,11 +101,13 @@ export class OutlookCalendarProvider implements Provider {
       }
 
       case 'outlook_get_event': {
+        validatePathSegment(params.eventId as string, 'eventId');
         return this.graphFetch(`/me/events/${params.eventId as string}`, credentials);
       }
 
       case 'outlook_create_event': {
         const { calendarId, ...body } = params;
+        validatePathSegment(calendarId as string, 'calendarId');
         return this.graphFetch(`/me/calendars/${calendarId as string}/events`, credentials, {
           method: 'POST',
           body,
@@ -102,6 +116,7 @@ export class OutlookCalendarProvider implements Provider {
 
       case 'outlook_update_event': {
         const { eventId, ...body } = params;
+        validatePathSegment(eventId as string, 'eventId');
 
         if (guards?.require_organizer_self) {
           const existing = await this.graphFetch(`/me/events/${eventId as string}`, credentials) as {

@@ -286,4 +286,35 @@ describe('OutlookCalendarProvider', () => {
       ).rejects.toThrow('Microsoft Graph API error (403)');
     });
   });
+
+  describe('path traversal prevention', () => {
+    it('rejects calendarId with path separators in list_events', async () => {
+      await expect(
+        provider.execute('outlook_list_events', { calendarId: '../../admin/calendars/default' }, creds),
+      ).rejects.toThrow('Invalid calendarId');
+    });
+
+    it('rejects eventId with path separators in get_event', async () => {
+      await expect(
+        provider.execute('outlook_get_event', { eventId: '../../../me/messages' }, creds),
+      ).rejects.toThrow('Invalid eventId');
+    });
+
+    it('rejects calendarId with backslashes in create_event', async () => {
+      await expect(
+        provider.execute('outlook_create_event', {
+          calendarId: '..\\admin',
+          subject: 'Test',
+          start: { dateTime: '2024-01-01T10:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2024-01-01T11:00:00', timeZone: 'UTC' },
+        }, creds),
+      ).rejects.toThrow('Invalid calendarId');
+    });
+
+    it('rejects eventId with dot-dot in update_event', async () => {
+      await expect(
+        provider.execute('outlook_update_event', { eventId: '..', subject: 'Test' }, creds),
+      ).rejects.toThrow('Invalid eventId');
+    });
+  });
 });
