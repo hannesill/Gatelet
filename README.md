@@ -8,13 +8,14 @@ The agent connects via a policy-enforced MCP endpoint and can only perform opera
 
 ```
                                                     ┌──────────────┐
-┌─────────┐     MCP/HTTP      ┌──────────┐        ┌▸│ Google Cal   │
-│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │ ───────┤ └──────────────┘
-│          │  bearer token     │          │        │ ┌──────────────┐
-└─────────┘                    └──────────┘        └▸│ Outlook Cal  │
-                                    │                └──────────────┘
-                               :4001 Admin
-                               (localhost only)
+                                                   ┌▸│ Google Cal   │
+┌─────────┐     MCP/HTTP      ┌──────────┐        │ └──────────────┘
+│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │ ───────┤ ┌──────────────┐
+│          │  bearer token     │          │        ├▸│ Outlook Cal  │
+└─────────┘                    └──────────┘        │ └──────────────┘
+                                    │              │ ┌──────────────┐
+                               :4001 Admin         └▸│ Gmail        │
+                               (localhost only)      └──────────────┘
 ```
 
 1. You connect your accounts (Google, Microsoft) via the admin dashboard on `:4001`
@@ -41,8 +42,9 @@ Docker is the recommended deployment method — it provides the filesystem and n
 |---|---|---|---|
 | Google Calendar | list calendars, list/get/create/update events | Yes | Works out of the box |
 | Outlook Calendar | list calendars, list/get/create/update events | Yes | Personal accounts work immediately. Organizational accounts may require IT admin consent |
+| Gmail | search, read message, create draft, list drafts | Yes | Read + draft only. No send, no delete — by design |
 
-No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
+No send or delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
 ## Policy Example
 
@@ -78,6 +80,64 @@ operations:
 **Constraints** validate input fields — reject the call if violated. Denial messages include expected vs actual values so the agent can self-correct.
 
 **Mutations** modify fields before sending upstream — the agent never knows. Use these to strip attendees, force private visibility, or set default values.
+
+## Email Content Filters
+
+Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML and can be customized per connection.
+
+### Filter Pipeline
+
+Messages pass through three stages in order:
+
+1. **Subject blocking** — If the subject contains any blocked pattern, the entire message is blocked
+2. **Sender domain blocking** — If the sender's email domain matches, blocked
+3. **PII redaction** — Regex patterns replace sensitive data in the message body
+
+Blocked messages return a notice — the agent knows the message exists but cannot read its content.
+
+### Default Blocked Subjects
+
+Messages matching these are blocked entirely (case-insensitive substring match):
+
+`password reset` `reset your password` `verification code` `security code` `two-factor` `2FA` `one-time password` `OTP` `sign-in attempt` `login alert` `security alert` `confirm your identity`
+
+### Default Blocked Sender Domains
+
+`accounts.google.com` `accountprotection.microsoft.com`
+
+### Default PII Redaction
+
+| What | Example | Replaced with |
+|---|---|---|
+| Social Security Number | `123-45-6789` | `[REDACTED-SSN]` |
+| Credit card (4x4) | `4111 1111 1111 1111` | `[REDACTED-CC]` |
+| Credit card (Amex) | `3782 822463 10005` | `[REDACTED-CC]` |
+| CVV code | `CVV: 123` | `CVV [REDACTED]` |
+| Passport number | `C12345678` | `[REDACTED-PASSPORT]` |
+| Bank routing number | `routing: 021000021` | `routing [REDACTED]` |
+| Bank account number | `account: 12345678901` | `account [REDACTED]` |
+
+Prices, dates, order numbers, tracking numbers, phone numbers, flight numbers, ZIP codes, and confirmation codes are **not redacted** — agents need these to be useful.
+
+### Customizing Filters
+
+Edit the policy YAML for any Gmail connection in the admin dashboard:
+
+```yaml
+operations:
+  read_message:
+    allow: true
+    guards:
+      block_subjects:
+        - my custom blocked subject
+      block_sender_domains:
+        - spam-domain.com
+      redact_patterns:
+        - pattern: "\\bSECRET-\\d+\\b"
+          replace: "[REDACTED]"
+```
+
+Patterns use JavaScript regex syntax with case-insensitive and global flags.
 
 ## Security Model
 
@@ -143,6 +203,8 @@ src/
   providers/   Provider implementations
     google-calendar/    Google Calendar via googleapis
     outlook-calendar/   Outlook Calendar via Microsoft Graph
+    gmail/              Gmail via googleapis
+    email/              Shared email types, content filters, HTML stripping
   config.ts    Environment variable config
   index.ts     Entry point
 ```
