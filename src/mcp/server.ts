@@ -43,12 +43,27 @@ function createMcpServer(): McpServer {
   return mcpServer;
 }
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB
+const MAX_SESSIONS = 100;
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 export function startMcpServer(): void {
   toolRegistry = buildToolRegistry();
 
   // Each session gets its own McpServer with the latest tools at time of connection.
   // This ensures new connections/tools are picked up without restarting.
-  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: McpServer }>();
+  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: McpServer; lastActive: number }>();
+
+  // Periodic session cleanup
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [id, session] of sessions) {
+      if (now - session.lastActive > SESSION_TTL_MS) {
+        sessions.delete(id);
+      }
+    }
+  }, 60 * 1000);
+  cleanupInterval.unref();
 
   const server = http.createServer(async (req, res) => {
     if (req.url !== '/mcp') {
@@ -57,18 +72,40 @@ export function startMcpServer(): void {
       return;
     }
 
-    const apiKey = authenticateBearer(req.headers.authorization);
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    const apiKey = authenticateBearer(req.headers.authorization, clientIp);
     if (!apiKey) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
 
-    // Collect body
+    // Reject oversized requests early via Content-Length
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > MAX_BODY_SIZE) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request body too large' }));
+      return;
+    }
+
+    // Collect body with size limit
     const bodyChunks: Buffer[] = [];
+    let bodySize = 0;
+    let aborted = false;
     for await (const chunk of req) {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY_SIZE) {
+        aborted = true;
+        break;
+      }
       bodyChunks.push(chunk);
     }
+    if (aborted) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request body too large' }));
+      return;
+    }
+
     const bodyStr = Buffer.concat(bodyChunks).toString('utf-8');
     let body: unknown;
     try {
@@ -84,6 +121,7 @@ export function startMcpServer(): void {
 
     if (sessionId && sessions.has(sessionId)) {
       const session = sessions.get(sessionId)!;
+      session.lastActive = Date.now();
       await session.transport.handleRequest(req, res, body);
       return;
     }
@@ -94,6 +132,13 @@ export function startMcpServer(): void {
       : (body as Record<string, unknown>)?.method === 'initialize';
 
     if (isInit) {
+      // Enforce session limit
+      if (sessions.size >= MAX_SESSIONS) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Too many active sessions' }));
+        return;
+      }
+
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => crypto.randomUUID(),
         enableJsonResponse: true,
@@ -112,7 +157,7 @@ export function startMcpServer(): void {
       await transport.handleRequest(req, res, body);
 
       if (transport.sessionId) {
-        sessions.set(transport.sessionId, { transport, server: mcpServer });
+        sessions.set(transport.sessionId, { transport, server: mcpServer, lastActive: Date.now() });
       }
     } else {
       // Non-init request without valid session

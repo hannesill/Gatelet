@@ -11,6 +11,30 @@ import { getProvider } from '../../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
 import { config } from '../../config.js';
 import { refreshToolRegistry } from '../../mcp/server.js';
+import crypto from 'node:crypto';
+
+// OAuth CSRF nonce store — maps nonce -> admin token, auto-expires after 10 minutes
+const oauthNonces = new Map<string, { token: string; expires: number }>();
+
+function createOAuthNonce(adminToken: string): string {
+  const nonce = crypto.randomBytes(32).toString('hex');
+  oauthNonces.set(nonce, { token: adminToken, expires: Date.now() + 10 * 60 * 1000 });
+  // Clean up expired nonces
+  for (const [key, value] of oauthNonces) {
+    if (value.expires < Date.now()) oauthNonces.delete(key);
+  }
+  return nonce;
+}
+
+function redeemOAuthNonce(nonce: string): string | null {
+  const entry = oauthNonces.get(nonce);
+  if (!entry || entry.expires < Date.now()) {
+    oauthNonces.delete(nonce);
+    return null;
+  }
+  oauthNonces.delete(nonce);
+  return entry.token;
+}
 
 const app = new Hono();
 
@@ -78,13 +102,14 @@ app.get('/connections/oauth/:providerId/start', (c) => {
 
   const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
   const token = c.req.query('token') || '';
+  const nonce = createOAuthNonce(token);
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: provider.oauth.scopes.join(' '),
-    state: token,
+    state: nonce,
     ...provider.oauth.extraAuthorizeParams,
   });
 
@@ -172,7 +197,10 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   const state = c.req.query('state');
   if (state) {
-    return c.redirect(`/?token=${state}`);
+    const adminToken = redeemOAuthNonce(state);
+    if (adminToken) {
+      return c.redirect(`/?token=${adminToken}`);
+    }
   }
 
   return c.json({

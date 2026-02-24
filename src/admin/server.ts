@@ -13,6 +13,13 @@ import { getRegisteredToolCount } from '../mcp/server.js';
 import { getAllProviders } from '../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { adminPage } from './page.js';
+import { createRateLimiter } from '../rate-limit.js';
+
+const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
+
+function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
+  return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+}
 
 export function createAdminApp(): Hono {
   const app = new Hono();
@@ -24,24 +31,33 @@ export function createAdminApp(): Hono {
       return next();
     }
 
+    const clientIp = getClientIp(c);
+    if (adminLimiter.isLimited(clientIp)) {
+      return c.json({ error: 'Too many failed attempts. Try again later.' }, 429);
+    }
+
     // Allow OAuth start from the dashboard via query param
     if (/^\/api\/connections\/oauth\/[^/]+\/start$/.test(c.req.path) && c.req.query('token')) {
       const token = c.req.query('token');
       if (token === config.ADMIN_TOKEN) {
+        adminLimiter.clear(clientIp);
         return next();
       }
     }
 
     const authHeader = c.req.header('Authorization');
     if (!authHeader) {
+      adminLimiter.recordFailure(clientIp);
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
     if (!match || match[1] !== config.ADMIN_TOKEN) {
+      adminLimiter.recordFailure(clientIp);
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
+    adminLimiter.clear(clientIp);
     return next();
   });
 
@@ -103,7 +119,7 @@ export function createAdminApp(): Hono {
 export function startAdminServer(): void {
   const app = createAdminApp();
 
-  serve({ fetch: app.fetch, port: config.ADMIN_PORT }, () => {
-    console.log(`Admin server listening on :${config.ADMIN_PORT}`);
+  serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname: '127.0.0.1' }, () => {
+    console.log(`Admin server listening on 127.0.0.1:${config.ADMIN_PORT}`);
   });
 }

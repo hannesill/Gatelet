@@ -50,10 +50,7 @@ describe('Admin Token Leakage', () => {
   // ── FINDING-01: OAuth state parameter leaks admin token to Google ──
 
   describe('FINDING-01: OAuth state parameter leaks admin token', () => {
-    it('admin token is sent as OAuth state parameter to Google', async () => {
-      // When a user clicks "Connect Google Calendar" in the dashboard,
-      // the admin token is passed as a query param and then forwarded
-      // as the OAuth "state" parameter to accounts.google.com.
+    it('admin token is NOT sent as OAuth state parameter to Google (FIXED)', async () => {
       const res = await req(
         `/api/connections/oauth/google_calendar/start?token=${TEST_ADMIN_TOKEN}`,
       );
@@ -61,18 +58,14 @@ describe('Admin Token Leakage', () => {
       expect(res.status).toBe(302);
       const location = res.headers.get('Location') ?? '';
 
-      // The admin token appears in the state parameter sent to Google
       const url = new URL(location);
       const state = url.searchParams.get('state');
 
-      // VULNERABILITY: The admin token IS the OAuth state value
-      expect(state).toBe(TEST_ADMIN_TOKEN);
-
-      // This means:
-      // 1. The admin token is sent in plaintext to Google's authorization server
-      // 2. It appears in Google's server logs
-      // 3. It may appear in browser history as part of the redirect URL
-      // 4. The OAuth callback receives it back and uses it for redirect
+      // FIXED: State is now a random nonce, not the admin token
+      expect(state).not.toBe(TEST_ADMIN_TOKEN);
+      expect(state).toBeTruthy();
+      // Nonce should be a 64-char hex string (32 random bytes)
+      expect(state).toMatch(/^[0-9a-f]{64}$/);
     });
 
     it('OAuth callback redirect includes admin token in URL', async () => {

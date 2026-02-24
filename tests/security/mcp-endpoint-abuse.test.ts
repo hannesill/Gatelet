@@ -1,9 +1,9 @@
 /**
  * Security Audit: MCP Endpoint Abuse Tests
  *
- * Tests for FINDING-11 (no rate limiting on bearer auth),
- * FINDING-12 (no body size limit), FINDING-13 (no session limit),
- * FINDING-14 (error messages as info disclosure).
+ * Tests for rate limiting on bearer auth,
+ * body size limits, session limits,
+ * and error message information disclosure.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
@@ -46,22 +46,25 @@ describe('MCP Endpoint Security', () => {
     fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
   });
 
-  // ── FINDING-11: No rate limiting on bearer token auth ──
+  // ── FINDING-11: Rate limiting now works ──
 
-  describe('FINDING-11: No rate limiting on authentication', () => {
-    it('can attempt many invalid tokens without being blocked', () => {
-      // Brute force 1000 invalid API keys
-      const results = [];
-      for (let i = 0; i < 1000; i++) {
-        results.push(authenticateBearer(`Bearer glk_invalid_${i}`));
+  describe('FINDING-11: Rate limiting on authentication (FIXED)', () => {
+    it('rate limits after too many failed attempts from same IP', () => {
+      const testIp = '10.0.0.99';
+      // Make 11 failed attempts (limit is 10)
+      for (let i = 0; i < 11; i++) {
+        authenticateBearer(`Bearer glk_invalid_${i}`, testIp);
       }
 
-      // All attempts return null (invalid) but none are rate-limited
-      expect(results.every(r => r === null)).toBe(true);
+      // The valid key should now be rate-limited from that IP
+      const result = authenticateBearer(`Bearer ${validApiKey}`, testIp);
+      expect(result).toBeNull();
+    });
 
-      // The valid key still works after 1000 invalid attempts
-      const valid = authenticateBearer(`Bearer ${validApiKey}`);
-      expect(valid).not.toBeNull();
+    it('does not rate limit different IPs', () => {
+      // Each IP gets its own rate limit window
+      const result = authenticateBearer(`Bearer ${validApiKey}`, '10.0.0.100');
+      expect(result).not.toBeNull();
     });
   });
 
@@ -69,39 +72,34 @@ describe('MCP Endpoint Security', () => {
 
   describe('Auth header format handling', () => {
     it('rejects missing auth header', () => {
-      expect(authenticateBearer(undefined)).toBeNull();
+      expect(authenticateBearer(undefined, '10.0.1.1')).toBeNull();
     });
 
     it('rejects empty string', () => {
-      expect(authenticateBearer('')).toBeNull();
+      expect(authenticateBearer('', '10.0.1.2')).toBeNull();
     });
 
     it('rejects non-Bearer scheme', () => {
-      expect(authenticateBearer(`Token ${validApiKey}`)).toBeNull();
+      expect(authenticateBearer(`Token ${validApiKey}`, '10.0.1.3')).toBeNull();
     });
 
     it('accepts case-insensitive Bearer prefix', () => {
-      // The regex is /^Bearer\s+(.+)$/i so this should work
-      const result = authenticateBearer(`bearer ${validApiKey}`);
+      const result = authenticateBearer(`bearer ${validApiKey}`, '10.0.1.4');
       expect(result).not.toBeNull();
     });
 
     it('rejects Bearer with no token', () => {
-      expect(authenticateBearer('Bearer ')).toBeNull();
+      expect(authenticateBearer('Bearer ', '10.0.1.5')).toBeNull();
     });
 
     it('handles Bearer with extra spaces (regex \\s+ is greedy)', () => {
-      // /^Bearer\s+(.+)$/i - the \s+ greedily consumes ALL spaces,
-      // so group 1 captures only the actual token without leading spaces.
-      // This means "Bearer   <key>" works the same as "Bearer <key>".
-      const result = authenticateBearer(`Bearer   ${validApiKey}`);
-      // Greedy \s+ means the key is extracted correctly
+      const result = authenticateBearer(`Bearer   ${validApiKey}`, '10.0.1.6');
       expect(result).not.toBeNull();
     });
 
     it('rejects very long token (no length limit but lookup fails)', () => {
       const longToken = 'glk_' + 'A'.repeat(10000);
-      const result = authenticateBearer(`Bearer ${longToken}`);
+      const result = authenticateBearer(`Bearer ${longToken}`, '10.0.1.7');
       expect(result).toBeNull();
     });
   });
@@ -110,14 +108,11 @@ describe('MCP Endpoint Security', () => {
 
   describe('API key security properties', () => {
     it('API keys are stored as SHA-256 hashes, not plaintext', () => {
-      // Verify by checking the DB directly
       const db = getDb();
       const row = db.prepare('SELECT key_hash FROM api_keys LIMIT 1').get() as { key_hash: string } | undefined;
 
       if (row) {
-        // key_hash should be a 64-char hex string (SHA-256)
         expect(row.key_hash).toMatch(/^[0-9a-f]{64}$/);
-        // It should NOT contain the raw key prefix
         expect(row.key_hash).not.toContain('glk_');
       }
     });
@@ -125,15 +120,15 @@ describe('MCP Endpoint Security', () => {
     it('revoked keys are rejected', () => {
       const { id, key } = createApiKey('Revoke Test');
 
-      // Key works before revocation
-      expect(authenticateBearer(`Bearer ${key}`)).not.toBeNull();
+      // Key works before revocation (use unique IP to avoid rate limiting)
+      expect(authenticateBearer(`Bearer ${key}`, '10.0.2.1')).not.toBeNull();
 
       // Revoke it
       const db = getDb();
       db.prepare("UPDATE api_keys SET revoked_at = datetime('now') WHERE id = ?").run(id);
 
       // Key no longer works
-      expect(authenticateBearer(`Bearer ${key}`)).toBeNull();
+      expect(authenticateBearer(`Bearer ${key}`, '10.0.2.2')).toBeNull();
     });
   });
 
@@ -141,17 +136,12 @@ describe('MCP Endpoint Security', () => {
 
   describe('FINDING-14: Error messages do not leak sensitive data', () => {
     it('authentication failure does not reveal valid token format', () => {
-      // The MCP server returns a generic "Unauthorized" message
-      // without revealing what format is expected
-      const result = authenticateBearer('Bearer invalid');
+      const result = authenticateBearer('Bearer invalid', '10.0.3.1');
       expect(result).toBeNull();
-      // Good: no error message is returned that hints at key format
     });
 
     it('admin token is not exposed via MCP auth flow', () => {
-      // Try using admin token on MCP endpoint
-      const result = authenticateBearer(`Bearer ${TEST_ADMIN_TOKEN}`);
-      // Admin token should not work as an API key (different auth system)
+      const result = authenticateBearer(`Bearer ${TEST_ADMIN_TOKEN}`, '10.0.3.2');
       expect(result).toBeNull();
     });
   });
