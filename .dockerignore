@@ -1,0 +1,9 @@
+node_modules
+.git
+tests
+*.md
+.claude
+.env
+src
+tsconfig.json
+vitest.config.*

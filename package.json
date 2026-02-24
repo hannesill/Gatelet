@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm --dts --external better-sqlite3 --external sodium-native",
+    "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docker:build": "npm run build && docker build -t gatelet ."
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",

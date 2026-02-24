@@ -42,6 +42,38 @@ export function insertAuditEntry(entry: {
   );
 }
 
+export function countAuditLog(filters?: {
+  tool_name?: string;
+  result?: string;
+  from?: string;
+  to?: string;
+}): number {
+  const db = getDb();
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (filters?.tool_name) {
+    conditions.push('tool_name = ?');
+    values.push(filters.tool_name);
+  }
+  if (filters?.result) {
+    conditions.push('result = ?');
+    values.push(filters.result);
+  }
+  if (filters?.from) {
+    conditions.push('timestamp >= ?');
+    values.push(filters.from);
+  }
+  if (filters?.to) {
+    conditions.push('timestamp <= ?');
+    values.push(filters.to);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const row = db.prepare(`SELECT COUNT(*) as count FROM audit_log ${where}`).get(...values) as { count: number };
+  return row.count;
+}
+
 export function queryAuditLog(filters: {
   limit?: number;
   offset?: number;

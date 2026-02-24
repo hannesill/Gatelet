@@ -1,5 +1,6 @@
 import type { Connection } from '../db/connections.js';
 import type { ApiKey } from '../db/api-keys.js';
+import type { AuditEntry } from '../db/audit.js';
 
 interface LoginData {
   error: string | undefined;
@@ -10,6 +11,9 @@ interface DashboardData {
   connections: Connection[];
   apiKeys: ApiKey[];
   toolCount: number;
+  auditEntries: AuditEntry[];
+  auditOffset: number;
+  auditTotal: number;
 }
 
 export function adminPage(view: 'login', data: LoginData): string;
@@ -37,12 +41,15 @@ function shell(title: string, body: string): string {
     label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
     input[type="text"], input[type="password"] { width: 100%; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e1e4e8; font-size: 14px; margin-bottom: 16px; }
     input:focus { outline: none; border-color: #58a6ff; }
+    textarea { width: 100%; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e1e4e8; font-family: "SF Mono", Monaco, monospace; font-size: 12px; line-height: 1.5; resize: vertical; }
+    textarea:focus { outline: none; border-color: #58a6ff; }
     button, .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #e1e4e8; font-size: 14px; cursor: pointer; text-decoration: none; }
     button:hover, .btn:hover { background: #30363d; }
     .btn-primary { background: #238636; border-color: #238636; color: #fff; }
     .btn-primary:hover { background: #2ea043; }
     .btn-danger { background: #da3633; border-color: #da3633; color: #fff; }
     .btn-danger:hover { background: #f85149; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
     .btn-google { background: #fff; color: #333; border: 1px solid #ddd; padding: 10px 20px; font-size: 15px; }
     .btn-google:hover { background: #f5f5f5; }
     .btn-google svg { vertical-align: middle; margin-right: 8px; }
@@ -53,6 +60,7 @@ function shell(title: string, body: string): string {
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
     .badge-green { background: #1b4332; color: #52c41a; }
     .badge-red { background: #3d1f1f; color: #f85149; }
+    .badge-yellow { background: #3d3520; color: #d29922; }
     .stat { text-align: center; }
     .stat .num { font-size: 28px; font-weight: 700; color: #58a6ff; }
     .stat .label { font-size: 12px; color: #8b949e; }
@@ -60,9 +68,16 @@ function shell(title: string, body: string): string {
     .stats > div { flex: 1; }
     .empty { color: #484f58; font-style: italic; padding: 16px 0; }
     .key-display { background: #0d1117; border: 1px solid #238636; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13px; word-break: break-all; margin: 12px 0; color: #7ee787; }
+    .config-block { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-family: "SF Mono", Monaco, monospace; font-size: 12px; white-space: pre; overflow-x: auto; color: #e1e4e8; margin: 12px 0; position: relative; }
+    .config-block .copy-btn { position: absolute; top: 8px; right: 8px; }
     .flash { background: #1b4332; border: 1px solid #238636; border-radius: 6px; padding: 12px 16px; margin-bottom: 24px; color: #7ee787; }
     .flash-error { background: #3d1f1f; border-color: #f85149; color: #f85149; }
     .actions { display: flex; gap: 8px; align-items: center; }
+    details { margin-top: 8px; }
+    details summary { cursor: pointer; color: #58a6ff; font-size: 13px; }
+    details summary:hover { text-decoration: underline; }
+    .inline-flash { font-size: 12px; margin-top: 6px; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+    .pagination { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -89,7 +104,7 @@ function loginPage(data: LoginData): string {
 }
 
 function dashboardPage(data: DashboardData): string {
-  const { token, connections, apiKeys, toolCount } = data;
+  const { token, connections, apiKeys, toolCount, auditEntries, auditOffset, auditTotal } = data;
 
   const connectionsHtml = connections.length === 0
     ? '<p class="empty">No connections yet. Connect a Google account below.</p>'
@@ -100,10 +115,26 @@ function dashboardPage(data: DashboardData): string {
             <td class="mono">${esc(c.account_name)}</td>
             <td>${esc(c.provider_id)}</td>
             <td>${c.created_at}</td>
-            <td><button class="btn btn-danger" onclick="deleteConnection('${c.id}')">Remove</button></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteConnection('${c.id}')">Remove</button></td>
+          </tr>
+          <tr>
+            <td colspan="4" style="padding: 0 12px 12px;">
+              <details>
+                <summary>Edit Policy</summary>
+                <div style="margin-top: 8px;">
+                  <textarea id="policy-${c.id}" rows="12">${esc(c.policy_yaml)}</textarea>
+                  <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                    <button class="btn btn-primary btn-sm" onclick="savePolicy('${c.id}')">Save Policy</button>
+                    <span id="policy-flash-${c.id}"></span>
+                  </div>
+                </div>
+              </details>
+            </td>
           </tr>
         `).join('')}
       </table>`;
+
+  const activeKeys = apiKeys.filter(k => !k.revoked_at);
 
   const apiKeysHtml = apiKeys.length === 0
     ? '<p class="empty">No API keys yet.</p>'
@@ -115,10 +146,61 @@ function dashboardPage(data: DashboardData): string {
             <td class="mono">${k.id}</td>
             <td>${k.last_used_at ?? 'Never'}</td>
             <td>${k.revoked_at ? '<span class="badge badge-red">Revoked</span>' : '<span class="badge badge-green">Active</span>'}</td>
-            <td>${!k.revoked_at ? `<button class="btn btn-danger" onclick="revokeKey('${k.id}')">Revoke</button>` : ''}</td>
+            <td>${!k.revoked_at ? `<button class="btn btn-danger btn-sm" onclick="revokeKey('${k.id}')">Revoke</button>` : ''}</td>
           </tr>
         `).join('')}
       </table>`;
+
+  const mcpConfigJson = JSON.stringify({
+    mcpServers: {
+      gatelet: {
+        url: 'http://localhost:4000/mcp',
+        headers: {
+          Authorization: `Bearer ${activeKeys.length > 0 ? '<YOUR_API_KEY>' : '(create an API key first)'}`,
+        },
+      },
+    },
+  }, null, 2);
+
+  // Audit log table
+  const auditHtml = auditEntries.length === 0
+    ? '<p class="empty">No audit entries yet.</p>'
+    : `<table>
+        <tr><th>Timestamp</th><th>Tool</th><th>Result</th><th>Duration</th></tr>
+        ${auditEntries.map(e => `
+          <tr>
+            <td class="mono" style="font-size: 11px;">${esc(e.timestamp)}</td>
+            <td class="mono">${esc(e.tool_name)}</td>
+            <td>${resultBadge(e.result)}</td>
+            <td>${e.duration_ms !== null ? e.duration_ms + 'ms' : '-'}</td>
+          </tr>
+          ${(e.original_params || e.mutated_params || e.deny_reason) ? `
+          <tr>
+            <td colspan="4" style="padding: 0 12px 8px;">
+              <details>
+                <summary>Details</summary>
+                <div style="margin-top: 8px; font-size: 12px;">
+                  ${e.deny_reason ? `<div style="margin-bottom: 6px;"><strong>Deny reason:</strong> ${esc(e.deny_reason)}</div>` : ''}
+                  ${e.original_params ? `<div style="margin-bottom: 6px;"><strong>Original params:</strong><pre class="config-block" style="margin-top: 4px;">${esc(e.original_params)}</pre></div>` : ''}
+                  ${e.mutated_params ? `<div><strong>Mutated params:</strong><pre class="config-block" style="margin-top: 4px;">${esc(e.mutated_params)}</pre></div>` : ''}
+                </div>
+              </details>
+            </td>
+          </tr>` : ''}
+        `).join('')}
+      </table>`;
+
+  const pageSize = 25;
+  const hasPrev = auditOffset > 0;
+  const hasNext = auditOffset + pageSize < auditTotal;
+
+  const paginationHtml = (hasPrev || hasNext) ? `
+    <div class="pagination">
+      ${hasPrev ? `<a href="/?token=${token}&audit_offset=${Math.max(0, auditOffset - pageSize)}" class="btn btn-sm">Prev</a>` : ''}
+      <span style="color: #8b949e; font-size: 12px; line-height: 28px;">${auditOffset + 1}&ndash;${Math.min(auditOffset + pageSize, auditTotal)} of ${auditTotal}</span>
+      ${hasNext ? `<a href="/?token=${token}&audit_offset=${auditOffset + pageSize}" class="btn btn-sm">Next</a>` : ''}
+    </div>
+  ` : '';
 
   return shell('Gatelet Admin', `
     <h1>Gatelet</h1>
@@ -136,7 +218,7 @@ function dashboardPage(data: DashboardData): string {
         <div class="label">Tools</div>
       </div>
       <div class="card stat">
-        <div class="num">${apiKeys.filter(k => !k.revoked_at).length}</div>
+        <div class="num">${activeKeys.length}</div>
         <div class="label">API Keys</div>
       </div>
     </div>
@@ -162,6 +244,18 @@ function dashboardPage(data: DashboardData): string {
       <div id="new-key"></div>
     </div>
 
+    <div class="card">
+      <h2>Agent Config</h2>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">Add this to your agent's MCP configuration:</p>
+      <div class="config-block"><button class="btn btn-sm copy-btn" onclick="copyConfig()">Copy</button>${esc(mcpConfigJson)}</div>
+    </div>
+
+    <div class="card">
+      <h2>Audit Log</h2>
+      ${auditHtml}
+      ${paginationHtml}
+    </div>
+
     <script>
       const TOKEN = ${JSON.stringify(token)};
       const headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
@@ -170,6 +264,13 @@ function dashboardPage(data: DashboardData): string {
         const el = document.getElementById('flash');
         el.innerHTML = '<div class="flash ' + (error ? 'flash-error' : '') + '">' + msg + '</div>';
         setTimeout(() => el.innerHTML = '', 5000);
+      }
+
+      function inlineFlash(elId, msg, error) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        el.innerHTML = '<span class="inline-flash ' + (error ? 'flash-error' : 'flash') + '">' + msg + '</span>';
+        setTimeout(() => el.innerHTML = '', 4000);
       }
 
       function reload() { window.location.href = '/?token=' + TOKEN; }
@@ -191,12 +292,59 @@ function dashboardPage(data: DashboardData): string {
         if (!name) return alert('Enter a name');
         const res = await fetch('/api/api-keys', { method: 'POST', headers, body: JSON.stringify({ name }) });
         const data = await res.json();
+        const configJson = JSON.stringify({
+          mcpServers: {
+            gatelet: {
+              url: 'http://localhost:4000/mcp',
+              headers: { Authorization: 'Bearer ' + data.key }
+            }
+          }
+        }, null, 2);
         document.getElementById('new-key').innerHTML =
-          '<div class="key-display">Copy this key (shown once):<br><br><strong>' + data.key + '</strong></div>';
+          '<div class="key-display">Copy this key (shown once):<br><br><strong>' + data.key + '</strong></div>' +
+          '<div class="config-block">' + configJson.replace(/</g, '&lt;') + '</div>';
+      }
+
+      async function savePolicy(id) {
+        const textarea = document.getElementById('policy-' + id);
+        if (!textarea) return;
+        try {
+          const res = await fetch('/api/connections/' + id + '/policy', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'text/yaml' },
+            body: textarea.value,
+          });
+          const data = await res.json();
+          if (res.ok) {
+            inlineFlash('policy-flash-' + id, 'Saved. Takes effect on new agent sessions.');
+          } else {
+            inlineFlash('policy-flash-' + id, data.error || 'Save failed', true);
+          }
+        } catch (err) {
+          inlineFlash('policy-flash-' + id, 'Network error', true);
+        }
+      }
+
+      function copyConfig() {
+        const block = document.querySelector('.config-block');
+        if (!block) return;
+        const text = block.textContent.replace('Copy', '').trim();
+        navigator.clipboard.writeText(text).then(() => {
+          flash('Copied to clipboard');
+        });
       }
 
     </script>
   `);
+}
+
+function resultBadge(result: string): string {
+  switch (result) {
+    case 'allowed': return '<span class="badge badge-green">Allowed</span>';
+    case 'denied': return '<span class="badge badge-red">Denied</span>';
+    case 'error': return '<span class="badge badge-yellow">Error</span>';
+    default: return `<span class="badge">${esc(result)}</span>`;
+  }
 }
 
 function esc(s: string): string {

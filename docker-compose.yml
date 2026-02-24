@@ -1,0 +1,25 @@
+services:
+  gatelet:
+    build: .
+    ports:
+      - "127.0.0.1:4001:4001"  # Admin — localhost only
+    volumes:
+      - gatelet-data:/data
+    environment:
+      - GATELET_DATA_DIR=/data
+      - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
+    networks:
+      - gatelet-internal
+      - gatelet-egress
+    restart: unless-stopped
+
+networks:
+  gatelet-internal:
+    # Agent-facing: other containers on this network can reach :4000
+    driver: bridge
+  gatelet-egress:
+    # Outbound: allows Gatelet to call external APIs (Google, etc.)
+    driver: bridge
+
+volumes:
+  gatelet-data:

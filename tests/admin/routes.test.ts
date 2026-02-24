@@ -1,0 +1,372 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+// Set up test environment before any imports that use config
+const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-admin-test-${Date.now()}`);
+const TEST_ADMIN_TOKEN = 'test-admin-token-456';
+const TEST_MCP_PORT = 15000;
+const TEST_ADMIN_PORT = 15001;
+
+process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
+process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
+process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
+
+// Now import modules that use config
+import { config } from '../../src/config.js';
+import { getDb, closeDb, resetDb } from '../../src/db/database.js';
+import { getMasterKey, resetMasterKey } from '../../src/db/crypto.js';
+import { createAdminApp } from '../../src/admin/server.js';
+import { insertAuditEntry } from '../../src/db/audit.js';
+import type { Hono } from 'hono';
+
+const MOCK_POLICY = `provider: google_calendar
+account: test@gmail.com
+
+operations:
+  list_calendars:
+    allow: true
+  list_events:
+    allow: true
+  create_event:
+    allow: true
+    constraints:
+      - field: calendarId
+        rule: must_equal
+        value: "primary"
+`;
+
+let app: Hono;
+
+function req(path: string, init?: RequestInit) {
+  return app.request(path, init);
+}
+
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    Authorization: `Bearer ${TEST_ADMIN_TOKEN}`,
+    'Content-Type': 'application/json',
+    ...extra,
+  };
+}
+
+describe('Admin API Routes', () => {
+  beforeAll(() => {
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    resetMasterKey();
+    resetDb();
+    getMasterKey();
+    getDb();
+    // Ensure config has the right token (may have been set by another test's module init)
+    config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
+    app = createAdminApp();
+  });
+
+  afterAll(() => {
+    closeDb();
+    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+  });
+
+  // ── Auth ────────────────────────────────────────────────────────────
+
+  describe('Auth', () => {
+    it('returns 401 for API routes without token', async () => {
+      const res = await req('/api/api-keys');
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 for API routes with wrong token', async () => {
+      const res = await req('/api/api-keys', {
+        headers: { Authorization: 'Bearer wrong-token' },
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 200 for health endpoint with valid token', async () => {
+      const res = await req('/api/health', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('ok');
+    });
+  });
+
+  // ── API Keys ────────────────────────────────────────────────────────
+
+  describe('API Keys', () => {
+    let createdKeyId: string;
+    let createdRawKey: string;
+
+    it('POST /api/api-keys creates a key and returns raw key', async () => {
+      const res = await req('/api/api-keys', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name: 'Test Agent Key' }),
+      });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.id).toMatch(/^gl_/);
+      expect(body.key).toMatch(/^glk_/);
+      createdKeyId = body.id;
+      createdRawKey = body.key;
+    });
+
+    it('GET /api/api-keys lists keys without raw key', async () => {
+      const res = await req('/api/api-keys', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const keys = await res.json();
+      expect(Array.isArray(keys)).toBe(true);
+      const found = keys.find((k: Record<string, unknown>) => k.id === createdKeyId);
+      expect(found).toBeDefined();
+      expect(found.name).toBe('Test Agent Key');
+      expect(found.key).toBeUndefined();
+      expect(found.key_hash).toBeUndefined();
+    });
+
+    it('DELETE /api/api-keys/:id revokes a key', async () => {
+      const res = await req(`/api/api-keys/${createdKeyId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.revoked).toBe(true);
+    });
+
+    it('revoked key no longer appears as active', async () => {
+      const res = await req('/api/api-keys', {
+        headers: authHeaders(),
+      });
+      const keys = await res.json();
+      const found = keys.find((k: Record<string, unknown>) => k.id === createdKeyId);
+      expect(found.revoked_at).not.toBeNull();
+    });
+  });
+
+  // ── Connections ─────────────────────────────────────────────────────
+
+  describe('Connections', () => {
+    let connId: string;
+
+    it('POST /api/connections creates a connection with default policy', async () => {
+      const res = await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'test@gmail.com',
+          credentials: { access_token: 'tok_123', refresh_token: 'ref_456' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.id).toMatch(/^conn_/);
+      expect(body.provider_id).toBe('google_calendar');
+      connId = body.id;
+    });
+
+    it('GET /api/connections lists connections without credentials', async () => {
+      const res = await req('/api/connections', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const conns = await res.json();
+      expect(Array.isArray(conns)).toBe(true);
+      const found = conns.find((c: Record<string, unknown>) => c.id === connId);
+      expect(found).toBeDefined();
+      expect(found.credentials).toBeUndefined();
+      expect(found.credentials_encrypted).toBeUndefined();
+    });
+
+    it('DELETE /api/connections/:id removes a connection', async () => {
+      const res = await req(`/api/connections/${connId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.deleted).toBe(true);
+    });
+
+    it('DELETE /api/connections/:id returns 404 for invalid id', async () => {
+      const res = await req('/api/connections/conn_nonexistent', {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(404);
+    });
+  });
+
+  // ── Policies ────────────────────────────────────────────────────────
+
+  describe('Policies', () => {
+    let connId: string;
+
+    beforeAll(async () => {
+      const res = await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'policy-test@gmail.com',
+          credentials: { access_token: 'tok', refresh_token: 'ref' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+      const body = await res.json();
+      connId = body.id;
+    });
+
+    it('GET /api/connections/:id/policy returns YAML', async () => {
+      const res = await req(`/api/connections/${connId}/policy`, {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).toContain('provider: google_calendar');
+      expect(text).toContain('list_calendars');
+    });
+
+    it('PUT /api/connections/:id/policy updates YAML', async () => {
+      const newPolicy = `provider: google_calendar
+account: policy-test@gmail.com
+
+operations:
+  list_calendars:
+    allow: true
+`;
+      const res = await req(`/api/connections/${connId}/policy`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}`, 'Content-Type': 'text/yaml' },
+        body: newPolicy,
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.updated).toBe(true);
+
+      // Verify it was saved
+      const getRes = await req(`/api/connections/${connId}/policy`, {
+        headers: authHeaders(),
+      });
+      const text = await getRes.text();
+      expect(text).toContain('list_calendars');
+      expect(text).not.toContain('create_event');
+    });
+
+    it('PUT /api/connections/:id/policy rejects invalid YAML', async () => {
+      const res = await req(`/api/connections/${connId}/policy`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}`, 'Content-Type': 'text/yaml' },
+        body: 'not: [valid: yaml: policy',
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain('Invalid policy YAML');
+    });
+  });
+
+  // ── Audit ───────────────────────────────────────────────────────────
+
+  describe('Audit', () => {
+    beforeAll(() => {
+      // Insert some audit entries for testing
+      insertAuditEntry({
+        tool_name: 'gcal_list_calendars',
+        result: 'allowed',
+        duration_ms: 150,
+      });
+      insertAuditEntry({
+        tool_name: 'gcal_create_event',
+        result: 'denied',
+        deny_reason: 'Constraint failed: calendarId must_equal "primary"',
+        duration_ms: 5,
+      });
+      insertAuditEntry({
+        tool_name: 'gcal_list_events',
+        result: 'allowed',
+        duration_ms: 200,
+      });
+    });
+
+    it('GET /api/audit returns entries', async () => {
+      const res = await req('/api/audit', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const entries = await res.json();
+      expect(Array.isArray(entries)).toBe(true);
+      expect(entries.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('GET /api/audit?result=denied filters entries', async () => {
+      const res = await req('/api/audit?result=denied', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const entries = await res.json();
+      expect(entries.length).toBeGreaterThanOrEqual(1);
+      for (const entry of entries) {
+        expect(entry.result).toBe('denied');
+      }
+    });
+
+    it('GET /api/audit?limit=1 respects limit', async () => {
+      const res = await req('/api/audit?limit=1', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const entries = await res.json();
+      expect(entries.length).toBe(1);
+    });
+  });
+
+  // ── Settings ────────────────────────────────────────────────────────
+
+  describe('Settings', () => {
+    it('GET /api/settings/google returns status', async () => {
+      const res = await req('/api/settings/google', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(typeof body.configured).toBe('boolean');
+    });
+
+    it('PUT /api/settings/google saves credentials', async () => {
+      const res = await req('/api/settings/google', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          client_id: 'test-client-id-12345',
+          client_secret: 'test-client-secret-67890',
+        }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.saved).toBe(true);
+
+      // Verify it was saved
+      const getRes = await req('/api/settings/google', {
+        headers: authHeaders(),
+      });
+      const getBody = await getRes.json();
+      expect(getBody.configured).toBe(true);
+      expect(getBody.client_id).toBe('test-client-...');
+    });
+
+    it('PUT /api/settings/google rejects missing fields', async () => {
+      const res = await req('/api/settings/google', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ client_id: 'only-id' }),
+      });
+      expect(res.status).toBe(400);
+    });
+  });
+});

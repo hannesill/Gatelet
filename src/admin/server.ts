@@ -8,10 +8,11 @@ import settingsRoutes from './routes/settings.js';
 import { config } from '../config.js';
 import { listConnections } from '../db/connections.js';
 import { listApiKeys } from '../db/api-keys.js';
+import { queryAuditLog, countAuditLog } from '../db/audit.js';
 import { getRegisteredToolCount } from '../mcp/server.js';
 import { adminPage } from './page.js';
 
-export function startAdminServer(): void {
+export function createAdminApp(): Hono {
   const app = new Hono();
 
   // Admin token auth middleware for API routes
@@ -53,11 +54,18 @@ export function startAdminServer(): void {
     const apiKeys = listApiKeys();
     const toolCount = getRegisteredToolCount();
 
+    const auditOffset = Number(c.req.query('audit_offset')) || 0;
+    const auditEntries = queryAuditLog({ limit: 25, offset: auditOffset });
+    const auditTotal = countAuditLog();
+
     return c.html(adminPage('dashboard', {
       token: token!,
       connections,
       apiKeys,
       toolCount,
+      auditEntries,
+      auditOffset,
+      auditTotal,
     }));
   });
 
@@ -76,6 +84,12 @@ export function startAdminServer(): void {
   app.route('/api', apiKeysRoutes);
   app.route('/api', auditRoutes);
   app.route('/api', settingsRoutes);
+
+  return app;
+}
+
+export function startAdminServer(): void {
+  const app = createAdminApp();
 
   serve({ fetch: app.fetch, port: config.ADMIN_PORT }, () => {
     console.log(`Admin server listening on :${config.ADMIN_PORT}`);
