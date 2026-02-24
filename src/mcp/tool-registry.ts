@@ -20,7 +20,7 @@ export function buildToolRegistry(): Map<string, RegisteredTool> {
 
     let policy;
     try {
-      policy = parsePolicy(conn.policy_yaml);
+      policy = parsePolicy(conn.policy_yaml).policy;
     } catch {
       continue;
     }

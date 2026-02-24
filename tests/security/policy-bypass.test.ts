@@ -97,7 +97,7 @@ describe('FINDING-07: Constraint only checks specified fields', () => {
 });
 
 describe('FINDING-08: Policy parser does not validate operation shapes', () => {
-  it('parsePolicy accepts operations with unknown properties', () => {
+  it('parsePolicy warns on unknown operation-level keys but still parses', () => {
     const yaml = `
 provider: google_calendar
 account: test@gmail.com
@@ -110,14 +110,14 @@ operations:
         rule: must_equal
         value: primary
 `;
-    // Parser does not validate the shape of operations
-    const policy = parsePolicy(yaml);
+    // Strict parser accepts but warns on unknown keys
+    const { policy, warnings } = parsePolicy(yaml);
     expect(policy.operations.create_event.allow).toBe(true);
-    // Unknown properties are silently accepted
-    expect((policy.operations.create_event as Record<string, unknown>).unknown_field).toBe('this_should_not_be_here');
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some(w => w.includes('unknown_field'))).toBe(true);
   });
 
-  it('parsePolicy accepts constraints with unknown rules (fails at runtime)', () => {
+  it('parsePolicy rejects constraints with unknown rules at parse time', () => {
     const yaml = `
 provider: google_calendar
 account: test@gmail.com
@@ -129,19 +129,11 @@ operations:
         rule: must_match_regex
         value: "^primary$"
 `;
-    // Parser accepts this even though 'must_match_regex' is not a valid rule
-    const policy = parsePolicy(yaml);
-    expect(policy.operations.create_event.constraints).toHaveLength(1);
-
-    // At runtime, the unknown rule defaults to deny
-    const result = evaluate(policy, 'create_event', { calendarId: 'primary' });
-    expect(result.action).toBe('deny');
-    if (result.action === 'deny') {
-      expect(result.reason).toContain('Unknown constraint rule');
-    }
+    // Strict parser now rejects unknown constraint rules at parse time
+    expect(() => parsePolicy(yaml)).toThrow('unknown rule "must_match_regex"');
   });
 
-  it('parsePolicy accepts mutations with unknown actions', () => {
+  it('parsePolicy rejects mutations with unknown actions at parse time', () => {
     const yaml = `
 provider: google_calendar
 account: test@gmail.com
@@ -153,18 +145,8 @@ operations:
         action: encrypt
         value: "key123"
 `;
-    // Parser accepts this even though 'encrypt' is not a valid action
-    const policy = parsePolicy(yaml);
-    expect(policy.operations.create_event.mutations).toHaveLength(1);
-    expect(policy.operations.create_event.mutations![0].action).toBe('encrypt');
-
-    // At runtime, unknown mutations are silently ignored (no-op)
-    const result = evaluate(policy, 'create_event', { calendarId: 'primary' });
-    expect(result.action).toBe('allow');
-    if (result.action === 'allow') {
-      // calendarId was not affected by the unknown 'encrypt' action
-      expect(result.mutatedParams.calendarId).toBe('primary');
-    }
+    // Strict parser now rejects unknown mutation actions at parse time
+    expect(() => parsePolicy(yaml)).toThrow('unknown action "encrypt"');
   });
 });
 

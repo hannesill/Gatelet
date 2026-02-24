@@ -100,11 +100,12 @@ describe('Admin API', () => {
 
   describe('Policy parsing', () => {
     it('parses valid YAML policy', () => {
-      const policy = parsePolicy(MOCK_POLICY);
+      const { policy, warnings } = parsePolicy(MOCK_POLICY);
       expect(policy.provider).toBe('google_calendar');
       expect(policy.operations.list_calendars.allow).toBe(true);
       expect(policy.operations.create_event.constraints).toHaveLength(1);
       expect(policy.operations.create_event.mutations).toHaveLength(2);
+      expect(warnings).toHaveLength(0);
     });
 
     it('rejects invalid YAML', () => {

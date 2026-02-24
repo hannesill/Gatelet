@@ -1,10 +1,16 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
+import fs from 'node:fs';
+import path from 'node:path';
 import connectionsRoutes from './routes/connections.js';
 import policiesRoutes from './routes/policies.js';
 import apiKeysRoutes from './routes/api-keys.js';
 import auditRoutes from './routes/audit.js';
 import settingsRoutes from './routes/settings.js';
+import statusRoutes from './routes/status.js';
+import providersRoutes from './routes/providers.js';
+import doctorRoutes from './routes/doctor.js';
 import { config } from '../config.js';
 import { listConnections } from '../db/connections.js';
 import { listApiKeys } from '../db/api-keys.js';
@@ -20,6 +26,8 @@ const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
   return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 }
+
+const hasSpa = fs.existsSync(path.join(process.cwd(), 'dist', 'dashboard', 'index.html'));
 
 export function createAdminApp(): Hono {
   const app = new Hono();
@@ -61,41 +69,43 @@ export function createAdminApp(): Hono {
     return next();
   });
 
-  // Dashboard — login with admin token, then manage everything
-  app.get('/', (c) => {
-    const token = c.req.query('token');
-    if (token !== config.ADMIN_TOKEN) {
-      return c.html(adminPage('login', { error: undefined }));
-    }
+  // Dashboard — SPA mode or legacy server-rendered
+  if (!hasSpa) {
+    app.get('/', (c) => {
+      const token = c.req.query('token');
+      if (token !== config.ADMIN_TOKEN) {
+        return c.html(adminPage('login', { error: undefined }));
+      }
 
-    const connections = listConnections();
-    const apiKeys = listApiKeys();
-    const toolCount = getRegisteredToolCount();
+      const connections = listConnections();
+      const apiKeys = listApiKeys();
+      const toolCount = getRegisteredToolCount();
 
-    const auditOffset = Number(c.req.query('audit_offset')) || 0;
-    const auditEntries = queryAuditLog({ limit: 25, offset: auditOffset });
-    const auditTotal = countAuditLog();
+      const auditOffset = Number(c.req.query('audit_offset')) || 0;
+      const auditEntries = queryAuditLog({ limit: 25, offset: auditOffset });
+      const auditTotal = countAuditLog();
 
-    const oauthProviders = getAllProviders()
-      .filter(p => p.oauth)
-      .map(p => ({
-        id: p.id,
-        displayName: p.displayName,
-        configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
-        hasBuiltinCreds: !!(p.oauth!.builtinClientId && p.oauth!.builtinClientSecret),
+      const oauthProviders = getAllProviders()
+        .filter(p => p.oauth)
+        .map(p => ({
+          id: p.id,
+          displayName: p.displayName,
+          configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
+          hasBuiltinCreds: !!(p.oauth!.builtinClientId && p.oauth!.builtinClientSecret),
+        }));
+
+      return c.html(adminPage('dashboard', {
+        token: token!,
+        connections,
+        apiKeys,
+        toolCount,
+        auditEntries,
+        auditOffset,
+        auditTotal,
+        oauthProviders,
       }));
-
-    return c.html(adminPage('dashboard', {
-      token: token!,
-      connections,
-      apiKeys,
-      toolCount,
-      auditEntries,
-      auditOffset,
-      auditTotal,
-      oauthProviders,
-    }));
-  });
+    });
+  }
 
   // Health
   app.get('/api/health', (c) => {
@@ -112,6 +122,15 @@ export function createAdminApp(): Hono {
   app.route('/api', apiKeysRoutes);
   app.route('/api', auditRoutes);
   app.route('/api', settingsRoutes);
+  app.route('/api', statusRoutes);
+  app.route('/api', providersRoutes);
+  app.route('/api', doctorRoutes);
+
+  // SPA static file serving (only if dist/dashboard exists)
+  if (hasSpa) {
+    app.use('/assets/*', serveStatic({ root: './dist/dashboard' }));
+    app.get('*', serveStatic({ root: './dist/dashboard', path: 'index.html' }));
+  }
 
   return app;
 }

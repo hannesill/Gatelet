@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "description": "Self-hosted MCP permission proxy for AI agents",
   "type": "module",
+  "bin": {
+    "gatelet": "./dist/cli.js"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts --external better-sqlite3 --external sodium-native",
+    "build": "tsup src/index.ts src/cli.ts --format esm --dts --external better-sqlite3 --external sodium-native",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "doctor": "tsx src/cli.ts doctor",
+    "doctor:fix": "tsx src/cli.ts doctor --fix",
     "docker:build": "npm run build && docker build -t gatelet ."
   },
   "dependencies": {

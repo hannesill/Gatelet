@@ -23,6 +23,11 @@ export interface Mutation {
   value?: unknown;
 }
 
+export interface ParseResult {
+  policy: PolicyConfig;
+  warnings: string[];
+}
+
 export type PolicyResult =
   | { action: 'deny'; reason: string }
   | { action: 'allow'; mutatedParams: Record<string, unknown>; guards?: Record<string, unknown> };

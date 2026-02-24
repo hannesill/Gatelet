@@ -154,7 +154,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
-    return c.json({ error: `Token exchange failed: ${errText}` }, 500);
+    return c.redirect('/?oauth=error&message=' + encodeURIComponent(`Token exchange failed: ${errText}`));
   }
 
   const tokens = await tokenRes.json() as Record<string, unknown>;
@@ -199,15 +199,11 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   if (state) {
     const adminToken = redeemOAuthNonce(state);
     if (adminToken) {
-      return c.redirect(`/?token=${adminToken}`);
+      return c.redirect(`/?oauth=success&provider=${providerId}&token=${adminToken}`);
     }
   }
 
-  return c.json({
-    connection_id: conn.id,
-    account_name: accountName,
-    message: 'Connected',
-  });
+  return c.redirect(`/?oauth=success&provider=${providerId}`);
 });
 
 export default app;

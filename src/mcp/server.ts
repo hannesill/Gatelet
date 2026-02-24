@@ -199,7 +199,7 @@ async function handleToolCall(
 
   let policy;
   try {
-    policy = parsePolicy(conn.policy_yaml);
+    policy = parsePolicy(conn.policy_yaml).policy;
   } catch {
     insertAuditEntry({
       connection_id: registered.connectionId,

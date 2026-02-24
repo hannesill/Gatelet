@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { config } from './config.js';
+import { config, loadAdminToken, saveAdminToken } from './config.js';
 import { getDb } from './db/database.js';
 import { getMasterKey } from './db/crypto.js';
 import { listConnections } from './db/connections.js';
+import { listApiKeys } from './db/api-keys.js';
+import { getProvider } from './providers/registry.js';
 import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 
@@ -17,11 +19,16 @@ function main(): void {
   // Initialize database (runs migrations)
   getDb();
 
-  // Generate admin token if not set
+  // Resolve admin token: env var > file > generate + save
   if (!config.ADMIN_TOKEN) {
-    config.ADMIN_TOKEN = crypto.randomBytes(32).toString('hex');
-    console.log(`Generated admin token: ${config.ADMIN_TOKEN}`);
-    console.log('Set GATELET_ADMIN_TOKEN env var to persist this token.');
+    const fileToken = loadAdminToken();
+    if (fileToken) {
+      config.ADMIN_TOKEN = fileToken;
+    } else {
+      const generated = crypto.randomBytes(32).toString('hex');
+      config.ADMIN_TOKEN = generated;
+      saveAdminToken(generated);
+    }
   }
 
   // Start servers
@@ -31,11 +38,27 @@ function main(): void {
   // Startup summary
   const connections = listConnections();
   const toolCount = getRegisteredToolCount();
-  console.log(`Gatelet started:`);
-  console.log(`  MCP server:   :${config.MCP_PORT}`);
-  console.log(`  Admin server: :${config.ADMIN_PORT}`);
-  console.log(`  Connections:  ${connections.length}`);
-  console.log(`  Tools:        ${toolCount}`);
+  const apiKeys = listApiKeys();
+  const activeKeys = apiKeys.filter(k => !k.revoked_at).length;
+
+  const connSummary = connections
+    .map(c => {
+      const provider = getProvider(c.provider_id);
+      return provider?.displayName ?? c.provider_id;
+    })
+    .join(', ');
+
+  console.log('');
+  console.log('Gatelet v0.3');
+  console.log('');
+  console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${config.ADMIN_TOKEN}`);
+  console.log(`  MCP:    http://localhost:${config.MCP_PORT}/mcp`);
+  console.log('');
+  console.log(`  Connections:  ${connections.length}${connSummary ? ` (${connSummary})` : ''}`);
+  console.log(`  Tools:        ${toolCount} enabled`);
+  console.log(`  API keys:     ${activeKeys} active`);
+  console.log('');
+  console.log('Ready.');
 }
 
 main();

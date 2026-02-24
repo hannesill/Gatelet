@@ -399,4 +399,176 @@ operations:
       expect(res.status).toBe(400);
     });
   });
+
+  // ── Status ──────────────────────────────────────────────────────────
+
+  describe('Status', () => {
+    it('GET /api/status returns connections, tools, apiKeys, oauthProviders', async () => {
+      const res = await req('/api/status', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(Array.isArray(body.connections)).toBe(true);
+      expect(Array.isArray(body.tools)).toBe(true);
+      expect(typeof body.apiKeys.total).toBe('number');
+      expect(typeof body.apiKeys.active).toBe('number');
+      expect(Array.isArray(body.oauthProviders)).toBe(true);
+    });
+
+    it('GET /api/status connections include meta fields', async () => {
+      // Create a connection first
+      await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'status-test@gmail.com',
+          credentials: { access_token: 'tok', refresh_token: 'ref' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+
+      const res = await req('/api/status', {
+        headers: authHeaders(),
+      });
+      const body = await res.json();
+      const conn = body.connections.find((c: Record<string, unknown>) => c.account_name === 'status-test@gmail.com');
+      expect(conn).toBeDefined();
+      expect(typeof conn.enabledTools).toBe('number');
+      expect(typeof conn.totalTools).toBe('number');
+      expect(['valid', 'expired', 'unknown']).toContain(conn.tokenStatus);
+      expect(conn.displayName).toBeTruthy();
+    });
+  });
+
+  // ── Policy Validation ─────────────────────────────────────────────
+
+  describe('Policy Validation', () => {
+    let connId: string;
+
+    beforeAll(async () => {
+      const res = await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'validate-test@gmail.com',
+          credentials: { access_token: 'tok', refresh_token: 'ref' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+      const body = await res.json();
+      connId = body.id || body.connId;
+      if (!connId) {
+        // May have been an update (existing connection)
+        const listRes = await req('/api/connections', { headers: authHeaders() });
+        const conns = await listRes.json();
+        connId = conns.find((c: Record<string, unknown>) => c.account_name === 'validate-test@gmail.com')?.id;
+      }
+    });
+
+    it('POST validate returns valid: true with tools and warnings', async () => {
+      const res = await req(`/api/connections/${connId}/policy/validate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}`, 'Content-Type': 'text/yaml' },
+        body: MOCK_POLICY,
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.valid).toBe(true);
+      expect(Array.isArray(body.tools)).toBe(true);
+      expect(Array.isArray(body.warnings)).toBe(true);
+    });
+
+    it('POST validate returns valid: false for invalid YAML', async () => {
+      const res = await req(`/api/connections/${connId}/policy/validate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}`, 'Content-Type': 'text/yaml' },
+        body: 'not: [valid: yaml: policy',
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.valid).toBe(false);
+      expect(typeof body.error).toBe('string');
+    });
+
+    it('POST validate returns warnings for unknown keys', async () => {
+      const yamlWithWarnings = `
+provider: google_calendar
+account: test@gmail.com
+extra_key: should_warn
+operations:
+  list_calendars:
+    allow: true
+`;
+      const res = await req(`/api/connections/${connId}/policy/validate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}`, 'Content-Type': 'text/yaml' },
+        body: yamlWithWarnings,
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.valid).toBe(true);
+      expect(body.warnings.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ── Provider Reference ────────────────────────────────────────────
+
+  describe('Provider Reference', () => {
+    it('GET /api/providers/:id/reference returns provider info', async () => {
+      const res = await req('/api/providers/google_calendar/reference', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.provider.id).toBe('google_calendar');
+      expect(body.provider.displayName).toBeTruthy();
+      expect(Array.isArray(body.operations)).toBe(true);
+      expect(body.operations.length).toBeGreaterThan(0);
+      expect(Array.isArray(body.constraints)).toBe(true);
+      expect(Array.isArray(body.mutations)).toBe(true);
+      expect(typeof body.example).toBe('string');
+    });
+
+    it('GET /api/providers/:id/reference returns 404 for unknown provider', async () => {
+      const res = await req('/api/providers/nonexistent/reference', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(404);
+    });
+  });
+
+  // ── Doctor ──────────────────────────────────────────────────────────
+
+  describe('Doctor', () => {
+    it('GET /api/doctor returns check results array', async () => {
+      const res = await req('/api/doctor', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+      for (const check of body) {
+        expect(check.id).toBeTruthy();
+        expect(check.name).toBeTruthy();
+        expect(['pass', 'warn', 'fail', 'skip']).toContain(check.status);
+        expect(typeof check.message).toBe('string');
+        expect(typeof check.fixable).toBe('boolean');
+      }
+    });
+
+    it('POST /api/doctor/fix returns check results with fix attempts', async () => {
+      const res = await req('/api/doctor/fix', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+    });
+  });
 });
