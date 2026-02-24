@@ -25,9 +25,8 @@ function PolicyReference({ providerId }: { providerId: string }) {
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Operations</h4>
         <div className="space-y-1">
           {data.operations.map(op => (
-            <div key={op.name} className="flex items-baseline justify-between gap-2">
+            <div key={op.name}>
               <code className="text-zinc-700 dark:text-zinc-300">{op.policyOperation}</code>
-              <span className="truncate text-zinc-400 dark:text-zinc-600">{op.name}</span>
             </div>
           ))}
         </div>
@@ -38,7 +37,6 @@ function PolicyReference({ providerId }: { providerId: string }) {
           {data.constraints.map(c => (
             <div key={c.rule}>
               <code className="text-zinc-700 dark:text-zinc-300">{c.rule}</code>
-              <span className="text-zinc-400 dark:text-zinc-600"> &mdash; {c.description}</span>
             </div>
           ))}
         </div>
@@ -49,7 +47,6 @@ function PolicyReference({ providerId }: { providerId: string }) {
           {data.mutations.map(m => (
             <div key={m.action}>
               <code className="text-zinc-700 dark:text-zinc-300">{m.action}</code>
-              <span className="text-zinc-400 dark:text-zinc-600"> &mdash; {m.description}</span>
             </div>
           ))}
         </div>

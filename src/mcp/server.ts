@@ -184,6 +184,7 @@ async function handleToolCall(
   const originalParams = structuredClone(params);
 
   const conn = getConnectionWithCredentials(registered.connectionId);
+  const settings = conn ? JSON.parse(conn.settings_json || '{}') : {};
   if (!conn) {
     insertAuditEntry({
       connection_id: registered.connectionId,
@@ -244,6 +245,7 @@ async function handleToolCall(
         policyResult.mutatedParams,
         conn.credentials,
         policyResult.guards,
+        settings,
       );
     } catch (err: unknown) {
       if (
@@ -265,6 +267,7 @@ async function handleToolCall(
           policyResult.mutatedParams,
           newCreds,
           policyResult.guards,
+          settings,
         );
       } else {
         throw err;

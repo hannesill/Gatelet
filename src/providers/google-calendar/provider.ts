@@ -50,6 +50,7 @@ export class GoogleCalendarProvider implements Provider {
     params: Record<string, unknown>,
     credentials: Record<string, unknown>,
     guards?: Record<string, unknown>,
+    connectionSettings?: Record<string, unknown>,
   ): Promise<unknown> {
     const calendar = this.buildClient(credentials);
 

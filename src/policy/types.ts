@@ -13,7 +13,7 @@ export interface OperationPolicy {
 
 export interface Constraint {
   field: string;
-  rule: 'must_equal' | 'must_be_one_of' | 'must_not_be_empty';
+  rule: 'must_equal' | 'must_be_one_of' | 'must_not_be_empty' | 'must_match';
   value?: unknown;
 }
 

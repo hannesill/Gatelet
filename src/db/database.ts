@@ -12,6 +12,7 @@ const MIGRATIONS = [
     account_name TEXT NOT NULL,
     credentials_encrypted BLOB NOT NULL,
     policy_yaml TEXT NOT NULL,
+    settings_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
@@ -57,6 +58,13 @@ export function getDb(): Database.Database {
 
   for (const migration of MIGRATIONS) {
     db.exec(migration);
+  }
+
+  // Schema migrations for existing databases
+  try {
+    db.exec(`ALTER TABLE connections ADD COLUMN settings_json TEXT NOT NULL DEFAULT '{}'`);
+  } catch {
+    // Column already exists
   }
 
   return db;

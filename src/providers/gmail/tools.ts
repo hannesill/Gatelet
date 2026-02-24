@@ -47,4 +47,50 @@ export const gmailTools: ToolDefinition[] = [
       maxResults: z.number().optional().describe('Max drafts to return (default 10, max 50)'),
     },
   },
+  {
+    name: 'gmail_send',
+    description:
+      'Send an email directly. The email is sent immediately — use gmail_create_draft if the user should review first.',
+    policyOperation: 'send',
+    inputSchema: {
+      to: z.string().describe('Recipient email address(es), comma-separated'),
+      subject: z.string().describe('Email subject line'),
+      body: z.string().describe('Email body in plain text'),
+      from: z.string().optional().describe('Sender address (alias). If omitted, uses account default.'),
+      cc: z.string().optional().describe('CC address(es), comma-separated'),
+      bcc: z.string().optional().describe('BCC address(es), comma-separated'),
+    },
+  },
+  {
+    name: 'gmail_reply',
+    description:
+      'Reply to an existing email. Fetches the original message to build correct threading headers. ' +
+      'The reply is sent immediately.',
+    policyOperation: 'reply',
+    inputSchema: {
+      messageId: z.string().describe('Gmail message ID of the message to reply to'),
+      body: z.string().describe('Reply body in plain text'),
+      replyAll: z.boolean().optional().describe('If true, reply to all recipients (default: false)'),
+    },
+  },
+  {
+    name: 'gmail_label',
+    description:
+      'Add or remove labels from a Gmail message. Use label IDs (e.g. "STARRED", "IMPORTANT", or custom label IDs).',
+    policyOperation: 'label',
+    inputSchema: {
+      messageId: z.string().describe('Gmail message ID'),
+      addLabelIds: z.array(z.string()).optional().describe('Label IDs to add'),
+      removeLabelIds: z.array(z.string()).optional().describe('Label IDs to remove'),
+    },
+  },
+  {
+    name: 'gmail_archive',
+    description:
+      'Archive a Gmail message by removing the INBOX label. The message remains accessible via search and labels.',
+    policyOperation: 'archive',
+    inputSchema: {
+      messageId: z.string().describe('Gmail message ID to archive'),
+    },
+  },
 ];

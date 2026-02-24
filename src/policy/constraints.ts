@@ -43,6 +43,29 @@ export function evaluateConstraint(
       return { ok: true };
     }
 
+    case 'must_match': {
+      let regex: RegExp;
+      try {
+        regex = new RegExp(constraint.value as string);
+      } catch {
+        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has invalid regex: ${JSON.stringify(constraint.value)}` };
+      }
+      if (actual == null) {
+        return {
+          ok: false,
+          reason: `Constraint failed: ${constraint.field} must_match ${JSON.stringify(constraint.value)}, got ${JSON.stringify(actual)}`,
+        };
+      }
+      const str = typeof actual === 'string' ? actual : JSON.stringify(actual);
+      if (!regex.test(str)) {
+        return {
+          ok: false,
+          reason: `Constraint failed: ${constraint.field} must_match ${JSON.stringify(constraint.value)}, got ${JSON.stringify(actual)}`,
+        };
+      }
+      return { ok: true };
+    }
+
     default:
       return { ok: false, reason: `Unknown constraint rule: ${(constraint as Constraint).rule}` };
   }

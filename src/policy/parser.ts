@@ -1,7 +1,7 @@
 import YAML from 'yaml';
 import type { PolicyConfig, ParseResult } from './types.js';
 
-const VALID_CONSTRAINT_RULES = ['must_equal', 'must_be_one_of', 'must_not_be_empty'] as const;
+const VALID_CONSTRAINT_RULES = ['must_equal', 'must_be_one_of', 'must_not_be_empty', 'must_match'] as const;
 const VALID_MUTATION_ACTIONS = ['set', 'delete'] as const;
 const KNOWN_TOP_LEVEL_KEYS = ['provider', 'account', 'operations'];
 const KNOWN_OPERATION_KEYS = ['allow', 'constraints', 'mutations', 'guards'];
@@ -108,6 +108,21 @@ function validateConstraint(opName: string, constraint: unknown, index: number):
     if (!Array.isArray(c.value)) {
       throw new Error(
         `Invalid policy: constraint #${index} in "${opName}" with rule "must_be_one_of" requires "value" to be an array`,
+      );
+    }
+  }
+
+  if (c.rule === 'must_match') {
+    if (typeof c.value !== 'string') {
+      throw new Error(
+        `Invalid policy: constraint #${index} in "${opName}" with rule "must_match" requires "value" to be a string`,
+      );
+    }
+    try {
+      new RegExp(c.value);
+    } catch {
+      throw new Error(
+        `Invalid policy: constraint #${index} in "${opName}" with rule "must_match" has invalid regex: ${JSON.stringify(c.value)}`,
       );
     }
   }

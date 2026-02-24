@@ -6,6 +6,8 @@ vi.mock('googleapis', () => {
   const mockMessages = {
     list: vi.fn(),
     get: vi.fn(),
+    send: vi.fn(),
+    modify: vi.fn(),
   };
   const mockDrafts = {
     create: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock('googleapis', () => {
 });
 
 import { _mockMessages as mockMessages, _mockDrafts as mockDrafts } from 'googleapis';
+type MockFn = ReturnType<typeof vi.fn>;
 
 const provider = new GmailProvider();
 const creds = { access_token: 'tok', refresh_token: 'ref' };
@@ -58,14 +61,18 @@ describe('GmailProvider', () => {
       expect(provider.displayName).toBe('Gmail');
     });
 
-    it('has all 4 tools with correct names', () => {
-      expect(provider.tools).toHaveLength(4);
+    it('has all 8 tools with correct names', () => {
+      expect(provider.tools).toHaveLength(8);
       const names = provider.tools.map((t) => t.name);
       expect(names).toEqual([
         'gmail_search',
         'gmail_read_message',
         'gmail_create_draft',
         'gmail_list_drafts',
+        'gmail_send',
+        'gmail_reply',
+        'gmail_label',
+        'gmail_archive',
       ]);
     });
 
@@ -75,6 +82,7 @@ describe('GmailProvider', () => {
       expect(provider.oauth.tokenUrl).toContain('googleapis.com');
       expect(provider.oauth.scopes).toContain('https://www.googleapis.com/auth/gmail.readonly');
       expect(provider.oauth.scopes).toContain('https://www.googleapis.com/auth/gmail.compose');
+      expect(provider.oauth.scopes).toContain('https://www.googleapis.com/auth/gmail.modify');
       expect(provider.oauth.builtinClientId).toBeDefined();
       expect(provider.oauth.builtinClientSecret).toBeDefined();
       expect(provider.oauth.settingsKeyPrefix).toBe('google');
@@ -500,6 +508,197 @@ describe('GmailProvider', () => {
 
       const result = await provider.execute('gmail_list_drafts', {}, creds) as any;
       expect(result.drafts).toEqual([]);
+    });
+  });
+
+  describe('gmail_send', () => {
+    it('sends email with correct headers', async () => {
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'sent1', threadId: 't1', labelIds: ['SENT'] },
+      });
+
+      const result = await provider.execute('gmail_send', {
+        to: 'alice@example.com',
+        subject: 'Hello',
+        body: 'Hi Alice',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('sent1');
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).toContain('To: alice@example.com');
+      expect(raw).toContain('Subject: Hello');
+      expect(raw).toContain('Hi Alice');
+    });
+
+    it('applies alias suffix from connectionSettings', async () => {
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'sent2', threadId: 't2', labelIds: ['SENT'] },
+      });
+
+      await provider.execute('gmail_send', {
+        to: 'bob@example.com',
+        subject: 'Test',
+        body: 'Body',
+      }, { ...creds, account_email: 'user@example.com' }, undefined, { emailAliasSuffix: '+agent' });
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).toContain('From: user+agent@example.com');
+    });
+
+    it('sends without alias when no connectionSettings', async () => {
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'sent3', threadId: 't3', labelIds: ['SENT'] },
+      });
+
+      await provider.execute('gmail_send', {
+        to: 'bob@example.com',
+        subject: 'Test',
+        body: 'Body',
+      }, creds);
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).not.toContain('From:');
+    });
+  });
+
+  describe('gmail_reply', () => {
+    const mockOriginal = {
+      data: {
+        id: 'orig1',
+        threadId: 'thread1',
+        payload: {
+          headers: [
+            { name: 'From', value: 'alice@example.com' },
+            { name: 'To', value: 'me@example.com' },
+            { name: 'Cc', value: 'charlie@example.com' },
+            { name: 'Subject', value: 'Original Subject' },
+            { name: 'Message-ID', value: '<orig@example.com>' },
+          ],
+        },
+      },
+    };
+
+    it('replies with correct threading headers', async () => {
+      (mockMessages.get as MockFn).mockResolvedValue(mockOriginal);
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'reply1', threadId: 'thread1', labelIds: ['SENT'] },
+      });
+
+      const result = await provider.execute('gmail_reply', {
+        messageId: 'orig1',
+        body: 'Thanks!',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('reply1');
+      expect(result.threadId).toBe('thread1');
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).toContain('To: alice@example.com');
+      expect(raw).toContain('Subject: Re: Original Subject');
+      expect(raw).toContain('In-Reply-To: <orig@example.com>');
+      expect(raw).toContain('References: <orig@example.com>');
+      expect(call.requestBody.threadId).toBe('thread1');
+    });
+
+    it('respects replyAll=false default (no Cc)', async () => {
+      (mockMessages.get as MockFn).mockResolvedValue(mockOriginal);
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'reply2', threadId: 'thread1', labelIds: ['SENT'] },
+      });
+
+      await provider.execute('gmail_reply', {
+        messageId: 'orig1',
+        body: 'Reply',
+      }, creds);
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).not.toContain('Cc:');
+    });
+
+    it('includes Cc when replyAll=true', async () => {
+      (mockMessages.get as MockFn).mockResolvedValue(mockOriginal);
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'reply3', threadId: 'thread1', labelIds: ['SENT'] },
+      });
+
+      await provider.execute('gmail_reply', {
+        messageId: 'orig1',
+        body: 'Reply all',
+        replyAll: true,
+      }, creds);
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).toContain('Cc:');
+      expect(raw).toContain('me@example.com');
+      expect(raw).toContain('charlie@example.com');
+    });
+  });
+
+  describe('gmail_label', () => {
+    it('adds and removes labels', async () => {
+      (mockMessages.modify as MockFn).mockResolvedValue({
+        data: { id: 'msg1', labelIds: ['STARRED'] },
+      });
+
+      const result = await provider.execute('gmail_label', {
+        messageId: 'msg1',
+        addLabelIds: ['STARRED'],
+        removeLabelIds: ['UNREAD'],
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      expect(result.labelIds).toEqual(['STARRED']);
+
+      const call = (mockMessages.modify as MockFn).mock.calls[0][0];
+      expect(call.requestBody.addLabelIds).toEqual(['STARRED']);
+      expect(call.requestBody.removeLabelIds).toEqual(['UNREAD']);
+    });
+
+    it('returns early with no labels', async () => {
+      const result = await provider.execute('gmail_label', {
+        messageId: 'msg1',
+      }, creds) as any;
+
+      expect(result.modified).toBe(false);
+      expect(mockMessages.modify).not.toHaveBeenCalled();
+    });
+
+    it('blocks protected labels (TRASH/SPAM)', async () => {
+      await expect(
+        provider.execute('gmail_label', {
+          messageId: 'msg1',
+          addLabelIds: ['TRASH'],
+        }, creds, { protected_labels: ['TRASH', 'SPAM'] }),
+      ).rejects.toThrow('Cannot add protected label: TRASH');
+
+      await expect(
+        provider.execute('gmail_label', {
+          messageId: 'msg1',
+          removeLabelIds: ['SPAM'],
+        }, creds, { protected_labels: ['TRASH', 'SPAM'] }),
+      ).rejects.toThrow('Cannot remove protected label: SPAM');
+    });
+  });
+
+  describe('gmail_archive', () => {
+    it('removes INBOX label', async () => {
+      (mockMessages.modify as MockFn).mockResolvedValue({
+        data: { id: 'msg1', labelIds: ['IMPORTANT'] },
+      });
+
+      const result = await provider.execute('gmail_archive', {
+        messageId: 'msg1',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      const call = (mockMessages.modify as MockFn).mock.calls[0][0];
+      expect(call.requestBody.removeLabelIds).toEqual(['INBOX']);
     });
   });
 

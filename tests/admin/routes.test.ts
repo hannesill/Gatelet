@@ -273,6 +273,70 @@ describe('Admin API Routes', () => {
     });
   });
 
+  // ── Connection Settings ─────────────────────────────────────────────
+
+  describe('Connection Settings', () => {
+    let connId: string;
+
+    beforeAll(async () => {
+      const res = await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'settings-test@gmail.com',
+          credentials: { access_token: 'tok', refresh_token: 'ref' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+      const body = await res.json();
+      connId = body.id;
+    });
+
+    it('GET /api/connections/:id/settings returns default empty settings', async () => {
+      const res = await req(`/api/connections/${connId}/settings`, {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual({});
+    });
+
+    it('PUT /api/connections/:id/settings saves and returns updated', async () => {
+      const res = await req(`/api/connections/${connId}/settings`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ emailAliasSuffix: '+agent' }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.updated).toBe(true);
+
+      // Verify persisted
+      const getRes = await req(`/api/connections/${connId}/settings`, {
+        headers: authHeaders(),
+      });
+      const getBody = await getRes.json();
+      expect(getBody.emailAliasSuffix).toBe('+agent');
+    });
+
+    it('PUT /api/connections/:id/settings rejects invalid alias', async () => {
+      const res = await req(`/api/connections/${connId}/settings`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ emailAliasSuffix: 'invalid@chars!' }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('GET /api/connections/:id/settings returns 404 for unknown id', async () => {
+      const res = await req('/api/connections/conn_nonexistent/settings', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(404);
+    });
+  });
+
   // ── OAuth ───────────────────────────────────────────────────────────
 
   describe('OAuth', () => {

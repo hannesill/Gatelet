@@ -1,11 +1,14 @@
 import { Hono } from 'hono';
 import {
   listConnections,
+  getConnection,
   createConnection,
   deleteConnection,
   findConnectionByProviderAccount,
   updateConnectionCredentials,
   updateConnectionPolicy,
+  getConnectionSettings,
+  updateConnectionSettings,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
@@ -83,6 +86,35 @@ app.delete('/connections/:id', (c) => {
   }
   refreshToolRegistry();
   return c.json({ deleted: true });
+});
+
+app.get('/connections/:id/settings', (c) => {
+  const id = c.req.param('id');
+  const conn = getConnection(id);
+  if (!conn) {
+    return c.json({ error: 'Connection not found' }, 404);
+  }
+  return c.json(getConnectionSettings(id));
+});
+
+app.put('/connections/:id/settings', async (c) => {
+  const id = c.req.param('id');
+  const conn = getConnection(id);
+  if (!conn) {
+    return c.json({ error: 'Connection not found' }, 404);
+  }
+
+  const body = await c.req.json();
+
+  // Validate emailAliasSuffix if present
+  if (body.emailAliasSuffix !== undefined) {
+    if (typeof body.emailAliasSuffix !== 'string' || !/^\+?[a-zA-Z0-9]*$/.test(body.emailAliasSuffix)) {
+      return c.json({ error: 'Invalid emailAliasSuffix: must match /^\\+?[a-zA-Z0-9]*$/' }, 400);
+    }
+  }
+
+  updateConnectionSettings(id, body);
+  return c.json({ updated: true });
 });
 
 app.get('/connections/oauth/:providerId/start', (c) => {
@@ -178,6 +210,11 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     newCredentials.expiry_date = tokens.expiry_date;
   }
 
+  // Store account_email in credentials for alias suffix logic
+  if (providerId === 'google_gmail') {
+    newCredentials.account_email = accountName;
+  }
+
   const existing = findConnectionByProviderAccount(providerId, accountName);
   let conn;
   if (existing) {
@@ -190,6 +227,11 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
       credentials: newCredentials,
       policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),
     });
+
+    // Set default connection settings for Gmail
+    if (providerId === 'google_gmail') {
+      updateConnectionSettings(conn.id, { emailAliasSuffix: '+agent' });
+    }
   }
 
   refreshToolRegistry();

@@ -67,6 +67,7 @@ export class OutlookCalendarProvider implements Provider {
     params: Record<string, unknown>,
     credentials: Record<string, unknown>,
     guards?: Record<string, unknown>,
+    connectionSettings?: Record<string, unknown>,
   ): Promise<unknown> {
     switch (toolName) {
       case 'outlook_list_calendars': {

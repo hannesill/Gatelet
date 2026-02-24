@@ -63,4 +63,35 @@ operations:
       - field: maxResults
         action: set
         value: 10
+
+  send:
+    allow: false
+    constraints:
+      - field: to
+        rule: must_not_be_empty
+      - field: subject
+        rule: must_not_be_empty
+    mutations:
+      - field: cc
+        action: delete
+      - field: bcc
+        action: delete
+
+  reply:
+    allow: false
+    constraints:
+      - field: messageId
+        rule: must_not_be_empty
+      - field: body
+        rule: must_not_be_empty
+
+  label:
+    allow: true
+    guards:
+      protected_labels:
+        - TRASH
+        - SPAM
+
+  archive:
+    allow: true
 `;

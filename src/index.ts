@@ -9,7 +9,8 @@ import { getProvider } from './providers/registry.js';
 import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 
-export const startTime = Date.now();
+// Re-export so any existing imports from index.ts still work
+export { startTime } from './start-time.js';
 
 function main(): void {
   // Ensure data directory exists

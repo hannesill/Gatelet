@@ -73,10 +73,9 @@ export interface ProviderReference {
   operations: Array<{
     name: string;
     policyOperation: string;
-    description: string;
     fields: string[];
   }>;
-  constraints: Array<{ rule: string; description: string; requiresValue: boolean }>;
-  mutations: Array<{ action: string; description: string; requiresValue: boolean }>;
+  constraints: Array<{ rule: string; requiresValue: boolean }>;
+  mutations: Array<{ action: string; requiresValue: boolean }>;
   example: string;
 }

@@ -17,6 +17,7 @@ export class GmailProvider implements Provider {
     scopes: [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.compose',
+      'https://www.googleapis.com/auth/gmail.modify',
     ],
     builtinClientId: '1096469986430-ap9lls3vhlu25v87ae3c8i8s3dhgaaiu.apps.googleusercontent.com',
     builtinClientSecret: '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',
@@ -51,6 +52,7 @@ export class GmailProvider implements Provider {
     params: Record<string, unknown>,
     credentials: Record<string, unknown>,
     guards?: Record<string, unknown>,
+    connectionSettings?: Record<string, unknown>,
   ): Promise<unknown> {
     const gmail = this.buildClient(credentials);
 
@@ -151,6 +153,177 @@ export class GmailProvider implements Provider {
           draftId: res.data.id,
           messageId: res.data.message?.id,
           threadId: res.data.message?.threadId,
+        };
+      }
+
+      case 'gmail_send': {
+        const to = params.to as string;
+        const subject = params.subject as string;
+        const body = params.body as string;
+        const cc = params.cc as string | undefined;
+        const bcc = params.bcc as string | undefined;
+
+        // Determine From address: explicit param > alias suffix > omit (use account default)
+        let from = params.from as string | undefined;
+        if (!from && connectionSettings?.emailAliasSuffix) {
+          // account_email should be stored in credentials during OAuth
+          const accountEmail = credentials.account_email as string | undefined;
+          if (accountEmail) {
+            const [local, domain] = accountEmail.split('@');
+            from = `${local}${connectionSettings.emailAliasSuffix}@${domain}`;
+          }
+        }
+
+        const headers: string[] = [
+          `To: ${to}`,
+          `Subject: ${subject}`,
+          'Content-Type: text/plain; charset="UTF-8"',
+        ];
+        if (from) headers.unshift(`From: ${from}`);
+        if (cc) headers.splice(headers.indexOf(`Subject: ${subject}`), 0, `Cc: ${cc}`);
+        if (bcc) headers.splice(headers.indexOf(`Subject: ${subject}`), 0, `Bcc: ${bcc}`);
+
+        const rawMessage = Buffer.from(
+          headers.join('\r\n') + '\r\n\r\n' + body,
+        ).toString('base64url');
+
+        const res = await gmail.users.messages.send({
+          userId: 'me',
+          requestBody: { raw: rawMessage },
+        });
+
+        return {
+          messageId: res.data.id,
+          threadId: res.data.threadId,
+          labelIds: res.data.labelIds,
+        };
+      }
+
+      case 'gmail_reply': {
+        const messageId = params.messageId as string;
+        const body = params.body as string;
+        const replyAll = (params.replyAll as boolean) ?? false;
+
+        // Fetch original message for threading headers
+        const original = await gmail.users.messages.get({
+          userId: 'me',
+          id: messageId,
+          format: 'metadata',
+          metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Message-ID'],
+        });
+
+        const origHeaders = original.data.payload?.headers ?? [];
+        const getHeader = (name: string) =>
+          origHeaders.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? '';
+
+        const origFrom = getHeader('From');
+        const origTo = getHeader('To');
+        const origCc = getHeader('Cc');
+        const origSubject = getHeader('Subject');
+        const origMessageId = getHeader('Message-ID');
+
+        // Reply goes to the original sender
+        const replyTo = origFrom;
+        const replySubject = origSubject.startsWith('Re:') ? origSubject : `Re: ${origSubject}`;
+
+        const headers: string[] = [
+          `To: ${replyTo}`,
+          `Subject: ${replySubject}`,
+          'Content-Type: text/plain; charset="UTF-8"',
+        ];
+
+        // Determine From address with alias
+        let from: string | undefined;
+        if (connectionSettings?.emailAliasSuffix) {
+          const accountEmail = credentials.account_email as string | undefined;
+          if (accountEmail) {
+            const [local, domain] = accountEmail.split('@');
+            from = `${local}${connectionSettings.emailAliasSuffix}@${domain}`;
+          }
+        }
+        if (from) headers.unshift(`From: ${from}`);
+
+        if (replyAll) {
+          // Add original To and Cc (excluding self) as Cc
+          const ccAddresses = [origTo, origCc].filter(Boolean).join(', ');
+          if (ccAddresses) headers.splice(headers.indexOf(`Subject: ${replySubject}`), 0, `Cc: ${ccAddresses}`);
+        }
+
+        if (origMessageId) {
+          headers.push(`In-Reply-To: ${origMessageId}`);
+          headers.push(`References: ${origMessageId}`);
+        }
+
+        const rawMessage = Buffer.from(
+          headers.join('\r\n') + '\r\n\r\n' + body,
+        ).toString('base64url');
+
+        const res = await gmail.users.messages.send({
+          userId: 'me',
+          requestBody: {
+            raw: rawMessage,
+            threadId: original.data.threadId ?? undefined,
+          },
+        });
+
+        return {
+          messageId: res.data.id,
+          threadId: res.data.threadId,
+          labelIds: res.data.labelIds,
+        };
+      }
+
+      case 'gmail_label': {
+        const messageId = params.messageId as string;
+        const addLabelIds = params.addLabelIds as string[] | undefined;
+        const removeLabelIds = params.removeLabelIds as string[] | undefined;
+
+        if (!addLabelIds?.length && !removeLabelIds?.length) {
+          return { messageId, modified: false };
+        }
+
+        // Check protected labels
+        const protectedLabels = (guards?.protected_labels as string[]) ?? ['TRASH', 'SPAM'];
+        for (const labelId of addLabelIds ?? []) {
+          if (protectedLabels.includes(labelId)) {
+            throw new Error(`Cannot add protected label: ${labelId}`);
+          }
+        }
+        for (const labelId of removeLabelIds ?? []) {
+          if (protectedLabels.includes(labelId)) {
+            throw new Error(`Cannot remove protected label: ${labelId}`);
+          }
+        }
+
+        const res = await gmail.users.messages.modify({
+          userId: 'me',
+          id: messageId,
+          requestBody: {
+            addLabelIds: addLabelIds ?? [],
+            removeLabelIds: removeLabelIds ?? [],
+          },
+        });
+
+        return {
+          messageId: res.data.id,
+          labelIds: res.data.labelIds,
+        };
+      }
+
+      case 'gmail_archive': {
+        const messageId = params.messageId as string;
+
+        const res = await gmail.users.messages.modify({
+          userId: 'me',
+          id: messageId,
+          requestBody: {
+            removeLabelIds: ['INBOX'],
+          },
+        });
+
+        return {
+          messageId: res.data.id,
+          labelIds: res.data.labelIds,
         };
       }
 

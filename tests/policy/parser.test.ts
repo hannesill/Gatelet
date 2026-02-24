@@ -94,6 +94,53 @@ operations:
     expect(policy.operations.dangerous_op.allow).toBe(false);
   });
 
+  it('accepts must_match with valid regex string', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    constraints:
+      - field: from
+        rule: must_match
+        value: "^user\\\\+.*@example\\\\.com$"
+`;
+    const { policy, warnings } = parsePolicy(yaml);
+    expect(warnings).toHaveLength(0);
+    expect(policy.operations.op.constraints![0].rule).toBe('must_match');
+  });
+
+  it('throws on must_match with non-string value', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    constraints:
+      - field: x
+        rule: must_match
+        value: [1, 2, 3]
+`;
+    expect(() => parsePolicy(yaml)).toThrow('requires "value" to be a string');
+  });
+
+  it('throws on must_match with invalid regex', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    constraints:
+      - field: x
+        rule: must_match
+        value: "[invalid("
+`;
+    expect(() => parsePolicy(yaml)).toThrow('invalid regex');
+  });
+
   // ── Top-level errors ──────────────────────────────────────────────
 
   it('throws on non-object YAML', () => {

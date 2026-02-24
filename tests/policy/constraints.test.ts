@@ -131,6 +131,56 @@ describe('must_not_be_empty', () => {
   });
 });
 
+describe('must_match', () => {
+  it('passes when string matches regex', () => {
+    const result = evaluateConstraint(
+      { field: 'from', rule: 'must_match', value: '^user\\+.*@example\\.com$' },
+      { from: 'user+agent@example.com' },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('fails when string does not match regex', () => {
+    const result = evaluateConstraint(
+      { field: 'from', rule: 'must_match', value: '^user\\+.*@example\\.com$' },
+      { from: 'other@example.com' },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('must_match');
+  });
+
+  it('coerces non-string values to JSON', () => {
+    const result = evaluateConstraint(
+      { field: 'count', rule: 'must_match', value: '42' },
+      { count: 42 },
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('fails for null or undefined actual value', () => {
+    const resultNull = evaluateConstraint(
+      { field: 'x', rule: 'must_match', value: '.*' },
+      { x: null },
+    );
+    expect(resultNull.ok).toBe(false);
+
+    const resultUndefined = evaluateConstraint(
+      { field: 'x', rule: 'must_match', value: '.*' },
+      {},
+    );
+    expect(resultUndefined.ok).toBe(false);
+  });
+
+  it('returns error for invalid regex', () => {
+    const result = evaluateConstraint(
+      { field: 'x', rule: 'must_match', value: '[invalid(' },
+      { x: 'test' },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('invalid regex');
+  });
+});
+
 describe('nested field access', () => {
   it('evaluates constraints on nested fields', () => {
     const result = evaluateConstraint(

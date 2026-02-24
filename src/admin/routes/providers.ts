@@ -2,14 +2,14 @@ import { Hono } from 'hono';
 import { getProvider } from '../../providers/registry.js';
 
 const CONSTRAINT_REFERENCE = [
-  { rule: 'must_equal', description: 'Field must exactly equal the given value', requiresValue: true },
-  { rule: 'must_be_one_of', description: 'Field must be one of the values in the array', requiresValue: true },
-  { rule: 'must_not_be_empty', description: 'Field must not be empty, null, or undefined', requiresValue: false },
+  { rule: 'must_equal', requiresValue: true },
+  { rule: 'must_be_one_of', requiresValue: true },
+  { rule: 'must_not_be_empty', requiresValue: false },
 ];
 
 const MUTATION_REFERENCE = [
-  { action: 'set', description: 'Set the field to the given value', requiresValue: true },
-  { action: 'delete', description: 'Remove the field from the parameters', requiresValue: false },
+  { action: 'set', requiresValue: true },
+  { action: 'delete', requiresValue: false },
 ];
 
 const app = new Hono();
@@ -25,7 +25,6 @@ app.get('/providers/:id/reference', (c) => {
   const operations = provider.tools.map(t => ({
     name: t.name,
     policyOperation: t.policyOperation,
-    description: t.description,
     fields: Object.keys(t.inputSchema),
   }));
 
