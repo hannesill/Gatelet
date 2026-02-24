@@ -38,5 +38,5 @@ export function evaluate(
     applyMutations(opPolicy.mutations, clonedParams);
   }
 
-  return { action: 'allow', mutatedParams: clonedParams };
+  return { action: 'allow', mutatedParams: clonedParams, guards: opPolicy.guards };
 }

@@ -137,6 +137,33 @@ describe('policy engine', () => {
     }
   });
 
+  it('passes guards through in allow result', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        op: {
+          allow: true,
+          guards: { require_organizer_self: true },
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'op', { foo: 'bar' });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.guards).toEqual({ require_organizer_self: true });
+    }
+  });
+
+  it('returns undefined guards when none configured', () => {
+    const result = evaluate(basePolicy, 'list_calendars', {});
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.guards).toBeUndefined();
+    }
+  });
+
   it('handles empty params object', () => {
     const result = evaluate(basePolicy, 'list_events', {});
     expect(result.action).toBe('allow');

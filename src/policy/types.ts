@@ -8,6 +8,7 @@ export interface OperationPolicy {
   allow: boolean;
   constraints?: Constraint[];
   mutations?: Mutation[];
+  guards?: Record<string, unknown>;
 }
 
 export interface Constraint {
@@ -24,4 +25,4 @@ export interface Mutation {
 
 export type PolicyResult =
   | { action: 'deny'; reason: string }
-  | { action: 'allow'; mutatedParams: Record<string, unknown> };
+  | { action: 'allow'; mutatedParams: Record<string, unknown>; guards?: Record<string, unknown> };

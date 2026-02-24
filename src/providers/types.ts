@@ -17,6 +17,7 @@ export interface Provider {
     toolName: string,
     params: Record<string, unknown>,
     credentials: Record<string, unknown>,
+    guards?: Record<string, unknown>,
   ): Promise<unknown>;
 
   refreshCredentials?(

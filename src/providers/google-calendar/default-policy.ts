@@ -26,6 +26,8 @@ operations:
 
   update_event:
     allow: false
+    guards:
+      require_organizer_self: true
     mutations:
       - field: attendees
         action: delete

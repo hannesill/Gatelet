@@ -53,6 +53,7 @@ describe('GoogleCalendarProvider', () => {
         'calendar_update_event',
         { calendarId: 'primary', eventId: 'evt1', summary: 'Updated' },
         creds,
+        { require_organizer_self: true },
       );
 
       expect(result).toEqual({ id: 'evt1', summary: 'Updated' });
@@ -75,6 +76,7 @@ describe('GoogleCalendarProvider', () => {
           'calendar_update_event',
           { calendarId: 'primary', eventId: 'evt2', summary: 'Hack' },
           creds,
+          { require_organizer_self: true },
         ),
       ).rejects.toThrow('Cannot modify events organized by others');
 
@@ -91,6 +93,7 @@ describe('GoogleCalendarProvider', () => {
           'calendar_update_event',
           { calendarId: 'primary', eventId: 'evt3', summary: 'Test' },
           creds,
+          { require_organizer_self: true },
         ),
       ).rejects.toThrow('Cannot modify events organized by others');
     });
@@ -105,8 +108,25 @@ describe('GoogleCalendarProvider', () => {
           'calendar_update_event',
           { calendarId: 'primary', eventId: 'evt4', summary: 'Test' },
           creds,
+          { require_organizer_self: true },
         ),
       ).rejects.toThrow('boss@corp.com');
+    });
+
+    it('skips organizer check when guard is absent', async () => {
+      (mockEvents.patch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: 'evt5', summary: 'Updated' },
+      });
+
+      const result = await provider.execute(
+        'calendar_update_event',
+        { calendarId: 'primary', eventId: 'evt5', summary: 'Updated' },
+        creds,
+      );
+
+      expect(result).toEqual({ id: 'evt5', summary: 'Updated' });
+      expect(mockEvents.get).not.toHaveBeenCalled();
+      expect(mockEvents.patch).toHaveBeenCalled();
     });
   });
 
@@ -128,9 +148,6 @@ describe('GoogleCalendarProvider', () => {
     });
 
     it('passes sendUpdates: none to events.patch', async () => {
-      (mockEvents.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { organizer: { self: true } },
-      });
       (mockEvents.patch as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { id: 'evt1' },
       });

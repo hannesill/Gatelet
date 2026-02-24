@@ -197,6 +197,7 @@ async function handleToolCall(
         toolName,
         policyResult.mutatedParams,
         conn.credentials,
+        policyResult.guards,
       );
     } catch (err: unknown) {
       if (
@@ -212,6 +213,7 @@ async function handleToolCall(
           toolName,
           policyResult.mutatedParams,
           newCreds,
+          policyResult.guards,
         );
       } else {
         throw err;
