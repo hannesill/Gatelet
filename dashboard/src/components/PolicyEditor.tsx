@@ -188,7 +188,7 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
       </div>
 
       <div className="mt-5 flex items-center gap-3">
-        <Button color="blue" onClick={save} disabled={saving || (validation ? !validation.valid : false)}>
+        <Button color="amber" onClick={save} disabled={saving || (validation ? !validation.valid : false)}>
           {saving ? 'Saving...' : 'Save Policy'}
         </Button>
         <Button plain onClick={onClose}>Cancel</Button>

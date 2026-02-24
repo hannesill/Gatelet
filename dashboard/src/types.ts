@@ -28,6 +28,7 @@ export interface ApiKey {
 }
 
 export interface Status {
+  uptime: number;
   connections: ConnectionWithMeta[];
   tools: Tool[];
   apiKeys: { total: number; active: number };

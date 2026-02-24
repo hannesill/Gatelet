@@ -9,6 +9,8 @@ import { getProvider } from './providers/registry.js';
 import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 
+export const startTime = Date.now();
+
 function main(): void {
   // Ensure data directory exists
   fs.mkdirSync(config.DATA_DIR, { recursive: true });

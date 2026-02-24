@@ -8,20 +8,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2",
+    "clsx": "^2",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
     "react": "^19",
     "react-dom": "^19",
-    "@headlessui/react": "^2",
-    "clsx": "^2"
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@codemirror/lang-yaml": "^6",
+    "@tailwindcss/vite": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^4",
-    "vite": "^6",
-    "tailwindcss": "^4",
-    "@tailwindcss/vite": "^4",
-    "typescript": "^5",
     "@uiw/react-codemirror": "^4",
-    "@codemirror/lang-yaml": "^6"
+    "@vitejs/plugin-react": "^4",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite": "^6"
   }
 }

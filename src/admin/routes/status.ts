@@ -4,6 +4,7 @@ import { listApiKeys } from '../../db/api-keys.js';
 import { getProvider, getAllProviders } from '../../providers/registry.js';
 import { parsePolicy } from '../../policy/parser.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
+import { startTime } from '../../index.js';
 
 interface ConnectionWithMeta {
   id: string;
@@ -89,6 +90,7 @@ app.get('/status', (c) => {
     }));
 
   return c.json({
+    uptime: Date.now() - startTime,
     connections: connectionsWithMeta,
     tools,
     apiKeys: { total: totalKeys, active: activeKeys },

@@ -1,13 +1,6 @@
 import { useToast } from '../hooks/useToast';
-
-function CopyIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-      <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
-    </svg>
-  );
-}
+import { Copy, Terminal, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export function AgentConfig({ apiKey }: { apiKey: string }) {
   const { toast } = useToast();
@@ -25,18 +18,33 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
   }
 
   return (
-    <div className="rounded-xl bg-zinc-50 ring-1 ring-zinc-950/5 dark:bg-zinc-800/50 dark:ring-white/5">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-white/5">
-        <h4 className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Agent MCP Configuration</h4>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl shadow-zinc-950/20 ring-1 ring-white/10"
+    >
+      <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Terminal className="h-4 w-4 text-zinc-400" />
+          <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400">MCP Configuration</h4>
+        </div>
         <button
           onClick={copy}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-950/5 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:bg-indigo-500 active:scale-95"
         >
-          <CopyIcon className="h-3.5 w-3.5" />
-          Copy
+          <Copy className="h-3 w-3" />
+          Copy JSON
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">{config}</pre>
-    </div>
+      <div className="relative">
+        <pre className="overflow-x-auto p-6 font-mono text-xs leading-relaxed text-zinc-300 scrollbar-hide">
+          {config}
+        </pre>
+        <div className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 ring-1 ring-emerald-500/20">
+          <CheckCircle2 className="h-3 w-3" />
+          Ready to use
+        </div>
+      </div>
+    </motion.div>
   );
 }

@@ -90,6 +90,7 @@ function AppContent() {
   const summary = {
     connections: status.connections.length,
     tools: status.tools.filter(t => t.enabled).length,
+    uptime: status.uptime,
   };
 
   return (

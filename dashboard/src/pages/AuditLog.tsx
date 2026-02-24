@@ -1,9 +1,22 @@
 import { useState } from 'react';
-import { Select } from '../components/catalyst/select';
-import { Badge } from '../components/catalyst/badge';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
-import clsx from 'clsx';
+import { cn } from '../utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Search, 
+  Filter, 
+  Clock, 
+  ChevronRight, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle,
+  FileCode,
+  Terminal,
+  Zap,
+  Info,
+  Loader2
+} from 'lucide-react';
 import type { AuditEntry } from '../types';
 
 function relativeTime(timestamp: string): string {
@@ -17,97 +30,111 @@ function relativeTime(timestamp: string): string {
   return `${Math.floor(diff / 86400_000)}d ago`;
 }
 
-function ResultBadge({ result }: { result: string }) {
-  if (result === 'allowed') return <Badge color="green">Allowed</Badge>;
-  if (result === 'denied') return <Badge color="red">Denied</Badge>;
-  if (result === 'error') return <Badge color="yellow">Error</Badge>;
-  return <Badge color="zinc">{result}</Badge>;
+function ResultIcon({ result }: { result: string }) {
+  if (result === 'allowed') return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+  if (result === 'denied') return <XCircle className="h-4 w-4 text-red-500" />;
+  if (result === 'error') return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+  return <Info className="h-4 w-4 text-zinc-500" />;
 }
-
-function ChevronIcon({ open, className }: { open: boolean; className?: string }) {
-  return (
-    <svg
-      className={clsx(className, 'transition-transform duration-200', open && 'rotate-90')}
-      viewBox="0 0 20 20"
-      fill="currentColor"
-    >
-      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-const resultColors: Record<string, string> = {
-  allowed: 'bg-green-500',
-  denied: 'bg-red-500',
-  error: 'bg-yellow-500',
-};
 
 function AuditRow({ entry }: { entry: AuditEntry }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="group">
+    <div className="group border-b border-zinc-100 last:border-0 dark:border-white/5">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-950/[0.02] dark:hover:bg-white/[0.02]"
+        className={cn(
+          "flex w-full items-center gap-4 px-6 py-4 text-left transition-all duration-200",
+          expanded ? "bg-zinc-50 dark:bg-white/[0.02]" : "hover:bg-zinc-50/50 dark:hover:bg-white/[0.01]"
+        )}
       >
-        {/* Status dot */}
-        <span className={clsx('h-2 w-2 shrink-0 rounded-full', resultColors[entry.result] ?? 'bg-zinc-500')} />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-white/10">
+          <ResultIcon result={entry.result} />
+        </div>
 
-        {/* Chevron */}
-        <ChevronIcon open={expanded} className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-600" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <code className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">
+              {entry.tool_name}
+            </code>
+            {entry.duration_ms !== null && (
+              <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                <Zap className="h-2.5 w-2.5" />
+                {entry.duration_ms}ms
+              </div>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {relativeTime(entry.timestamp)}
+            </span>
+            <span className="capitalize">{entry.result}</span>
+          </div>
+        </div>
 
-        {/* Tool name */}
-        <code className="min-w-0 flex-1 truncate text-xs text-zinc-700 dark:text-zinc-300">{entry.tool_name}</code>
-
-        {/* Result badge */}
-        <ResultBadge result={entry.result} />
-
-        {/* Duration */}
-        <span className="w-16 shrink-0 text-right text-xs tabular-nums text-zinc-500">
-          {entry.duration_ms !== null ? `${entry.duration_ms}ms` : '\u2014'}
-        </span>
-
-        {/* Time */}
-        <span className="w-16 shrink-0 text-right text-xs text-zinc-400 dark:text-zinc-600" title={entry.timestamp}>
-          {relativeTime(entry.timestamp)}
-        </span>
+        <ChevronRight className={cn(
+          "h-4 w-4 text-zinc-300 transition-transform duration-300 dark:text-zinc-600",
+          expanded && "rotate-90"
+        )} />
       </button>
 
-      {expanded && (
-        <div className="mx-4 mb-3 rounded-lg bg-zinc-50 p-4 ring-1 ring-zinc-950/5 dark:bg-zinc-800/60 dark:ring-white/5">
-          {entry.deny_reason && (
-            <div className="mb-3 flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 ring-1 ring-red-200 dark:bg-red-950/30 dark:ring-red-500/20">
-              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-              <span className="text-xs text-red-600 dark:text-red-400">{entry.deny_reason}</span>
-            </div>
-          )}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 pb-6 pt-2">
+              <div className="space-y-4">
+                {entry.deny_reason && (
+                  <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>{entry.deny_reason}</p>
+                  </div>
+                )}
 
-          {entry.original_params && (
-            <div className="text-xs">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Parameters</span>
-              <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all rounded bg-white px-3 py-2 text-zinc-700 ring-1 ring-zinc-950/5 dark:bg-zinc-900/60 dark:text-zinc-300 dark:ring-white/5">
-                {entry.original_params}
-              </pre>
-            </div>
-          )}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {entry.original_params && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                        <Terminal className="h-3 w-3" />
+                        Input Parameters
+                      </div>
+                      <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-zinc-300 scrollbar-hide">
+                        {entry.original_params}
+                      </pre>
+                    </div>
+                  )}
 
-          {entry.mutated_params && (
-            <div className="mt-3 text-xs">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Mutated</span>
-              <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all rounded bg-white px-3 py-2 text-zinc-700 ring-1 ring-zinc-950/5 dark:bg-zinc-900/60 dark:text-zinc-300 dark:ring-white/5">
-                {entry.mutated_params}
-              </pre>
-            </div>
-          )}
+                  {entry.mutated_params && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
+                        <FileCode className="h-3 w-3" />
+                        Mutated Parameters
+                      </div>
+                      <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-amber-200/80 scrollbar-hide">
+                        {entry.mutated_params}
+                      </pre>
+                    </div>
+                  )}
+                </div>
 
-          {!entry.deny_reason && !entry.original_params && !entry.mutated_params && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-600">No additional details</p>
-          )}
-        </div>
-      )}
+                {!entry.deny_reason && !entry.original_params && !entry.mutated_params && (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Info className="h-8 w-8 text-zinc-200 dark:text-zinc-800" />
+                    <p className="mt-2 text-sm text-zinc-500">No extra details available for this call.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -151,93 +178,95 @@ export function AuditLog() {
   });
 
   return (
-    <div className="space-y-5">
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Select value={period} onChange={e => setPeriod(e.target.value)}>
-          <option value="1h">Last hour</option>
-          <option value="24h">Last 24 hours</option>
-          <option value="7d">Last 7 days</option>
-          <option value="all">All time</option>
-        </Select>
-        <Select value={resultFilter} onChange={e => setResultFilter(e.target.value)}>
-          <option value="">All results</option>
-          <option value="allowed">Allowed</option>
-          <option value="denied">Denied</option>
-          <option value="error">Error</option>
-        </Select>
-        <Select value={toolFilter} onChange={e => setToolFilter(e.target.value)}>
-          <option value="">All tools</option>
-          {toolNames.map(t => <option key={t} value={t}>{t}</option>)}
-        </Select>
+    <div className="space-y-6">
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+          <div className="pl-3 pr-1 text-zinc-400">
+            <Filter className="h-3.5 w-3.5" />
+          </div>
+          <select 
+            value={period} 
+            onChange={e => setPeriod(e.target.value)}
+            className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
+          >
+            <option value="1h">Last hour</option>
+            <option value="24h">Last 24 hours</option>
+            <option value="7d">Last 7 days</option>
+            <option value="all">All time</option>
+          </select>
+          <div className="w-px h-4 bg-zinc-200 dark:bg-white/10 mx-1" />
+          <select 
+            value={resultFilter} 
+            onChange={e => setResultFilter(e.target.value)}
+            className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
+          >
+            <option value="">All results</option>
+            <option value="allowed">Allowed</option>
+            <option value="denied">Denied</option>
+            <option value="error">Error</option>
+          </select>
+        </div>
 
-        {/* Summary stats */}
-        {data && data.length > 0 && (
-          <div className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
-            {counts.allowed > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                {counts.allowed}
-              </span>
-            )}
-            {counts.denied > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                {counts.denied}
-              </span>
-            )}
-            {counts.error > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                {counts.error}
-              </span>
-            )}
-            <span className="text-zinc-400 dark:text-zinc-600">{data.length} entries</span>
+        {/* Search tool */}
+        <div className="flex flex-1 items-center gap-3 rounded-2xl bg-white px-4 py-2 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+          <Search className="h-3.5 w-3.5 text-zinc-400" />
+          <select 
+            value={toolFilter} 
+            onChange={e => setToolFilter(e.target.value)}
+            className="flex-1 bg-transparent border-0 text-xs font-semibold p-0 focus:ring-0 dark:text-zinc-300"
+          >
+            <option value="">Search all tools...</option>
+            {toolNames.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Summary Chips */}
+      {data && data.length > 0 && (
+        <div className="flex gap-2">
+          {counts.allowed > 0 && (
+            <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {counts.allowed} Allowed
+            </div>
+          )}
+          {counts.denied > 0 && (
+            <div className="flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-[11px] font-bold text-red-700 dark:bg-red-500/10 dark:text-red-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              {counts.denied} Denied
+            </div>
+          )}
+          <div className="flex-1" />
+          <div className="text-xs font-medium text-zinc-400 pt-1">
+            {data.length} entries shown
+          </div>
+        </div>
+      )}
+
+      {/* Main List */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="mt-4 text-sm font-medium">Fetching audit trail...</p>
+          </div>
+        ) : data && data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-zinc-50 dark:bg-white/5 mb-4">
+              <FileCode className="h-8 w-8 text-zinc-300 dark:text-zinc-700" />
+            </div>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-white">Clean as a whistle</h3>
+            <p className="mt-1 text-sm text-zinc-500">No activity recorded for the selected filters.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-100 dark:divide-white/5">
+            {data?.map((entry) => (
+              <AuditRow key={entry.id ?? entry.timestamp} entry={entry} />
+            ))}
           </div>
         )}
       </div>
-
-      {/* Loading state */}
-      {loading && (
-        <div className="flex items-center gap-2 py-8 justify-center text-sm text-zinc-500">
-          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Loading...
-        </div>
-      )}
-
-      {/* Empty state */}
-      {data && data.length === 0 && (
-        <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-300 py-10 text-center dark:border-zinc-700">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-white/10">
-            <svg className="h-5 w-5 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h3 className="mt-3 text-sm font-medium text-zinc-900 dark:text-white">No audit entries</h3>
-          <p className="mt-1 text-sm text-zinc-500">No tool calls recorded for this period.</p>
-        </div>
-      )}
-
-      {/* Entries list */}
-      {data && data.length > 0 && (
-        <div className="divide-y divide-zinc-200 overflow-hidden rounded-xl ring-1 ring-zinc-950/5 dark:divide-white/5 dark:ring-white/5">
-          {/* Header */}
-          <div className="flex items-center gap-3 bg-zinc-50 px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:bg-zinc-800/30">
-            <span className="w-2" />
-            <span className="w-3.5" />
-            <span className="min-w-0 flex-1">Tool</span>
-            <span className="w-[68px]">Result</span>
-            <span className="w-16 text-right">Duration</span>
-            <span className="w-16 text-right">Time</span>
-          </div>
-          {data.map(entry => (
-            <AuditRow key={entry.id ?? entry.timestamp} entry={entry} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

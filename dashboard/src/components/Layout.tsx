@@ -1,107 +1,52 @@
 import { useState, type ReactNode } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import clsx from 'clsx';
+import { cn } from '../utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Logo } from './Logo';
+import { 
+  Link2, 
+  Key, 
+  FileText, 
+  LogOut, 
+  Menu, 
+  X, 
+  Shield, 
+  Sun, 
+  Moon, 
+  Monitor,
+  Activity,
+  Zap
+} from 'lucide-react';
 
 const tabs = ['Connections', 'API Keys', 'Audit Log'] as const;
 export type TabName = (typeof tabs)[number];
 
-function ConnectionsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" />
-      <path d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-3 3a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" />
-    </svg>
-  );
-}
-
-function KeyIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function AuditIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function SignOutIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clipRule="evenodd" />
-      <path fillRule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-.943a.75.75 0 10-1.004-1.114l-2.5 2.25a.75.75 0 000 1.114l2.5 2.25a.75.75 0 101.004-1.114l-1.048-.943h9.546A.75.75 0 0019 10z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function MenuIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
-  );
-}
-
-function CloseIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M9.661 2.237a.531.531 0 01.678 0 11.947 11.947 0 007.078 2.749.5.5 0 01.479.425c.069.52.104 1.05.104 1.589 0 5.162-3.26 9.563-7.834 11.256a.48.48 0 01-.332 0C5.26 16.563 2 12.162 2 7c0-.538.035-1.069.104-1.589a.5.5 0 01.48-.425 11.947 11.947 0 007.077-2.75z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function SunIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.061l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.061 1.06l1.06 1.06z" />
-    </svg>
-  );
-}
-
-function MoonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M7.455 2.004a.75.75 0 01.26.77 7 7 0 009.958 7.967.75.75 0 011.067.853A8.5 8.5 0 116.647 1.921a.75.75 0 01.808.083z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function MonitorIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v8.5A2.25 2.25 0 0115.75 15h-3.105a3.501 3.501 0 001.1 1.677A.75.75 0 0113.26 18H6.74a.75.75 0 01-.484-1.323A3.501 3.501 0 007.355 15H4.25A2.25 2.25 0 012 12.75v-8.5zm1.5 0a.75.75 0 01.75-.75h11.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75H4.25a.75.75 0 01-.75-.75v-7.5z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-const tabMeta: Record<TabName, { icon: React.FC<{ className?: string }>; description: string }> = {
-  'Connections': { icon: ConnectionsIcon, description: 'OAuth accounts' },
-  'API Keys': { icon: KeyIcon, description: 'Agent credentials' },
-  'Audit Log': { icon: AuditIcon, description: 'Request history' },
+const tabMeta: Record<TabName, { icon: any; description: string }> = {
+  'Connections': { icon: Link2, description: 'OAuth accounts' },
+  'API Keys': { icon: Key, description: 'Agent credentials' },
+  'Audit Log': { icon: FileText, description: 'Request history' },
 };
 
-// Page headings for the content area
 const pageHeadings: Record<TabName, { title: string; description: string }> = {
   'Connections': { title: 'Connections', description: 'Manage OAuth connections and their access policies.' },
   'API Keys': { title: 'API Keys', description: 'Create and manage credentials for your agents.' },
   'Audit Log': { title: 'Audit Log', description: 'Review tool calls and policy decisions.' },
 };
 
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
 interface LayoutProps {
-  summary: { connections: number; tools: number };
+  summary: { connections: number; tools: number; uptime: number };
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
   onLogout: () => void;
@@ -111,26 +56,33 @@ interface LayoutProps {
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const options = [
-    { value: 'light' as const, icon: SunIcon, label: 'Light' },
-    { value: 'dark' as const, icon: MoonIcon, label: 'Dark' },
-    { value: 'system' as const, icon: MonitorIcon, label: 'System' },
+    { value: 'light' as const, icon: Sun, label: 'Light' },
+    { value: 'dark' as const, icon: Moon, label: 'Dark' },
+    { value: 'system' as const, icon: Monitor, label: 'System' },
   ];
 
   return (
-    <div className="flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+    <div className="flex items-center gap-1 rounded-full bg-zinc-100/50 p-1 dark:bg-white/5 ring-1 ring-zinc-950/5 dark:ring-white/10">
       {options.map(opt => (
         <button
           key={opt.value}
           onClick={() => setTheme(opt.value)}
           title={opt.label}
-          className={clsx(
-            'rounded-md p-1.5 transition-colors',
+          className={cn(
+            'relative rounded-full p-1.5 transition-all duration-200',
             theme === opt.value
-              ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white'
-              : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300',
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-white/10 dark:text-indigo-400'
+              : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
           )}
         >
-          <opt.icon className="h-3.5 w-3.5" />
+          {theme === opt.value && (
+            <motion.div
+              layoutId="theme-pill"
+              className="absolute inset-0 rounded-full bg-white dark:bg-white/10 shadow-sm"
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+            />
+          )}
+          <opt.icon className="relative z-10 h-3.5 w-3.5" />
         </button>
       ))}
     </div>
@@ -146,72 +98,105 @@ function SidebarNav({
 }: {
   activeTab: TabName;
   onTabChange: (tab: TabName) => void;
-  summary: { connections: number; tools: number };
+  summary: { connections: number; tools: number; uptime: number };
   onLogout: () => void;
   onNavigate?: () => void;
 }) {
   return (
     <nav className="flex h-full min-h-0 flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-3 border-b border-zinc-200 px-5 py-5 dark:border-white/5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/30">
-          <ShieldIcon className="h-5 w-5 text-white" />
+      <div className="flex items-center gap-3.5 px-6 py-8">
+        <div className="glow-indigo flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/20">
+          <Logo className="h-6 w-6 text-white" />
         </div>
         <div>
-          <span className="text-sm font-semibold text-zinc-900 dark:text-white">Gatelet</span>
-          <p className="text-[11px] leading-tight text-zinc-500">Permission Proxy</p>
+          <span className="font-[Fraunces] text-lg italic text-zinc-900 dark:text-white">Gatelet</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 dot-pulse" />
+            <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Live Proxy</p>
+          </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-          Navigation
-        </p>
-        <div className="space-y-0.5">
-          {tabs.map(tab => {
-            const { icon: Icon } = tabMeta[tab];
-            const active = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => { onTabChange(tab); onNavigate?.(); }}
-                className={clsx(
-                  'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-zinc-950/5 text-zinc-900 dark:bg-white/10 dark:text-white'
-                    : 'text-zinc-600 hover:bg-zinc-950/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200',
-                )}
-              >
-                {active && (
-                  <span className="absolute inset-y-1.5 -left-3 w-0.5 rounded-full bg-blue-500" />
-                )}
-                <Icon className={clsx('h-5 w-5 shrink-0 transition-colors', active ? 'text-blue-500 dark:text-blue-400' : 'text-zinc-400 group-hover:text-zinc-500 dark:text-zinc-500 dark:group-hover:text-zinc-400')} />
-                {tab}
-              </button>
-            );
-          })}
+      <div className="flex-1 space-y-8 overflow-y-auto px-4 py-4">
+        <div>
+          <p className="mb-4 px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400/80">
+            Main Menu
+          </p>
+          <div className="space-y-1">
+            {tabs.map(tab => {
+              const { icon: Icon } = tabMeta[tab];
+              const active = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => { onTabChange(tab); onNavigate?.(); }}
+                  className={cn(
+                    'group relative flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm font-medium transition-all duration-200',
+                    active
+                      ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'
+                      : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-200',
+                  )}
+                >
+                  {active && (
+                    <motion.div
+                      layoutId="active-tab"
+                      className="absolute inset-0 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/5 ring-1 ring-indigo-500/20 dark:ring-indigo-500/20"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon className={cn(
+                    'relative z-10 h-4.5 w-4.5 transition-colors duration-200',
+                    active
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300',
+                  )} />
+                  <span className="relative z-10">{tab}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-4 px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400/80">
+            System Stats
+          </p>
+          <div className="space-y-3 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                <Link2 className="h-3.5 w-3.5" />
+                <span>Connections</span>
+              </div>
+              <span className="tabular-nums text-xs font-semibold text-zinc-900 dark:text-zinc-300">{summary.connections}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                <Zap className="h-3.5 w-3.5" />
+                <span>Active tools</span>
+              </div>
+              <span className="tabular-nums text-xs font-semibold text-zinc-900 dark:text-zinc-300">{summary.tools}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                <Activity className="h-3.5 w-3.5" />
+                <span>Uptime</span>
+              </div>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{formatUptime(summary.uptime)}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-zinc-200 px-5 py-4 dark:border-white/5">
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-500">Connections</span>
-            <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{summary.connections}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-500">Active tools</span>
-            <span className="tabular-nums text-zinc-700 dark:text-zinc-300">{summary.tools}</span>
-          </div>
-        </div>
+      <div className="border-t border-zinc-100 dark:border-white/[0.06] p-4">
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-950/5 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
           >
-            <SignOutIcon className="h-4 w-4" />
+            <LogOut className="h-4 w-4" />
             Sign out
           </button>
           <ThemeToggle />
@@ -226,9 +211,9 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
   const heading = pageHeadings[activeTab];
 
   return (
-    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col lg:bg-zinc-100 dark:lg:bg-zinc-950">
-      {/* Desktop sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 max-lg:hidden">
+    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col bg-white dark:bg-zinc-950">
+      {/* Sidebar - unified design */}
+      <div className="fixed inset-y-0 left-0 w-64 border-r border-zinc-100 bg-zinc-50/50 dark:border-white/5 dark:bg-zinc-900/50 backdrop-blur-xl max-lg:hidden">
         <SidebarNav
           activeTab={activeTab}
           onTabChange={onTabChange}
@@ -238,56 +223,95 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
       </div>
 
       {/* Mobile header */}
-      <header className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-white/5 lg:hidden">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="-ml-1 rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-950/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white"
-        >
-          <MenuIcon className="h-5 w-5" />
-        </button>
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
-            <ShieldIcon className="h-3.5 w-3.5 text-white" />
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-100 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/5 dark:bg-zinc-950/80 lg:hidden">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="-ml-1 rounded-xl p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/5"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/20">
+              <Logo className="h-4.5 w-4.5 text-white" />
+            </div>
+            <span className="font-[Fraunces] text-base italic text-zinc-900 dark:text-white">Gatelet</span>
           </div>
-          <span className="text-sm font-semibold text-zinc-900 dark:text-white">Gatelet</span>
         </div>
+        <ThemeToggle />
       </header>
 
       {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-zinc-950/20 backdrop-blur-xs dark:bg-zinc-950/60" onClick={() => setMobileOpen(false)} />
-          <div className="fixed inset-y-0 left-0 w-72 bg-white shadow-xl shadow-black/10 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:shadow-black/40 dark:ring-white/10">
-            <div className="absolute right-3 top-4">
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-950/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white"
-              >
-                <CloseIcon className="h-5 w-5" />
-              </button>
-            </div>
-            <SidebarNav
-              activeTab={activeTab}
-              onTabChange={onTabChange}
-              summary={summary}
-              onLogout={onLogout}
-              onNavigate={() => setMobileOpen(false)}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-zinc-950/20 backdrop-blur-sm dark:bg-black/40"
+              onClick={() => setMobileOpen(false)}
             />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl dark:bg-zinc-900"
+            >
+              <div className="absolute right-4 top-4 z-10">
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 dark:hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <SidebarNav
+                activeTab={activeTab}
+                onTabChange={onTabChange}
+                summary={summary}
+                onLogout={onLogout}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Main content area */}
-      <main className="flex flex-1 flex-col pb-2 lg:min-w-0 lg:pl-64 lg:pt-2 lg:pr-2">
-        <div className="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-sm lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:shadow-none dark:lg:ring-white/10">
-          <div className="mx-auto max-w-4xl">
-            {/* Page heading */}
-            <div className="mb-8">
-              <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">{heading.title}</h1>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{heading.description}</p>
-            </div>
-            {children}
-          </div>
+      <main className="flex flex-1 flex-col lg:pl-64">
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <header className="mb-10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              >
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                  {heading.title}
+                </h1>
+                <p className="mt-2 text-base text-zinc-500 dark:text-zinc-400">
+                  {heading.description}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </header>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

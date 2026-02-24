@@ -52,10 +52,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={clsx(
-              'pointer-events-auto flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm shadow-lg ring-1 animate-in',
+              'pointer-events-auto flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium shadow-lg ring-1 animate-in backdrop-blur-sm',
               t.type === 'error'
-                ? 'bg-red-50/90 text-red-700 ring-red-200 shadow-red-100/20 dark:bg-red-950/90 dark:text-red-200 dark:ring-red-500/20 dark:shadow-red-950/20'
-                : 'bg-white/90 text-zinc-700 ring-zinc-950/10 shadow-zinc-200/20 dark:bg-zinc-800/90 dark:text-zinc-200 dark:ring-white/10 dark:shadow-black/20',
+                ? 'bg-red-50/95 text-red-700 ring-red-200/80 shadow-red-100/30 dark:bg-red-950/95 dark:text-red-200 dark:ring-red-500/20 dark:shadow-red-950/30'
+                : 'bg-white/95 text-zinc-700 ring-zinc-950/10 shadow-zinc-200/30 dark:bg-zinc-800/95 dark:text-zinc-200 dark:ring-white/10 dark:shadow-black/30',
             )}
           >
             {t.type === 'error'

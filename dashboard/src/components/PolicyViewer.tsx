@@ -133,7 +133,7 @@ export function PolicyViewer({ connectionId, providerId, onEdit }: Props) {
               <div className="mt-2.5 space-y-1.5 border-t border-zinc-200 pt-2.5 dark:border-white/5">
                 {op.constraints.map((c, i) => (
                   <div key={i} className="flex items-baseline gap-2 text-xs">
-                    <span className="shrink-0 rounded bg-blue-500/10 px-1.5 py-0.5 font-medium text-blue-600 dark:text-blue-400">constraint</span>
+                    <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-amber-600 dark:text-amber-400">constraint</span>
                     <span className="text-zinc-500 dark:text-zinc-400">
                       <code className="text-zinc-700 dark:text-zinc-300">{c.field}</code> {c.rule}
                       {c.value !== undefined && <> = <code className="text-zinc-700 dark:text-zinc-300">{JSON.stringify(c.value)}</code></>}
