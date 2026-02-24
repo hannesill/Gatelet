@@ -203,6 +203,29 @@ describe('Admin API Routes', () => {
     });
   });
 
+  // ── OAuth ───────────────────────────────────────────────────────────
+
+  describe('OAuth', () => {
+    it('GET /api/connections/oauth/:providerId/start redirects to provider authorize URL', async () => {
+      const res = await req(
+        `/api/connections/oauth/google_calendar/start?token=${TEST_ADMIN_TOKEN}`,
+      );
+      expect(res.status).toBe(302);
+      const location = res.headers.get('Location') ?? '';
+      expect(location).toContain('accounts.google.com');
+      expect(location).toContain('client_id=');
+      expect(location).toContain('redirect_uri=');
+      expect(location).toContain('scope=');
+    });
+
+    it('GET /api/connections/oauth/:providerId/start returns 400 for unknown provider', async () => {
+      const res = await req(
+        `/api/connections/oauth/nonexistent/start?token=${TEST_ADMIN_TOKEN}`,
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
   // ── Policies ────────────────────────────────────────────────────────
 
   describe('Policies', () => {
@@ -329,8 +352,8 @@ operations:
   // ── Settings ────────────────────────────────────────────────────────
 
   describe('Settings', () => {
-    it('GET /api/settings/google returns status', async () => {
-      const res = await req('/api/settings/google', {
+    it('GET /api/settings/oauth/:providerId returns status', async () => {
+      const res = await req('/api/settings/oauth/google_calendar', {
         headers: authHeaders(),
       });
       expect(res.status).toBe(200);
@@ -338,8 +361,8 @@ operations:
       expect(typeof body.configured).toBe('boolean');
     });
 
-    it('PUT /api/settings/google saves credentials', async () => {
-      const res = await req('/api/settings/google', {
+    it('PUT /api/settings/oauth/:providerId saves credentials', async () => {
+      const res = await req('/api/settings/oauth/google_calendar', {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({
@@ -352,7 +375,7 @@ operations:
       expect(body.saved).toBe(true);
 
       // Verify it was saved
-      const getRes = await req('/api/settings/google', {
+      const getRes = await req('/api/settings/oauth/google_calendar', {
         headers: authHeaders(),
       });
       const getBody = await getRes.json();
@@ -360,11 +383,18 @@ operations:
       expect(getBody.client_id).toBe('test-client-...');
     });
 
-    it('PUT /api/settings/google rejects missing fields', async () => {
-      const res = await req('/api/settings/google', {
+    it('PUT /api/settings/oauth/:providerId rejects missing fields', async () => {
+      const res = await req('/api/settings/oauth/google_calendar', {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ client_id: 'only-id' }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('GET /api/settings/oauth/:providerId returns 400 for unknown provider', async () => {
+      const res = await req('/api/settings/oauth/nonexistent', {
+        headers: authHeaders(),
       });
       expect(res.status).toBe(400);
     });

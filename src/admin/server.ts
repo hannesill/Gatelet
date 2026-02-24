@@ -10,6 +10,8 @@ import { listConnections } from '../db/connections.js';
 import { listApiKeys } from '../db/api-keys.js';
 import { queryAuditLog, countAuditLog } from '../db/audit.js';
 import { getRegisteredToolCount } from '../mcp/server.js';
+import { getAllProviders } from '../providers/registry.js';
+import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { adminPage } from './page.js';
 
 export function createAdminApp(): Hono {
@@ -17,13 +19,13 @@ export function createAdminApp(): Hono {
 
   // Admin token auth middleware for API routes
   app.use('/api/*', async (c, next) => {
-    // OAuth callback is unauthenticated (Google redirects here)
-    if (c.req.path === '/api/connections/oauth/google/callback') {
+    // OAuth callbacks are unauthenticated (provider redirects here)
+    if (/^\/api\/connections\/oauth\/[^/]+\/callback$/.test(c.req.path)) {
       return next();
     }
 
     // Allow OAuth start from the dashboard via query param
-    if (c.req.path === '/api/connections/oauth/google/start' && c.req.query('token')) {
+    if (/^\/api\/connections\/oauth\/[^/]+\/start$/.test(c.req.path) && c.req.query('token')) {
       const token = c.req.query('token');
       if (token === config.ADMIN_TOKEN) {
         return next();
@@ -58,6 +60,15 @@ export function createAdminApp(): Hono {
     const auditEntries = queryAuditLog({ limit: 25, offset: auditOffset });
     const auditTotal = countAuditLog();
 
+    const oauthProviders = getAllProviders()
+      .filter(p => p.oauth)
+      .map(p => ({
+        id: p.id,
+        displayName: p.displayName,
+        configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
+        hasBuiltinCreds: !!(p.oauth!.builtinClientId && p.oauth!.builtinClientSecret),
+      }));
+
     return c.html(adminPage('dashboard', {
       token: token!,
       connections,
@@ -66,6 +77,7 @@ export function createAdminApp(): Hono {
       auditEntries,
       auditOffset,
       auditTotal,
+      oauthProviders,
     }));
   });
 

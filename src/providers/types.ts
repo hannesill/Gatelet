@@ -1,5 +1,18 @@
 import type { z } from 'zod';
 
+export interface OAuthConfig {
+  authorizeUrl: string;
+  tokenUrl: string;
+  scopes: string[];
+  builtinClientId?: string;
+  builtinClientSecret?: string;
+  envClientId: string;
+  envClientSecret: string;
+  settingsKeyPrefix: string;
+  extraAuthorizeParams?: Record<string, string>;
+  discoverAccount(accessToken: string): Promise<string>;
+}
+
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -12,6 +25,7 @@ export interface Provider {
   displayName: string;
   tools: ToolDefinition[];
   defaultPolicyYaml: string;
+  oauth?: OAuthConfig;
 
   execute(
     toolName: string,
@@ -22,5 +36,6 @@ export interface Provider {
 
   refreshCredentials?(
     credentials: Record<string, unknown>,
+    oauthClientInfo: { clientId: string; clientSecret: string },
   ): Promise<Record<string, unknown>>;
 }

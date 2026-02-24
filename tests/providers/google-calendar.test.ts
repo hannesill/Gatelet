@@ -18,6 +18,7 @@ vi.mock('googleapis', () => {
       auth: {
         OAuth2: vi.fn().mockImplementation(() => ({
           setCredentials: vi.fn(),
+          refreshAccessToken: vi.fn(),
         })),
       },
       calendar: vi.fn(() => ({
@@ -161,6 +162,19 @@ describe('GoogleCalendarProvider', () => {
       expect(mockEvents.patch).toHaveBeenCalledWith(
         expect.objectContaining({ sendUpdates: 'none' }),
       );
+    });
+  });
+
+  describe('oauth config', () => {
+    it('has oauth config with Google-specific settings', () => {
+      expect(provider.oauth).toBeDefined();
+      expect(provider.oauth.authorizeUrl).toContain('accounts.google.com');
+      expect(provider.oauth.tokenUrl).toContain('googleapis.com');
+      expect(provider.oauth.scopes).toContain('https://www.googleapis.com/auth/calendar.readonly');
+      expect(provider.oauth.builtinClientId).toBeDefined();
+      expect(provider.oauth.builtinClientSecret).toBeDefined();
+      expect(provider.oauth.settingsKeyPrefix).toBe('google');
+      expect(provider.oauth.extraAuthorizeParams).toEqual({ access_type: 'offline', prompt: 'consent' });
     });
   });
 });

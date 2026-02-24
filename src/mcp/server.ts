@@ -8,6 +8,7 @@ import { parsePolicy } from '../policy/parser.js';
 import { evaluate } from '../policy/engine.js';
 import { getProvider } from '../providers/registry.js';
 import { insertAuditEntry } from '../db/audit.js';
+import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { config } from '../config.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
@@ -207,7 +208,12 @@ async function handleToolCall(
           err.message.includes('Token has been expired') ||
           err.message.includes('401'))
       ) {
-        const newCreds = await provider.refreshCredentials(conn.credentials);
+        const clientId = getOAuthClientId(provider);
+        const clientSecret = getOAuthClientSecret(provider);
+        const newCreds = await provider.refreshCredentials(
+          conn.credentials,
+          { clientId: clientId ?? '', clientSecret: clientSecret ?? '' },
+        );
         updateConnectionCredentials(conn.id, newCreds);
         result = await provider.execute(
           toolName,

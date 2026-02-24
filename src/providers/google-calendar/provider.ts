@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import type { Provider } from '../types.js';
+import type { Provider, OAuthConfig } from '../types.js';
 import { googleCalendarTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
 
@@ -8,6 +8,31 @@ export class GoogleCalendarProvider implements Provider {
   displayName = 'Google Calendar';
   tools = googleCalendarTools;
   defaultPolicyYaml = defaultPolicyYaml;
+
+  oauth: OAuthConfig = {
+    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    scopes: [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
+    builtinClientId: '1096469986430-ap9lls3vhlu25v87ae3c8i8s3dhgaaiu.apps.googleusercontent.com',
+    builtinClientSecret: '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',
+    envClientId: 'GOOGLE_CLIENT_ID',
+    envClientSecret: 'GOOGLE_CLIENT_SECRET',
+    settingsKeyPrefix: 'google',
+    extraAuthorizeParams: { access_type: 'offline', prompt: 'consent' },
+    async discoverAccount(accessToken: string): Promise<string> {
+      const res = await fetch(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!res.ok) return 'unknown';
+      const data = await res.json() as { items?: Array<{ primary?: boolean; id?: string }> };
+      const primary = data.items?.find((cal) => cal.primary);
+      return primary?.id ?? 'unknown';
+    },
+  };
 
   private buildClient(credentials: Record<string, unknown>) {
     const auth = new google.auth.OAuth2();
@@ -97,10 +122,11 @@ export class GoogleCalendarProvider implements Provider {
 
   async refreshCredentials(
     credentials: Record<string, unknown>,
+    oauthClientInfo: { clientId: string; clientSecret: string },
   ): Promise<Record<string, unknown>> {
     const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
+      oauthClientInfo.clientId,
+      oauthClientInfo.clientSecret,
     );
     auth.setCredentials({
       refresh_token: credentials.refresh_token as string,

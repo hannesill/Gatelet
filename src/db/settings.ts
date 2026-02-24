@@ -1,5 +1,6 @@
 import { getDb } from './database.js';
 import { encryptString, decryptString } from './crypto.js';
+import type { Provider } from '../providers/types.js';
 
 export function getSetting(key: string): string | null {
   const db = getDb();
@@ -23,21 +24,27 @@ export function deleteSetting(key: string): void {
   db.prepare('DELETE FROM settings WHERE key = ?').run(key);
 }
 
-// Built-in Google OAuth credentials (Gatelet project)
-const BUILTIN_GOOGLE_CLIENT_ID = '1096469986430-ap9lls3vhlu25v87ae3c8i8s3dhgaaiu.apps.googleusercontent.com';
-const BUILTIN_GOOGLE_CLIENT_SECRET = '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';
-
-// Convenience accessors for Google OAuth
-// Priority: user-configured (DB) > env var > built-in
-export function getGoogleClientId(): string | undefined {
-  return getSetting('google_client_id') ?? process.env.GOOGLE_CLIENT_ID ?? BUILTIN_GOOGLE_CLIENT_ID;
+// Generic OAuth credential accessors
+// Priority: user-configured (DB) > env var > built-in (from provider)
+export function getOAuthClientId(provider: Provider): string | undefined {
+  if (!provider.oauth) return undefined;
+  const { settingsKeyPrefix, envClientId, builtinClientId } = provider.oauth;
+  return getSetting(`${settingsKeyPrefix}_client_id`)
+    ?? process.env[envClientId]
+    ?? builtinClientId
+    ?? undefined;
 }
 
-export function getGoogleClientSecret(): string | undefined {
-  return getSetting('google_client_secret') ?? process.env.GOOGLE_CLIENT_SECRET ?? BUILTIN_GOOGLE_CLIENT_SECRET;
+export function getOAuthClientSecret(provider: Provider): string | undefined {
+  if (!provider.oauth) return undefined;
+  const { settingsKeyPrefix, envClientSecret, builtinClientSecret } = provider.oauth;
+  return getSetting(`${settingsKeyPrefix}_client_secret`)
+    ?? process.env[envClientSecret]
+    ?? builtinClientSecret
+    ?? undefined;
 }
 
-export function setGoogleCredentials(clientId: string, clientSecret: string): void {
-  setSetting('google_client_id', clientId);
-  setSetting('google_client_secret', clientSecret);
+export function setOAuthCredentials(settingsKeyPrefix: string, clientId: string, clientSecret: string): void {
+  setSetting(`${settingsKeyPrefix}_client_id`, clientId);
+  setSetting(`${settingsKeyPrefix}_client_secret`, clientSecret);
 }

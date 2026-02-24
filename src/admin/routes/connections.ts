@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { google } from 'googleapis';
 import {
   listConnections,
   createConnection,
@@ -9,7 +8,7 @@ import {
   updateConnectionPolicy,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
-import { getGoogleClientId, getGoogleClientSecret } from '../../db/settings.js';
+import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
 import { config } from '../../config.js';
 import { refreshToolRegistry } from '../../mcp/server.js';
 
@@ -62,85 +61,107 @@ app.delete('/connections/:id', (c) => {
   return c.json({ deleted: true });
 });
 
-app.get('/connections/oauth/google/start', (c) => {
-  const clientId = getGoogleClientId();
-  const clientSecret = getGoogleClientSecret();
+app.get('/connections/oauth/:providerId/start', (c) => {
+  const providerId = c.req.param('providerId');
+  const provider = getProvider(providerId);
 
-  if (!clientId || !clientSecret) {
-    return c.json({ error: 'Google OAuth credentials not configured. Add them in the dashboard settings.' }, 500);
+  if (!provider?.oauth) {
+    return c.json({ error: 'Unknown provider or provider does not support OAuth' }, 400);
   }
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    config.GOOGLE_REDIRECT_URI,
-  );
+  const clientId = getOAuthClientId(provider);
+  const clientSecret = getOAuthClientSecret(provider);
 
+  if (!clientId || !clientSecret) {
+    return c.json({ error: `OAuth credentials not configured for ${provider.displayName}. Add them in the dashboard settings.` }, 500);
+  }
+
+  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
   const token = c.req.query('token') || '';
 
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: provider.oauth.scopes.join(' '),
     state: token,
-    scope: [
-      'https://www.googleapis.com/auth/calendar.readonly',
-      'https://www.googleapis.com/auth/calendar.events',
-    ],
+    ...provider.oauth.extraAuthorizeParams,
   });
 
+  const authUrl = `${provider.oauth.authorizeUrl}?${params.toString()}`;
   return c.redirect(authUrl);
 });
 
-app.get('/connections/oauth/google/callback', async (c) => {
+app.get('/connections/oauth/:providerId/callback', async (c) => {
+  const providerId = c.req.param('providerId');
+  const provider = getProvider(providerId);
+
+  if (!provider?.oauth) {
+    return c.json({ error: 'Unknown provider or provider does not support OAuth' }, 400);
+  }
+
   const code = c.req.query('code');
   if (!code) {
     return c.json({ error: 'Missing authorization code' }, 400);
   }
 
-  const clientId = getGoogleClientId();
-  const clientSecret = getGoogleClientSecret();
+  const clientId = getOAuthClientId(provider);
+  const clientSecret = getOAuthClientSecret(provider);
 
   if (!clientId || !clientSecret) {
-    return c.json({ error: 'Google OAuth credentials not configured' }, 500);
+    return c.json({ error: `OAuth credentials not configured for ${provider.displayName}` }, 500);
   }
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    config.GOOGLE_REDIRECT_URI,
-  );
+  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
 
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
+  // Standard OAuth2 token exchange
+  const tokenRes = await fetch(provider.oauth.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }),
+  });
 
+  if (!tokenRes.ok) {
+    const errText = await tokenRes.text();
+    return c.json({ error: `Token exchange failed: ${errText}` }, 500);
+  }
+
+  const tokens = await tokenRes.json() as Record<string, unknown>;
+
+  // Discover account name
   let accountName = 'unknown';
   try {
-    const calendarApi = google.calendar({ version: 'v3', auth: oauth2Client });
-    const calendarList = await calendarApi.calendarList.list();
-    const primary = calendarList.data.items?.find((cal) => cal.primary);
-    if (primary?.id) {
-      accountName = primary.id;
-    }
+    accountName = await provider.oauth.discoverAccount(tokens.access_token as string);
   } catch {
-    // Fall back to 'unknown' if we can't fetch the account name
+    // Fall back to 'unknown'
   }
 
-  const newCredentials = {
+  // Normalize credentials — convert expires_in (relative) to expiry_date (absolute)
+  const newCredentials: Record<string, unknown> = {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
-    expiry_date: tokens.expiry_date,
     token_type: tokens.token_type,
   };
+  if (typeof tokens.expires_in === 'number') {
+    newCredentials.expiry_date = Date.now() + tokens.expires_in * 1000;
+  } else if (tokens.expiry_date != null) {
+    newCredentials.expiry_date = tokens.expiry_date;
+  }
 
-  const existing = findConnectionByProviderAccount('google_calendar', accountName);
+  const existing = findConnectionByProviderAccount(providerId, accountName);
   let conn;
   if (existing) {
     updateConnectionCredentials(existing.id, newCredentials);
     conn = existing;
   } else {
-    const provider = getProvider('google_calendar')!;
     conn = createConnection({
-      provider_id: 'google_calendar',
+      provider_id: providerId,
       account_name: accountName,
       credentials: newCredentials,
       policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),

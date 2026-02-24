@@ -14,6 +14,7 @@ interface DashboardData {
   auditEntries: AuditEntry[];
   auditOffset: number;
   auditTotal: number;
+  oauthProviders: Array<{ id: string; displayName: string; configured: boolean; hasBuiltinCreds: boolean }>;
 }
 
 export function adminPage(view: 'login', data: LoginData): string;
@@ -50,9 +51,9 @@ function shell(title: string, body: string): string {
     .btn-danger { background: #da3633; border-color: #da3633; color: #fff; }
     .btn-danger:hover { background: #f85149; }
     .btn-sm { padding: 4px 10px; font-size: 12px; }
-    .btn-google { background: #fff; color: #333; border: 1px solid #ddd; padding: 10px 20px; font-size: 15px; }
-    .btn-google:hover { background: #f5f5f5; }
-    .btn-google svg { vertical-align: middle; margin-right: 8px; }
+    .btn-oauth { background: #fff; color: #333; border: 1px solid #ddd; padding: 10px 20px; font-size: 15px; margin-right: 8px; margin-bottom: 8px; }
+    .btn-oauth:hover { background: #f5f5f5; }
+    .btn-oauth svg { vertical-align: middle; margin-right: 8px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #21262d; font-size: 13px; }
     th { color: #8b949e; font-weight: 500; }
@@ -103,11 +104,16 @@ function loginPage(data: LoginData): string {
   `);
 }
 
+const PROVIDER_ICONS: Record<string, string> = {
+  google_calendar: `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`,
+  outlook_calendar: `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#0078D4" d="M44 10H20c-1.1 0-2 .9-2 2v24c0 1.1.9 2 2 2h24c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2z"/><path fill="#0364B8" d="M26 24l-8.5 5.5V18.5L26 24z"/><path fill="#0078D4" d="M2 13l14-5v32L2 35V13z"/><path fill="#28A8EA" d="M18 10v28H6c-1.1 0-2-.9-2-2V12c0-1.1.9-2 2-2h12z" opacity=".5"/><path fill="#fff" d="M10 20c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z"/></svg>`,
+};
+
 function dashboardPage(data: DashboardData): string {
-  const { token, connections, apiKeys, toolCount, auditEntries, auditOffset, auditTotal } = data;
+  const { token, connections, apiKeys, toolCount, auditEntries, auditOffset, auditTotal, oauthProviders } = data;
 
   const connectionsHtml = connections.length === 0
-    ? '<p class="empty">No connections yet. Connect a Google account below.</p>'
+    ? '<p class="empty">No connections yet. Connect an account below.</p>'
     : `<table>
         <tr><th>Account</th><th>Provider</th><th>Created</th><th></th></tr>
         ${connections.map(c => `
@@ -133,6 +139,58 @@ function dashboardPage(data: DashboardData): string {
           </tr>
         `).join('')}
       </table>`;
+
+  const oauthButtonsHtml = oauthProviders.map(p => {
+    const icon = PROVIDER_ICONS[p.id] ?? '';
+    if (p.configured) {
+      return `<a href="/api/connections/oauth/${esc(p.id)}/start?token=${token}" class="btn btn-oauth">${icon} Connect ${esc(p.displayName)}</a>`;
+    }
+    return `<span class="btn btn-oauth" style="opacity: 0.5; cursor: not-allowed;" title="Configure OAuth credentials in Settings below">${icon} Connect ${esc(p.displayName)} <span style="font-size: 11px; color: #da3633;">(not configured)</span></span>`;
+  }).join('\n        ');
+
+  const settingsHtml = oauthProviders.filter(p => !p.hasBuiltinCreds).map(p => `
+    <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #21262d;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <strong>${esc(p.displayName)}</strong>
+        ${p.configured
+          ? '<span class="badge badge-green">Configured</span>'
+          : '<span class="badge badge-red">Not configured</span>'}
+      </div>
+      <label for="oauth-id-${esc(p.id)}">Client ID</label>
+      <input type="text" id="oauth-id-${esc(p.id)}" placeholder="Application (client) ID">
+      <label for="oauth-secret-${esc(p.id)}">Client Secret</label>
+      <input type="password" id="oauth-secret-${esc(p.id)}" placeholder="Client secret value">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-primary btn-sm" onclick="saveOAuthCreds('${esc(p.id)}')">Save</button>
+        <span id="oauth-flash-${esc(p.id)}"></span>
+      </div>
+    </div>
+  `).join('');
+
+  const providersWithBuiltinOnly = oauthProviders.filter(p => p.hasBuiltinCreds);
+  const builtinSettingsHtml = providersWithBuiltinOnly.length > 0
+    ? `<details style="margin-bottom: 16px;">
+        <summary>Override built-in credentials</summary>
+        <div style="margin-top: 12px;">
+          <p style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">These providers have built-in credentials. Override only if you want to use your own.</p>
+          ${providersWithBuiltinOnly.map(p => `
+            <div style="margin-bottom: 12px;">
+              <strong>${esc(p.displayName)}</strong> <span class="badge badge-green">Built-in</span>
+              <div style="margin-top: 8px;">
+                <label for="oauth-id-${esc(p.id)}">Client ID</label>
+                <input type="text" id="oauth-id-${esc(p.id)}" placeholder="Leave empty to use built-in">
+                <label for="oauth-secret-${esc(p.id)}">Client Secret</label>
+                <input type="password" id="oauth-secret-${esc(p.id)}" placeholder="Leave empty to use built-in">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button class="btn btn-primary btn-sm" onclick="saveOAuthCreds('${esc(p.id)}')">Save</button>
+                  <span id="oauth-flash-${esc(p.id)}"></span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </details>`
+    : '';
 
   const activeKeys = apiKeys.filter(k => !k.revoked_at);
 
@@ -227,10 +285,7 @@ function dashboardPage(data: DashboardData): string {
       <h2>Connections</h2>
       ${connectionsHtml}
       <div style="margin-top: 16px;">
-        <a href="/api/connections/oauth/google/start?token=${token}" class="btn btn-google">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Connect Google Calendar
-        </a>
+        ${oauthButtonsHtml}
       </div>
     </div>
 
@@ -249,6 +304,14 @@ function dashboardPage(data: DashboardData): string {
       <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">Add this to your agent's MCP configuration:</p>
       <div class="config-block"><button class="btn btn-sm copy-btn" onclick="copyConfig()">Copy</button>${esc(mcpConfigJson)}</div>
     </div>
+
+    ${(settingsHtml || builtinSettingsHtml) ? `
+    <div class="card">
+      <h2>OAuth Settings</h2>
+      ${settingsHtml}
+      ${builtinSettingsHtml}
+    </div>
+    ` : ''}
 
     <div class="card">
       <h2>Audit Log</h2>
@@ -322,6 +385,31 @@ function dashboardPage(data: DashboardData): string {
           }
         } catch (err) {
           inlineFlash('policy-flash-' + id, 'Network error', true);
+        }
+      }
+
+      async function saveOAuthCreds(providerId) {
+        const clientId = document.getElementById('oauth-id-' + providerId)?.value?.trim();
+        const clientSecret = document.getElementById('oauth-secret-' + providerId)?.value?.trim();
+        if (!clientId || !clientSecret) {
+          inlineFlash('oauth-flash-' + providerId, 'Both fields required', true);
+          return;
+        }
+        try {
+          const res = await fetch('/api/settings/oauth/' + providerId, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            inlineFlash('oauth-flash-' + providerId, 'Saved!');
+            setTimeout(reload, 1000);
+          } else {
+            inlineFlash('oauth-flash-' + providerId, data.error || 'Save failed', true);
+          }
+        } catch (err) {
+          inlineFlash('oauth-flash-' + providerId, 'Network error', true);
         }
       }
 
