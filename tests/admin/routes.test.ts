@@ -94,6 +94,76 @@ describe('Admin API Routes', () => {
     });
   });
 
+  // ── Session Auth ───────────────────────────────────────────────────
+
+  describe('Session Auth', () => {
+    it('POST /api/login sets session cookie', async () => {
+      const res = await req('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+      });
+      expect(res.status).toBe(200);
+      const setCookie = res.headers.get('Set-Cookie') ?? '';
+      expect(setCookie).toContain('gatelet_session=');
+      expect(setCookie).toContain('HttpOnly');
+      expect(setCookie).toContain('SameSite=Strict');
+    });
+
+    it('POST /api/login rejects wrong token', async () => {
+      const res = await req('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'wrong-token' }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('session cookie authenticates API requests', async () => {
+      // Login to get session cookie
+      const loginRes = await req('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+      });
+      const setCookie = loginRes.headers.get('Set-Cookie') ?? '';
+      const sessionId = setCookie.match(/gatelet_session=([^;]+)/)?.[1];
+      expect(sessionId).toBeTruthy();
+
+      // Use session cookie for API request (no Bearer token)
+      const res = await req('/api/api-keys', {
+        headers: { Cookie: `gatelet_session=${sessionId}` },
+      });
+      expect(res.status).toBe(200);
+    });
+
+    it('POST /api/logout clears session', async () => {
+      // Login
+      const loginRes = await req('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+      });
+      const setCookie = loginRes.headers.get('Set-Cookie') ?? '';
+      const sessionId = setCookie.match(/gatelet_session=([^;]+)/)?.[1];
+
+      // Logout
+      const logoutRes = await req('/api/logout', {
+        method: 'POST',
+        headers: { Cookie: `gatelet_session=${sessionId}` },
+      });
+      expect(logoutRes.status).toBe(200);
+      const clearCookie = logoutRes.headers.get('Set-Cookie') ?? '';
+      expect(clearCookie).toContain('Max-Age=0');
+
+      // Session should no longer work
+      const res = await req('/api/api-keys', {
+        headers: { Cookie: `gatelet_session=${sessionId}` },
+      });
+      expect(res.status).toBe(401);
+    });
+  });
+
   // ── API Keys ────────────────────────────────────────────────────────
 
   describe('API Keys', () => {

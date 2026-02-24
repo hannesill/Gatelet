@@ -1,0 +1,81 @@
+export interface ConnectionWithMeta {
+  id: string;
+  provider_id: string;
+  account_name: string;
+  displayName: string;
+  enabledTools: number;
+  totalTools: number;
+  tokenStatus: 'valid' | 'expired' | 'unknown';
+  created_at: string;
+  updated_at: string;
+  policy_yaml: string;
+}
+
+export interface Tool {
+  name: string;
+  operation: string;
+  enabled: boolean;
+  connectionId: string;
+  providerId: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface Status {
+  connections: ConnectionWithMeta[];
+  tools: Tool[];
+  apiKeys: { total: number; active: number };
+  oauthProviders: OAuthProvider[];
+}
+
+export interface OAuthProvider {
+  id: string;
+  displayName: string;
+  configured: boolean;
+}
+
+export interface AuditEntry {
+  id: string;
+  tool_name: string;
+  result: string;
+  deny_reason: string | null;
+  original_params: string | null;
+  mutated_params: string | null;
+  duration_ms: number | null;
+  timestamp: string;
+}
+
+export interface DoctorCheck {
+  id: string;
+  name: string;
+  status: 'pass' | 'warn' | 'fail' | 'skip';
+  message: string;
+  fixable: boolean;
+  fixed: boolean;
+}
+
+export interface PolicyValidation {
+  valid: boolean;
+  error?: string;
+  tools?: Array<{ name: string; operation: string; enabled: boolean }>;
+  warnings?: string[];
+}
+
+export interface ProviderReference {
+  provider: { id: string; displayName: string };
+  operations: Array<{
+    name: string;
+    policyOperation: string;
+    description: string;
+    fields: string[];
+  }>;
+  constraints: Array<{ rule: string; description: string; requiresValue: boolean }>;
+  mutations: Array<{ action: string; description: string; requiresValue: boolean }>;
+  example: string;
+}

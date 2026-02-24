@@ -51,8 +51,9 @@ function main(): void {
   console.log('');
   console.log('Gatelet v0.3');
   console.log('');
-  console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${config.ADMIN_TOKEN}`);
+  console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/`);
   console.log(`  MCP:    http://localhost:${config.MCP_PORT}/mcp`);
+  console.log(`  Token:  ${config.ADMIN_TOKEN}`);
   console.log('');
   console.log(`  Connections:  ${connections.length}${connSummary ? ` (${connSummary})` : ''}`);
   console.log(`  Tools:        ${toolCount} enabled`);

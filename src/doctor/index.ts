@@ -18,6 +18,8 @@ import { runChecks } from './checks.js';
 
 export interface DoctorOptions {
   fix?: boolean;
+  /** Set true when called from the running server to skip port-availability checks */
+  running?: boolean;
 }
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult[]> {

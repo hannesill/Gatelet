@@ -101,8 +101,7 @@ app.get('/connections/oauth/:providerId/start', (c) => {
   }
 
   const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
-  const token = c.req.query('token') || '';
-  const nonce = createOAuthNonce(token);
+  const nonce = createOAuthNonce('session');
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -195,12 +194,10 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   refreshToolRegistry();
 
+  // Validate CSRF nonce (but we no longer need the token from it)
   const state = c.req.query('state');
   if (state) {
-    const adminToken = redeemOAuthNonce(state);
-    if (adminToken) {
-      return c.redirect(`/?oauth=success&provider=${providerId}&token=${adminToken}`);
-    }
+    redeemOAuthNonce(state);
   }
 
   return c.redirect(`/?oauth=success&provider=${providerId}`);

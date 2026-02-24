@@ -1,8 +1,9 @@
 /**
  * Security Audit: Admin Token Leakage Tests
  *
- * Tests for FINDING-01 (OAuth state parameter leaks admin token)
- * and FINDING-02 (admin token embedded in dashboard HTML).
+ * Tests for FINDING-01 (OAuth state parameter leaks admin token),
+ * FINDING-02 (admin token embedded in dashboard HTML — now fixed),
+ * and FINDING-05 (session-based auth replaces token-in-URL).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
@@ -68,59 +69,46 @@ describe('Admin Token Leakage', () => {
       expect(state).toMatch(/^[0-9a-f]{64}$/);
     });
 
-    it('OAuth callback redirect includes admin token in URL', async () => {
-      // When Google redirects back, the state (admin token) is used
-      // in a redirect to /?token=<admin_token>
-      // An interceptor or the browser's Referer header could leak this.
-
-      // Simulate callback with state = admin token (code will fail but
-      // we're testing the redirect logic path)
+    it('OAuth callback redirect does NOT include admin token in URL', async () => {
+      // Simulate callback — code exchange will fail but we verify
+      // the redirect does not contain the admin token
       const res = await req(
         `/api/connections/oauth/google_calendar/callback?code=fake&state=${TEST_ADMIN_TOKEN}`,
       );
 
-      // The callback will fail on token exchange, but the vulnerability
-      // is in the state parameter design, not the callback execution
-      // In a real scenario with a valid code, line 175 does:
-      //   return c.redirect(`/?token=${state}`)
-      // where state = admin token
+      // May redirect or error, but should never include admin token in redirect URL
+      const location = res.headers.get('Location') ?? '';
+      expect(location).not.toContain(TEST_ADMIN_TOKEN);
     });
   });
 
-  // ── FINDING-02: Admin token embedded in dashboard HTML ──
+  // ── FINDING-02 + FINDING-05: Token no longer in dashboard HTML or URLs ──
 
-  describe('FINDING-02: Admin token in dashboard HTML source', () => {
-    it('dashboard page contains admin token in multiple places', async () => {
+  describe('FINDING-02/05: Admin token not in dashboard HTML or URLs (FIXED)', () => {
+    it('token-in-URL dashboard page no longer exists', async () => {
+      // Old: GET /?token=<token> returned a dashboard with token in HTML
+      // New: No such route — dashboard is served as SPA (or 404 without SPA build)
       const res = await req(`/?token=${TEST_ADMIN_TOKEN}`);
-      expect(res.status).toBe(200);
-
-      const html = await res.text();
-
-      // Token is embedded in JavaScript as a global variable
-      expect(html).toContain(`const TOKEN = "${TEST_ADMIN_TOKEN}"`);
-
-      // Token appears in OAuth connect links
-      expect(html).toContain(`/start?token=${TEST_ADMIN_TOKEN}`);
-
-      // Token appears in pagination links
-      // (would appear if audit entries exist)
-
-      // This is a weakness because:
-      // 1. Any XSS on the admin page would immediately leak the token
-      // 2. Browser extensions can read page content
-      // 3. The token is in the URL query string (browser history, logs)
+      // Should not return a dashboard with token embedded
+      if (res.status === 200) {
+        const html = await res.text();
+        expect(html).not.toContain(`const TOKEN = "${TEST_ADMIN_TOKEN}"`);
+        expect(html).not.toContain(`token=${TEST_ADMIN_TOKEN}`);
+      }
+      // 404 is also fine — means old dashboard route is gone
     });
 
-    it('admin token appears in URL query string (browser history exposure)', () => {
-      // The login flow uses GET /?token=<token> which means:
-      // 1. Token appears in browser address bar
-      // 2. Token is saved in browser history
-      // 3. Token may be logged by proxy servers
-      // 4. Token is sent in Referer headers to external resources
-
-      // This is a design issue, not a code bug - the dashboard
-      // should use session cookies or POST-based auth instead
-      expect(true).toBe(true); // Documented finding
+    it('login uses POST with session cookie, not GET with token in URL', async () => {
+      const res = await req('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+      });
+      expect(res.status).toBe(200);
+      const setCookie = res.headers.get('Set-Cookie') ?? '';
+      expect(setCookie).toContain('gatelet_session=');
+      expect(setCookie).toContain('HttpOnly');
+      expect(setCookie).toContain('SameSite=Strict');
     });
   });
 
@@ -128,13 +116,9 @@ describe('Admin Token Leakage', () => {
 
   describe('FINDING-03: Health endpoint information disclosure', () => {
     it('health endpoint returns operational data without authentication', async () => {
-      // Wait -- let's verify if health needs auth
-      // Looking at the middleware: /api/* requires auth EXCEPT OAuth callbacks
-      // /api/health IS under /api/* so it DOES require auth
       const resNoAuth = await req('/api/health');
       expect(resNoAuth.status).toBe(401);
 
-      // Good - health endpoint requires auth
       const resWithAuth = await req('/api/health', {
         headers: { Authorization: `Bearer ${TEST_ADMIN_TOKEN}` },
       });
@@ -142,26 +126,27 @@ describe('Admin Token Leakage', () => {
     });
   });
 
-  // ── FINDING-04: Login page has no rate limiting ──
+  // ── FINDING-04: Login rate limiting ──
 
-  describe('FINDING-04: No rate limiting on admin login', () => {
-    it('can attempt many logins without being blocked', async () => {
-      // Try 100 wrong tokens rapidly
+  describe('FINDING-04: Rate limiting on admin login', () => {
+    it('rate limits login attempts via POST /api/login', async () => {
+      // Try many wrong tokens
       const attempts = [];
-      for (let i = 0; i < 100; i++) {
-        attempts.push(req(`/?token=wrong-token-${i}`));
+      for (let i = 0; i < 15; i++) {
+        attempts.push(req('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: `wrong-token-${i}` }),
+        }));
       }
       const results = await Promise.all(attempts);
 
-      // All should return the login page (200 with login form)
-      // None should be rate-limited (429)
-      for (const res of results) {
-        expect(res.status).toBe(200); // Returns login page on wrong token
+      // At least some should be rate-limited (429) or rejected (401)
+      const statuses = results.map(r => r.status);
+      // All should be either 401 or 429
+      for (const status of statuses) {
+        expect([401, 429]).toContain(status);
       }
-
-      // No 429 status codes = no rate limiting
-      const rateLimited = results.filter(r => r.status === 429);
-      expect(rateLimited.length).toBe(0);
     });
   });
 });

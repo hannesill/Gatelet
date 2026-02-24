@@ -4,7 +4,7 @@ import { runDoctor } from '../../doctor/index.js';
 const app = new Hono();
 
 app.get('/doctor', async (c) => {
-  const results = await runDoctor({ fix: false });
+  const results = await runDoctor({ fix: false, running: true });
   return c.json(results.map(r => ({
     id: r.check.id,
     name: r.check.name,
@@ -16,7 +16,7 @@ app.get('/doctor', async (c) => {
 });
 
 app.post('/doctor/fix', async (c) => {
-  const results = await runDoctor({ fix: true });
+  const results = await runDoctor({ fix: true, running: true });
   return c.json(results.map(r => ({
     id: r.check.id,
     name: r.check.name,

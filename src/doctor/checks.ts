@@ -371,8 +371,9 @@ async function checkPolicies(ctx: CheckContext): Promise<DoctorResult> {
 
 // ── Orchestrator ────────────────────────────────────────────────────
 
-export async function runChecks(options: { fix?: boolean } = {}): Promise<DoctorResult[]> {
+export async function runChecks(options: { fix?: boolean; running?: boolean } = {}): Promise<DoctorResult[]> {
   const fix = options.fix ?? false;
+  const running = options.running ?? false;
   const ctx: CheckContext = {
     dataDir: config.DATA_DIR,
     hasMasterKey: false,
@@ -386,8 +387,11 @@ export async function runChecks(options: { fix?: boolean } = {}): Promise<Doctor
   results.push(checkMasterKey(ctx, fix));
   results.push(await checkDatabase(ctx));
   results.push(checkAdminToken(ctx, fix));
-  results.push(await checkPort(config.MCP_PORT, PORT_MCP_CHECK));
-  results.push(await checkPort(config.ADMIN_PORT, PORT_ADMIN_CHECK));
+  // Skip port checks when called from the running server — ports are obviously in use by us
+  if (!running) {
+    results.push(await checkPort(config.MCP_PORT, PORT_MCP_CHECK));
+    results.push(await checkPort(config.ADMIN_PORT, PORT_ADMIN_CHECK));
+  }
   results.push(await checkConnections(ctx));
   results.push(await checkOAuthTokens(ctx));
   results.push(await checkEncryption(ctx));

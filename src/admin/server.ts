@@ -12,14 +12,8 @@ import statusRoutes from './routes/status.js';
 import providersRoutes from './routes/providers.js';
 import doctorRoutes from './routes/doctor.js';
 import { config } from '../config.js';
-import { listConnections } from '../db/connections.js';
-import { listApiKeys } from '../db/api-keys.js';
-import { queryAuditLog, countAuditLog } from '../db/audit.js';
-import { getRegisteredToolCount } from '../mcp/server.js';
-import { getAllProviders } from '../providers/registry.js';
-import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
-import { adminPage } from './page.js';
 import { createRateLimiter } from '../rate-limit.js';
+import { createSession, validateSession, deleteSession } from './session.js';
 
 const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 
@@ -27,13 +21,61 @@ function getClientIp(c: { req: { header: (name: string) => string | undefined } 
   return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 }
 
+function parseCookies(header: string | undefined): Record<string, string> {
+  if (!header) return {};
+  const cookies: Record<string, string> = {};
+  for (const pair of header.split(';')) {
+    const [key, ...rest] = pair.trim().split('=');
+    if (key) cookies[key] = rest.join('=');
+  }
+  return cookies;
+}
+
 const hasSpa = fs.existsSync(path.join(process.cwd(), 'dist', 'dashboard', 'index.html'));
 
 export function createAdminApp(): Hono {
   const app = new Hono();
 
+  // Login endpoint — unauthenticated
+  app.post('/api/login', async (c) => {
+    const clientIp = getClientIp(c);
+    if (adminLimiter.isLimited(clientIp)) {
+      return c.json({ error: 'Too many failed attempts. Try again later.' }, 429);
+    }
+
+    const body = await c.req.json();
+    const { token } = body;
+
+    if (!token || token !== config.ADMIN_TOKEN) {
+      adminLimiter.recordFailure(clientIp);
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    adminLimiter.clear(clientIp);
+    const sessionId = createSession();
+
+    c.header('Set-Cookie', `gatelet_session=${sessionId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`);
+    return c.json({ ok: true });
+  });
+
+  // Logout endpoint — uses session cookie
+  app.post('/api/logout', (c) => {
+    const cookies = parseCookies(c.req.header('Cookie'));
+    const sessionId = cookies['gatelet_session'];
+    if (sessionId) {
+      deleteSession(sessionId);
+    }
+    c.header('Set-Cookie', 'gatelet_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+    return c.json({ ok: true });
+  });
+
   // Admin token auth middleware for API routes
   app.use('/api/*', async (c, next) => {
+    // Login and logout are handled above, skip auth for them
+    if (c.req.path === '/api/login' || c.req.path === '/api/logout') {
+      return next();
+    }
+
     // OAuth callbacks are unauthenticated (provider redirects here)
     if (/^\/api\/connections\/oauth\/[^/]+\/callback$/.test(c.req.path)) {
       return next();
@@ -44,8 +86,29 @@ export function createAdminApp(): Hono {
       return c.json({ error: 'Too many failed attempts. Try again later.' }, 429);
     }
 
-    // Allow OAuth start from the dashboard via query param
-    if (/^\/api\/connections\/oauth\/[^/]+\/start$/.test(c.req.path) && c.req.query('token')) {
+    // Check session cookie first (for browser sessions)
+    const cookies = parseCookies(c.req.header('Cookie'));
+    const sessionId = cookies['gatelet_session'];
+    if (sessionId && validateSession(sessionId)) {
+      adminLimiter.clear(clientIp);
+      return next();
+    }
+
+    // Check bearer token (for API clients/scripts)
+    const authHeader = c.req.header('Authorization');
+    if (authHeader) {
+      const match = authHeader.match(/^Bearer\s+(.+)$/i);
+      if (match && match[1] === config.ADMIN_TOKEN) {
+        adminLimiter.clear(clientIp);
+        return next();
+      }
+      // Wrong bearer token — count as an attack attempt
+      adminLimiter.recordFailure(clientIp);
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Allow OAuth start with token query param for backward compatibility
+    if (/^\/api\/connections\/oauth\/[^/]+\/start$/.test(c.req.path)) {
       const token = c.req.query('token');
       if (token === config.ADMIN_TOKEN) {
         adminLimiter.clear(clientIp);
@@ -53,67 +116,13 @@ export function createAdminApp(): Hono {
       }
     }
 
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      adminLimiter.recordFailure(clientIp);
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const match = authHeader.match(/^Bearer\s+(.+)$/i);
-    if (!match || match[1] !== config.ADMIN_TOKEN) {
-      adminLimiter.recordFailure(clientIp);
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    adminLimiter.clear(clientIp);
-    return next();
+    // No credentials at all — just not authenticated (don't count against rate limiter)
+    return c.json({ error: 'Unauthorized' }, 401);
   });
 
-  // Dashboard — SPA mode or legacy server-rendered
-  if (!hasSpa) {
-    app.get('/', (c) => {
-      const token = c.req.query('token');
-      if (token !== config.ADMIN_TOKEN) {
-        return c.html(adminPage('login', { error: undefined }));
-      }
-
-      const connections = listConnections();
-      const apiKeys = listApiKeys();
-      const toolCount = getRegisteredToolCount();
-
-      const auditOffset = Number(c.req.query('audit_offset')) || 0;
-      const auditEntries = queryAuditLog({ limit: 25, offset: auditOffset });
-      const auditTotal = countAuditLog();
-
-      const oauthProviders = getAllProviders()
-        .filter(p => p.oauth)
-        .map(p => ({
-          id: p.id,
-          displayName: p.displayName,
-          configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
-          hasBuiltinCreds: !!(p.oauth!.builtinClientId && p.oauth!.builtinClientSecret),
-        }));
-
-      return c.html(adminPage('dashboard', {
-        token: token!,
-        connections,
-        apiKeys,
-        toolCount,
-        auditEntries,
-        auditOffset,
-        auditTotal,
-        oauthProviders,
-      }));
-    });
-  }
-
-  // Health
+  // Health (public)
   app.get('/api/health', (c) => {
-    return c.json({
-      status: 'ok',
-      connections: listConnections().length,
-      tools: getRegisteredToolCount(),
-    });
+    return c.json({ status: 'ok' });
   });
 
   // Routes
