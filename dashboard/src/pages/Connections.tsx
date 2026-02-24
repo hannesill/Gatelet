@@ -72,11 +72,11 @@ export function Connections({ status, onRefresh }: Props) {
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-3xl bg-zinc-900 p-8 dark:bg-white dark:text-zinc-900"
+              className="rounded-3xl bg-zinc-100 p-8 dark:bg-white/[0.04]"
             >
               <div className="flex items-center gap-3 mb-6">
                 <Sparkles className="h-5 w-5 text-indigo-500" />
-                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
+                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-500">
                   Available Integrations
                 </h3>
               </div>
