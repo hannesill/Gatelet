@@ -1,6 +1,8 @@
 import { TOTP, Secret } from 'otpauth';
 import { createHash, randomBytes } from 'node:crypto';
 
+const LOGO_URL = 'https://raw.githubusercontent.com/hannesill/gatelet/main/assets/logo.png';
+
 export function generateTotpSecret(): { secret: string; uri: string } {
   const totp = new TOTP({
     issuer: 'Gatelet',
@@ -10,9 +12,11 @@ export function generateTotpSecret(): { secret: string; uri: string } {
     period: 30,
   });
 
+  const uri = `${totp.toString()}&image=${encodeURIComponent(LOGO_URL)}`;
+
   return {
     secret: totp.secret.base32,
-    uri: totp.toString(),
+    uri,
   };
 }
 
