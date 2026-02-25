@@ -1,0 +1,123 @@
+---
+title: Architecture
+description: System architecture, request pipeline, and project structure
+---
+
+## System overview
+
+Gatelet consists of three tiers:
+
+```
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│  Agent Tier │  HTTP   │  Proxy Tier  │  HTTP   │  Upstream   │
+│             │────────▸│              │────────▸│   Tier      │
+│  :4000/mcp  │ Bearer  │   Gatelet    │ OAuth2  │  Google /   │
+│  MCP SDK    │ token   │   Policy +   │         │  Microsoft  │
+│             │         │   Audit      │         │   APIs      │
+└─────────────┘         └──────────────┘         └─────────────┘
+                              │
+                         :4001 Admin
+                         (localhost)
+```
+
+### Agent Tier
+
+The MCP server on port 4000. Implements the [Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) from the MCP SDK. Per-session `McpServer` instances ensure the tool registry is fresh for each connection.
+
+### Proxy Tier
+
+The policy engine, credential management, and audit logging. This is the core of Gatelet. It evaluates policies, applies constraints and mutations, manages encrypted OAuth tokens, and logs every operation.
+
+### Upstream Tier
+
+Google and Microsoft APIs. Gatelet holds the OAuth credentials and makes API calls on behalf of the agent.
+
+## Request pipeline
+
+When the agent calls a tool:
+
+```
+1. Authenticate  ─▸  Validate bearer token (API key)
+2. Resolve       ─▸  Find connection + provider for this tool
+3. Parse policy  ─▸  Load YAML policy from database
+4. Evaluate      ─▸  Check constraints → apply mutations
+5. Strip params  ─▸  Remove fields not in tool's input schema
+6. Field policy  ─▸  Apply allowed_fields / denied_fields
+7. Execute       ─▸  Call provider (upstream API)
+8. Filter        ─▸  Apply content filters (Gmail only)
+9. Audit         ─▸  Log original params, mutated params, result, timing
+10. Respond      ─▸  Return sanitized result to agent
+```
+
+If any step fails (auth, constraints, provider error), the pipeline short-circuits and returns a safe error message. Upstream errors are classified and sanitized — no internal details are leaked.
+
+## Session management
+
+The MCP server creates a new `McpServer` instance per session. Sessions have:
+
+- **30-minute TTL** — inactive sessions are cleaned up
+- **100 session cap** — oldest sessions are evicted when the cap is reached
+- **Fresh tool registry** — each session rebuilds the tool list from current policies
+
+This ensures policy changes take effect on the next agent connection without restarting the server.
+
+## Project structure
+
+```
+src/
+  admin/       Admin API + routes (Hono on :4001)
+  db/          SQLite + encrypted credential storage (libsodium)
+  doctor/      Health checks (CLI + admin API)
+  mcp/         MCP server (raw HTTP on :4000, Streamable HTTP transport)
+  policy/      Policy engine (pure functions, no side effects)
+  providers/   Provider implementations
+    google-calendar/    Google Calendar via googleapis
+    outlook-calendar/   Outlook Calendar via Microsoft Graph
+    gmail/              Gmail via googleapis
+    email/              Shared email types, content filters, HTML stripping
+  config.ts    Environment variable config
+  index.ts     Entry point
+  cli.ts       CLI entry point (gatelet, gatelet doctor)
+dashboard/     Admin dashboard (React, Vite, Tailwind)
+website/       Documentation site (Astro, Starlight)
+tests/         Test suite (vitest, 322 tests)
+```
+
+## Key modules
+
+### Policy engine (`src/policy/`)
+
+Pure functional, no side effects. The engine receives a policy config, operation name, and parameters, and returns either a denial or the mutated parameters.
+
+- `engine.ts` — orchestrates constraints → mutations → result
+- `constraints.ts` — evaluates the four constraint rules
+- `mutations.ts` — applies set/delete mutations
+- `parser.ts` — YAML parsing with validation
+- `field-path.ts` — dot-notation field access for nested paths
+
+### MCP server (`src/mcp/`)
+
+Raw HTTP server using the MCP SDK's `StreamableHTTPServerTransport`. Handles:
+
+- Bearer token authentication with rate limiting
+- Per-session tool registration
+- Request size limits (1MB)
+- Error sanitization
+
+### Admin API (`src/admin/`)
+
+Hono framework with 9 route modules:
+
+- Connections (OAuth flow, CRUD)
+- Policies (YAML management)
+- API keys (generate, list, revoke)
+- Audit log (query with filters)
+- Settings (OAuth credentials, TOTP)
+- Status (health + metrics)
+- Providers (list all available tools)
+- Doctor (health checks)
+- TOTP (2FA setup)
+
+### Database (`src/db/`)
+
+SQLite with WAL mode and foreign key constraints. All credentials are encrypted with libsodium before storage. The database module handles schema migrations automatically on startup.

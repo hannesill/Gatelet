@@ -15,6 +15,7 @@ dist/
 # AI
 .claude/
 
-# MD notes except readme
+# MD notes except readme and website docs
 *.md
 !README.md
+!website/src/content/docs/**/*.md
