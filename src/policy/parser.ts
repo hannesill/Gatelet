@@ -4,7 +4,7 @@ import type { PolicyConfig, ParseResult } from './types.js';
 const VALID_CONSTRAINT_RULES = ['must_equal', 'must_be_one_of', 'must_not_be_empty', 'must_match'] as const;
 const VALID_MUTATION_ACTIONS = ['set', 'delete'] as const;
 const KNOWN_TOP_LEVEL_KEYS = ['provider', 'account', 'operations'];
-const KNOWN_OPERATION_KEYS = ['allow', 'constraints', 'mutations', 'guards'];
+const KNOWN_OPERATION_KEYS = ['allow', 'constraints', 'mutations', 'guards', 'allowed_fields', 'denied_fields'];
 
 export function parsePolicy(yamlString: string): ParseResult {
   const parsed = YAML.parse(yamlString);
@@ -76,6 +76,41 @@ export function parsePolicy(yamlString: string): ParseResult {
     }
 
     // guards are opaque — not validated
+
+    // Validate allowed_fields
+    if (opObj.allowed_fields !== undefined) {
+      if (!Array.isArray(opObj.allowed_fields)) {
+        throw new Error(`Invalid policy: operation "${opName}" allowed_fields must be an array`);
+      }
+      for (let i = 0; i < opObj.allowed_fields.length; i++) {
+        if (typeof opObj.allowed_fields[i] !== 'string') {
+          throw new Error(
+            `Invalid policy: operation "${opName}" allowed_fields[${i}] must be a string`,
+          );
+        }
+      }
+    }
+
+    // Validate denied_fields
+    if (opObj.denied_fields !== undefined) {
+      if (!Array.isArray(opObj.denied_fields)) {
+        throw new Error(`Invalid policy: operation "${opName}" denied_fields must be an array`);
+      }
+      for (let i = 0; i < opObj.denied_fields.length; i++) {
+        if (typeof opObj.denied_fields[i] !== 'string') {
+          throw new Error(
+            `Invalid policy: operation "${opName}" denied_fields[${i}] must be a string`,
+          );
+        }
+      }
+    }
+
+    // Mutually exclusive
+    if (opObj.allowed_fields !== undefined && opObj.denied_fields !== undefined) {
+      throw new Error(
+        `Invalid policy: operation "${opName}" cannot have both allowed_fields and denied_fields`,
+      );
+    }
   }
 
   return { policy: parsed as PolicyConfig, warnings };

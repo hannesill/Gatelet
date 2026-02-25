@@ -9,6 +9,8 @@ export interface OperationPolicy {
   constraints?: Constraint[];
   mutations?: Mutation[];
   guards?: Record<string, unknown>;
+  allowed_fields?: string[];
+  denied_fields?: string[];
 }
 
 export interface Constraint {
@@ -30,4 +32,9 @@ export interface ParseResult {
 
 export type PolicyResult =
   | { action: 'deny'; reason: string }
-  | { action: 'allow'; mutatedParams: Record<string, unknown>; guards?: Record<string, unknown> };
+  | {
+      action: 'allow';
+      mutatedParams: Record<string, unknown>;
+      guards?: Record<string, unknown>;
+      fieldPolicy?: { allowed_fields?: string[]; denied_fields?: string[] };
+    };

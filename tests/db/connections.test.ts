@@ -9,7 +9,7 @@ process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
 process.env.GATELET_ADMIN_TOKEN = 'test-token';
 
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { getMasterKey, resetMasterKey } from '../../src/db/crypto.js';
+import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import {
   createConnection,
   getConnection,
@@ -22,7 +22,7 @@ describe('Connection settings', () => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
     resetDb();
-    getMasterKey();
+    initTestMasterKey();
     getDb();
   });
 

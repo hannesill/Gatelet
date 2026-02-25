@@ -17,7 +17,7 @@ process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
 // Now import modules that use config
 import { config } from '../../src/config.js';
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { getMasterKey, resetMasterKey } from '../../src/db/crypto.js';
+import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import { insertAuditEntry } from '../../src/db/audit.js';
 import type { Hono } from 'hono';
@@ -57,7 +57,7 @@ describe('Admin API Routes', () => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
     resetDb();
-    getMasterKey();
+    initTestMasterKey();
     getDb();
     // Ensure config has the right token (may have been set by another test's module init)
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;

@@ -38,5 +38,15 @@ export function evaluate(
     applyMutations(opPolicy.mutations, clonedParams);
   }
 
-  return { action: 'allow', mutatedParams: clonedParams, guards: opPolicy.guards };
+  return {
+    action: 'allow',
+    mutatedParams: clonedParams,
+    guards: opPolicy.guards,
+    fieldPolicy: (opPolicy.allowed_fields || opPolicy.denied_fields)
+      ? {
+          allowed_fields: opPolicy.allowed_fields,
+          denied_fields: opPolicy.denied_fields,
+        }
+      : undefined,
+  };
 }

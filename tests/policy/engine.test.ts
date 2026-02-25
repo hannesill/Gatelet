@@ -192,4 +192,50 @@ describe('policy engine', () => {
       expect(result.mutatedParams.visibility).toBe('private');
     }
   });
+
+  it('includes fieldPolicy with allowed_fields when set', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        op: {
+          allow: true,
+          allowed_fields: ['calendarId', 'summary'],
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'op', { calendarId: 'cal' });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.fieldPolicy).toEqual({ allowed_fields: ['calendarId', 'summary'], denied_fields: undefined });
+    }
+  });
+
+  it('includes fieldPolicy with denied_fields when set', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        op: {
+          allow: true,
+          denied_fields: ['attendees', 'conferenceData'],
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'op', { foo: 'bar' });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.fieldPolicy).toEqual({ allowed_fields: undefined, denied_fields: ['attendees', 'conferenceData'] });
+    }
+  });
+
+  it('fieldPolicy is undefined when neither allowed_fields nor denied_fields set', () => {
+    const result = evaluate(basePolicy, 'list_calendars', {});
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.fieldPolicy).toBeUndefined();
+    }
+  });
 });

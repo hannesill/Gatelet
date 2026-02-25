@@ -29,17 +29,24 @@ process.env.GATELET_ADMIN_PORT = String(freePort2);
 
 import { runDoctor } from '../../src/doctor/index.js';
 import { saveAdminToken } from '../../src/config.js';
-import { getMasterKey, resetMasterKey } from '../../src/db/crypto.js';
+import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
 import { createConnection } from '../../src/db/connections.js';
+import sodium from 'sodium-native';
 
 describe('Doctor checks', () => {
   beforeAll(() => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
     resetDb();
-    getMasterKey();
+    initTestMasterKey();
     getDb();
+
+    // Create a dummy master.salt for doctor checks (simulates passphrase mode)
+    const saltPath = path.join(TEST_DATA_DIR, 'master.salt');
+    const salt = Buffer.alloc(sodium.crypto_pwhash_SALTBYTES);
+    sodium.randombytes_buf(salt);
+    fs.writeFileSync(saltPath, salt, { mode: 0o600 });
   });
 
   afterAll(() => {

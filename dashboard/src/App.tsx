@@ -6,6 +6,7 @@ import { Setup } from './pages/Setup';
 import { Connections } from './pages/Connections';
 import { ApiKeys } from './pages/ApiKeys';
 import { AuditLog } from './pages/AuditLog';
+import { Settings } from './pages/Settings';
 import { Layout, type TabName } from './components/Layout';
 import { api } from './api';
 import type { Status } from './types';
@@ -105,6 +106,7 @@ function AppContent() {
       )}
       {activeTab === 'API Keys' && <ApiKeys />}
       {activeTab === 'Audit Log' && <AuditLog />}
+      {activeTab === 'Settings' && <Settings />}
     </Layout>
   );
 }

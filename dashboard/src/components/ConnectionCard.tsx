@@ -7,8 +7,6 @@ import { api } from '../api';
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Calendar, 
-  Mail, 
   Link2, 
   ChevronDown, 
   Edit3, 
@@ -18,18 +16,19 @@ import {
   HelpCircle,
   Settings2
 } from 'lucide-react';
+import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from './ProviderLogos';
 import type { ConnectionWithMeta } from '../types';
 
 const PROVIDER_ICONS: Record<string, any> = {
-  google_calendar: Calendar,
-  outlook_calendar: Calendar,
-  google_gmail: Mail,
+  google_calendar: GoogleCalendarLogo,
+  outlook_calendar: OutlookCalendarLogo,
+  google_gmail: GmailLogo,
 };
 
 const PROVIDER_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  google_calendar: { bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-700 dark:text-blue-300', icon: 'text-blue-600 dark:text-blue-400' },
-  outlook_calendar: { bg: 'bg-sky-50 dark:bg-sky-500/10', text: 'text-sky-700 dark:text-sky-300', icon: 'text-sky-600 dark:text-sky-400' },
-  google_gmail: { bg: 'bg-red-50 dark:bg-red-500/10', text: 'text-red-700 dark:text-red-300', icon: 'text-red-600 dark:text-red-400' },
+  google_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
+  outlook_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
+  google_gmail: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
 };
 
 function TokenStatus({ status }: { status: 'valid' | 'expired' | 'unknown' }) {

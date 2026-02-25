@@ -18,19 +18,21 @@ import {
   Zap
 } from 'lucide-react';
 
-const tabs = ['Connections', 'API Keys', 'Audit Log'] as const;
+const tabs = ['Connections', 'API Keys', 'Audit Log', 'Settings'] as const;
 export type TabName = (typeof tabs)[number];
 
 const tabMeta: Record<TabName, { icon: any; description: string }> = {
   'Connections': { icon: Link2, description: 'OAuth accounts' },
   'API Keys': { icon: Key, description: 'Agent credentials' },
   'Audit Log': { icon: FileText, description: 'Request history' },
+  'Settings': { icon: Shield, description: 'Security settings' },
 };
 
 const pageHeadings: Record<TabName, { title: string; description: string }> = {
   'Connections': { title: 'Connections', description: 'Manage OAuth connections and their access policies.' },
   'API Keys': { title: 'API Keys', description: 'Create and manage credentials for your agents.' },
   'Audit Log': { title: 'Audit Log', description: 'Review tool calls and policy decisions.' },
+  'Settings': { title: 'Settings', description: 'Configure security and authentication settings.' },
 };
 
 function formatUptime(ms: number): string {

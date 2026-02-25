@@ -22,7 +22,7 @@ process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
 
 import { config } from '../../src/config.js';
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { getMasterKey, resetMasterKey } from '../../src/db/crypto.js';
+import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import type { Hono } from 'hono';
 
@@ -37,7 +37,7 @@ describe('Admin Token Leakage', () => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
     resetDb();
-    getMasterKey();
+    initTestMasterKey();
     getDb();
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
     app = createAdminApp();

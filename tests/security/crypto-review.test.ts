@@ -3,6 +3,7 @@
  *
  * Tests for FINDING-16 (key and encrypted data co-located in same directory),
  * and verifies the crypto implementation correctness.
+ * Updated for V0.5 passphrase-derived key.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
@@ -15,14 +16,19 @@ process.env.GATELET_ADMIN_TOKEN = 'test-token';
 process.env.GATELET_MCP_PORT = '18000';
 process.env.GATELET_ADMIN_PORT = '18001';
 
-import { getMasterKey, encrypt, decrypt, encryptString, decryptString, resetMasterKey } from '../../src/db/crypto.js';
+import { getMasterKey, encrypt, decrypt, encryptString, decryptString, resetMasterKey, setMasterKeyForTesting } from '../../src/db/crypto.js';
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
+import sodium from 'sodium-native';
 
 describe('Encryption Implementation Review', () => {
   beforeAll(() => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
     resetDb();
+    // Use setMasterKeyForTesting instead of getMasterKey() which no longer auto-generates
+    const key = Buffer.alloc(sodium.crypto_secretbox_KEYBYTES);
+    sodium.randombytes_buf(key);
+    setMasterKeyForTesting(key);
   });
 
   afterAll(() => {
@@ -30,50 +36,31 @@ describe('Encryption Implementation Review', () => {
     fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
   });
 
-  describe('Master key generation and storage', () => {
-    it('generates a master key of correct length', () => {
+  describe('Master key management', () => {
+    it('getMasterKey returns a key of correct length', () => {
       const key = getMasterKey();
       // XSalsa20-Poly1305 requires a 32-byte key
       expect(key.length).toBe(32);
     });
 
-    it('FINDING-16: master key is stored in same directory as database', () => {
+    it('FINDING-04: master key is NO LONGER stored on disk (V0.5)', () => {
       const keyPath = path.join(TEST_DATA_DIR, 'master.key');
-      const dbPath = path.join(TEST_DATA_DIR, 'gatelet.db');
 
-      // Initialize the database
-      getDb();
-
-      // Both files exist in the same directory
-      expect(fs.existsSync(keyPath)).toBe(true);
-
-      // VULNERABILITY: If an attacker can read the data directory,
-      // they get BOTH the encrypted database AND the decryption key.
-      // This defeats the purpose of encryption.
-      //
-      // In the Docker threat model:
-      //   - master.key is at /data/master.key
-      //   - gatelet.db is at /data/gatelet.db
-      //   - Both are in the same Docker volume
-      //
-      // If an agent can access the Docker volume (e.g., via docker cp,
-      // or if the volume is bind-mounted), they get everything needed
-      // to decrypt all OAuth tokens.
-    });
-
-    it('master key file has restricted permissions (0o600)', () => {
-      const keyPath = path.join(TEST_DATA_DIR, 'master.key');
-      const stats = fs.statSync(keyPath);
-      const mode = (stats.mode & 0o777).toString(8);
-
-      // Should be owner-only read/write
-      expect(mode).toBe('600');
+      // With passphrase-derived key, there should be no master.key file
+      expect(fs.existsSync(keyPath)).toBe(false);
     });
 
     it('returns the same key on subsequent calls', () => {
       const key1 = getMasterKey();
       const key2 = getMasterKey();
       expect(key1.equals(key2)).toBe(true);
+    });
+
+    it('throws when key not initialized', () => {
+      const key = getMasterKey(); // save current
+      resetMasterKey();
+      expect(() => getMasterKey()).toThrow('Master key not initialized');
+      setMasterKeyForTesting(key); // restore
     });
   });
 

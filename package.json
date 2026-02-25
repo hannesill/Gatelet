@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "description": "Self-hosted MCP permission proxy for AI agents",
   "type": "module",
-  "workspaces": ["dashboard"],
+  "workspaces": [
+    "dashboard"
+  ],
   "bin": {
     "gatelet": "./dist/cli.js"
   },
   "scripts": {
-    "dev": "npm run dev:api & npm run dev:dashboard",
+    "dev": "npm run dev:dashboard & npm run dev:api",
     "dev:api": "tsx src/index.ts",
     "dev:dashboard": "npm run --workspace=dashboard dev",
     "build": "npm run build:dashboard && tsup src/index.ts src/cli.ts --format esm --dts --external better-sqlite3 --external sodium-native",
@@ -27,6 +29,7 @@
     "googleapis": "^148.0.0",
     "hono": "^4.7.4",
     "nanoid": "^5.1.2",
+    "otpauth": "^9.5.0",
     "sodium-native": "^4.3.2",
     "yaml": "^2.7.0",
     "zod": "^4.3.6"

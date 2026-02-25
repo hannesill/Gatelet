@@ -11,9 +11,12 @@ import settingsRoutes from './routes/settings.js';
 import statusRoutes from './routes/status.js';
 import providersRoutes from './routes/providers.js';
 import doctorRoutes from './routes/doctor.js';
+import totpRoutes from './routes/totp.js';
 import { config } from '../config.js';
 import { createRateLimiter } from '../rate-limit.js';
 import { createSession, validateSession, deleteSession } from './session.js';
+import { verifyTotpCode, verifyBackupCode } from './totp.js';
+import { getSetting, setSetting } from '../db/settings.js';
 
 const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 
@@ -44,11 +47,48 @@ export function createAdminApp(): Hono {
     }
 
     const body = await c.req.json();
-    const { token } = body;
+    const { token, totpCode } = body;
 
     if (!token || token !== config.ADMIN_TOKEN) {
       adminLimiter.recordFailure(clientIp);
       return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    // Check if 2FA is enabled
+    let totpEnabled = false;
+    try {
+      totpEnabled = getSetting('totp_enabled') === 'true';
+    } catch {
+      // Settings table may not be accessible yet — treat as 2FA disabled
+    }
+
+    if (totpEnabled) {
+      if (!totpCode) {
+        // Token is valid but 2FA is required — tell the client
+        return c.json({ requires2FA: true });
+      }
+
+      const secret = getSetting('totp_secret');
+      if (!secret) {
+        return c.json({ error: 'TOTP configuration error' }, 500);
+      }
+
+      // Try TOTP code first
+      let codeValid = verifyTotpCode(secret, totpCode);
+      if (!codeValid) {
+        // Try backup code
+        const hashes = JSON.parse(getSetting('totp_backup_codes') || '[]');
+        const result = verifyBackupCode(totpCode, hashes);
+        codeValid = result.valid;
+        if (result.valid) {
+          setSetting('totp_backup_codes', JSON.stringify(result.remainingHashes));
+        }
+      }
+
+      if (!codeValid) {
+        adminLimiter.recordFailure(clientIp);
+        return c.json({ error: 'Invalid 2FA code' }, 401);
+      }
     }
 
     adminLimiter.clear(clientIp);
@@ -134,6 +174,7 @@ export function createAdminApp(): Hono {
   app.route('/api', statusRoutes);
   app.route('/api', providersRoutes);
   app.route('/api', doctorRoutes);
+  app.route('/api', totpRoutes);
 
   // SPA static file serving (only if dist/dashboard exists)
   if (hasSpa) {

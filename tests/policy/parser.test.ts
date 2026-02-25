@@ -370,4 +370,81 @@ operations:
     expect(warnings.some(w => w.includes('"description"'))).toBe(true);
     expect(warnings.some(w => w.includes('"priority"'))).toBe(true);
   });
+
+  // ── Field policies ──────────────────────────────────────────────────
+
+  it('accepts allowed_fields as string array', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    allowed_fields:
+      - calendarId
+      - summary
+`;
+    const { policy, warnings } = parsePolicy(yaml);
+    expect(warnings).toHaveLength(0);
+    expect(policy.operations.op.allowed_fields).toEqual(['calendarId', 'summary']);
+  });
+
+  it('accepts denied_fields as string array', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    denied_fields:
+      - attendees
+      - conferenceData
+`;
+    const { policy, warnings } = parsePolicy(yaml);
+    expect(warnings).toHaveLength(0);
+    expect(policy.operations.op.denied_fields).toEqual(['attendees', 'conferenceData']);
+  });
+
+  it('throws when both allowed_fields and denied_fields on same operation', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    allowed_fields:
+      - calendarId
+    denied_fields:
+      - attendees
+`;
+    expect(() => parsePolicy(yaml)).toThrow('cannot have both allowed_fields and denied_fields');
+  });
+
+  it('throws when allowed_fields contains non-string elements', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    allowed_fields:
+      - calendarId
+      - 123
+`;
+    expect(() => parsePolicy(yaml)).toThrow('allowed_fields[1] must be a string');
+  });
+
+  it('throws when denied_fields contains non-string elements', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    denied_fields:
+      - attendees
+      - 456
+`;
+    expect(() => parsePolicy(yaml)).toThrow('denied_fields[1] must be a string');
+  });
 });

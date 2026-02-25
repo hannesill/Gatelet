@@ -10,6 +10,8 @@ import { getProvider } from '../providers/registry.js';
 import { insertAuditEntry } from '../db/audit.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { config } from '../config.js';
+import { stripUnknownParams, applyFieldPolicy } from './param-filter.js';
+import { sanitizeUpstreamError } from './error-sanitizer.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
 
@@ -237,12 +239,25 @@ async function handleToolCall(
     };
   }
 
+  // Strip fields not in tool's inputSchema (FINDING-08)
+  const filteredParams = stripUnknownParams(
+    policyResult.mutatedParams,
+    registered.tool.inputSchema,
+  );
+
+  // Apply policy-level field overrides if present
+  const finalParams = applyFieldPolicy(filteredParams, policyResult.fieldPolicy);
+
+  // Track stripped fields for audit
+  const strippedFields = Object.keys(policyResult.mutatedParams)
+    .filter(k => !(k in finalParams));
+
   try {
     let result: unknown;
     try {
       result = await provider.execute(
         toolName,
-        policyResult.mutatedParams,
+        finalParams,
         conn.credentials,
         policyResult.guards,
         settings,
@@ -264,7 +279,7 @@ async function handleToolCall(
         updateConnectionCredentials(conn.id, newCreds);
         result = await provider.execute(
           toolName,
-          policyResult.mutatedParams,
+          finalParams,
           newCreds,
           policyResult.guards,
           settings,
@@ -280,9 +295,11 @@ async function handleToolCall(
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
-      mutated_params: policyResult.mutatedParams,
+      mutated_params: finalParams,
       result: 'allowed',
-      response_summary: responseText.slice(0, 500),
+      response_summary: strippedFields.length > 0
+        ? JSON.stringify({ stripped_fields: strippedFields, response: responseText.slice(0, 400) })
+        : responseText.slice(0, 500),
       duration_ms: Date.now() - startTime,
     });
 
@@ -290,20 +307,22 @@ async function handleToolCall(
       content: [{ type: 'text', text: responseText }],
     };
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
+    const sanitized = sanitizeUpstreamError(err, toolName);
+
+    console.error(sanitized.logMessage);
 
     insertAuditEntry({
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
-      mutated_params: policyResult.mutatedParams,
+      mutated_params: finalParams,
       result: 'error',
-      deny_reason: errorMessage,
+      deny_reason: sanitized.logMessage,
       duration_ms: Date.now() - startTime,
     });
 
     return {
-      content: [{ type: 'text', text: `Error: ${errorMessage}` }],
+      content: [{ type: 'text', text: `Error: ${sanitized.agentMessage}` }],
     };
   }
 }
