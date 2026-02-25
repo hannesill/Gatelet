@@ -37,8 +37,7 @@ function parseCookies(header: string | undefined): Record<string, string> {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '..', '..');
-const dashboardDir = path.join(projectRoot, 'dist', 'dashboard');
+const dashboardDir = path.join(__dirname, 'dashboard');
 const hasSpa = fs.existsSync(path.join(dashboardDir, 'index.html'));
 
 export function createAdminApp(): Hono {
