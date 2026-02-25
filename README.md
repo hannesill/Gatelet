@@ -32,7 +32,9 @@ docker compose logs gatelet  # grab the admin token
 open http://localhost:4001   # paste the token to log in
 ```
 
-The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included — no app registration needed for Google. For Outlook, built-in credentials are also included but may require admin consent on organizational accounts.
+The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included so you don't need to register your own app. For Outlook, built-in credentials may require admin consent on organizational accounts.
+
+> **Note:** The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, you can register your own OAuth app and enter your credentials under **Settings > Integrations** in the dashboard.
 
 Docker is the recommended deployment method — it provides the filesystem and network isolation that the security model depends on.
 
@@ -150,6 +152,15 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 - **Audit everything:** Every tool call is logged with original params, mutated params, result, and timing
 - **Payload mutation:** Even when an operation is allowed, mutations can strip or override fields before the upstream call
 - **Rate limiting:** Failed admin auth attempts are rate-limited per IP (10 per minute)
+
+## Why Not a CLI?
+
+Many MCPs are thin API wrappers that would be better as CLIs invoked by agent skills. Gatelet is not one of them — it's a security boundary, not a tool.
+
+- **Network isolation is the point.** Gatelet runs as a separate HTTP service, never as a child process. A CLI runs inside the agent's sandbox, sharing filesystem and process access. A compromised agent could inspect the binary, read config, or call upstream APIs directly.
+- **Tool visibility requires protocol-level control.** Gatelet only registers allowed tools in MCP — denied tools don't exist from the agent's perspective. A CLI can only return "not found" errors after the fact, leaking what operations exist.
+- **Credentials never touch the agent process.** OAuth tokens live in Gatelet's encrypted database, accessed only over HTTP. A CLI would need tokens passed as arguments or read from files the agent can reach.
+- **Transparent policy enforcement.** The agent calls `gmail_search` thinking it's talking to Gmail. Gatelet silently applies mutations, strips fields, and audits everything. No wrapper awareness, no routing around it.
 
 ## Configuration
 

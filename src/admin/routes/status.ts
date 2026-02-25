@@ -3,7 +3,7 @@ import { listConnections, getConnectionWithCredentials } from '../../db/connecti
 import { listApiKeys } from '../../db/api-keys.js';
 import { getProvider, getAllProviders } from '../../providers/registry.js';
 import { parsePolicy } from '../../policy/parser.js';
-import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
+import { getOAuthClientId, getOAuthClientSecret, getOAuthCredentialSource } from '../../db/settings.js';
 import { startTime } from '../../start-time.js';
 
 interface ConnectionWithMeta {
@@ -89,6 +89,7 @@ app.get('/status', (c) => {
       id: p.id,
       displayName: p.displayName,
       configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
+      credentialSource: getOAuthCredentialSource(p),
     }));
 
   return c.json({

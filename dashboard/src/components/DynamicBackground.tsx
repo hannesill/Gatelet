@@ -7,7 +7,7 @@ export function DynamicBackground() {
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.02] dark:opacity-[0.03]">
-      <div className="flex flex-col gap-2 py-4">
+      <div className="flex flex-col gap-2 -mt-24 pb-4">
         {Array.from({ length: rows }).map((_, i) => (
           <Row 
             key={i} 

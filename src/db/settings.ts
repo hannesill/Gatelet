@@ -44,6 +44,15 @@ export function getOAuthClientSecret(provider: Provider): string | undefined {
     ?? undefined;
 }
 
+export function getOAuthCredentialSource(provider: Provider): 'user' | 'env' | 'builtin' | 'none' {
+  if (!provider.oauth) return 'none';
+  const { settingsKeyPrefix, envClientId, envClientSecret, builtinClientId, builtinClientSecret } = provider.oauth;
+  if (getSetting(`${settingsKeyPrefix}_client_id`) && getSetting(`${settingsKeyPrefix}_client_secret`)) return 'user';
+  if (process.env[envClientId] && process.env[envClientSecret]) return 'env';
+  if (builtinClientId && builtinClientSecret) return 'builtin';
+  return 'none';
+}
+
 export function setOAuthCredentials(settingsKeyPrefix: string, clientId: string, clientSecret: string): void {
   setSetting(`${settingsKeyPrefix}_client_id`, clientId);
   setSetting(`${settingsKeyPrefix}_client_secret`, clientSecret);

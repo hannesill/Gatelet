@@ -61,11 +61,11 @@ export function countAuditLog(filters?: {
     values.push(filters.result);
   }
   if (filters?.from) {
-    conditions.push('timestamp >= ?');
+    conditions.push('timestamp >= datetime(?)');
     values.push(filters.from);
   }
   if (filters?.to) {
-    conditions.push('timestamp <= ?');
+    conditions.push('timestamp <= datetime(?)');
     values.push(filters.to);
   }
 
@@ -95,11 +95,11 @@ export function queryAuditLog(filters: {
     values.push(filters.result);
   }
   if (filters.from) {
-    conditions.push('timestamp >= ?');
+    conditions.push('timestamp >= datetime(?)');
     values.push(filters.from);
   }
   if (filters.to) {
-    conditions.push('timestamp <= ?');
+    conditions.push('timestamp <= datetime(?)');
     values.push(filters.to);
   }
 

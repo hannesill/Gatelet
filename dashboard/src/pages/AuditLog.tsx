@@ -21,6 +21,7 @@ import {
   Link2,
   FileText
 } from 'lucide-react';
+import { Dropdown } from '../components/Dropdown';
 import type { AuditEntry } from '../types';
 
 const PAGE_SIZE = 50;
@@ -209,8 +210,8 @@ export function AuditLog() {
   });
 
   function handleFilterChange(setter: (v: string) => void) {
-    return (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setter(e.target.value);
+    return (v: string) => {
+      setter(v);
       setPage(0);
     };
   }
@@ -223,40 +224,41 @@ export function AuditLog() {
           <div className="pl-3 pr-1 text-zinc-400">
             <Filter className="h-3.5 w-3.5" />
           </div>
-          <select
+          <Dropdown
             value={period}
             onChange={handleFilterChange(setPeriod)}
-            className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
-          >
-            <option value="1h">Last hour</option>
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-            <option value="all">All time</option>
-          </select>
+            options={[
+              { value: '1h', label: 'Last hour' },
+              { value: '24h', label: 'Last 24 hours' },
+              { value: '7d', label: 'Last 7 days' },
+              { value: 'all', label: 'All time' },
+            ]}
+          />
           <div className="w-px h-4 bg-zinc-200 dark:bg-white/10 mx-1" />
-          <select
+          <Dropdown
             value={resultFilter}
             onChange={handleFilterChange(setResultFilter)}
-            className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
-          >
-            <option value="">All results</option>
-            <option value="allowed">Allowed</option>
-            <option value="denied">Denied</option>
-            <option value="error">Error</option>
-          </select>
+            options={[
+              { value: '', label: 'All results' },
+              { value: 'allowed', label: 'Allowed' },
+              { value: 'denied', label: 'Denied' },
+              { value: 'error', label: 'Error' },
+            ]}
+          />
         </div>
 
         {/* Search tool */}
-        <div className="flex flex-1 items-center gap-3 rounded-2xl glass px-4 py-2 shadow-sm">
-          <Search className="h-3.5 w-3.5 text-zinc-400" />
-          <select
+        <div className="flex flex-1 items-center gap-1 rounded-2xl glass px-4 py-2 shadow-sm">
+          <Search className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+          <Dropdown
             value={toolFilter}
             onChange={handleFilterChange(setToolFilter)}
-            className="flex-1 bg-transparent border-0 text-xs font-semibold p-0 focus:ring-0 dark:text-zinc-300"
-          >
-            <option value="">Search all tools...</option>
-            {toolNames.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+            options={[
+              { value: '', label: 'All tools' },
+              ...toolNames.map(t => ({ value: t, label: t })),
+            ]}
+            className="flex-1"
+          />
         </div>
       </div>
 

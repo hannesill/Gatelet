@@ -40,6 +40,7 @@ export interface OAuthProvider {
   id: string;
   displayName: string;
   configured: boolean;
+  credentialSource: 'user' | 'env' | 'builtin' | 'none';
 }
 
 export interface AuditEntry {

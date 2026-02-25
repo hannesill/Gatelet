@@ -9,7 +9,9 @@ import {
   Save,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Info,
+  ShieldAlert,
 } from 'lucide-react';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from './ProviderLogos';
 import type { OAuthProvider } from '../types';
@@ -18,6 +20,13 @@ const PROVIDER_ICONS: Record<string, any> = {
   google_calendar: GoogleCalendarLogo,
   outlook_calendar: OutlookCalendarLogo,
   google_gmail: GmailLogo,
+};
+
+const SOURCE_LABELS: Record<string, { label: string; className: string }> = {
+  user: { label: 'Your credentials', className: 'text-emerald-600 dark:text-emerald-400' },
+  env: { label: 'Environment variable', className: 'text-blue-600 dark:text-blue-400' },
+  builtin: { label: 'Built-in (unverified)', className: 'text-amber-600 dark:text-amber-400' },
+  none: { label: 'Not configured', className: 'text-zinc-400' },
 };
 
 function ProviderOAuthCard({ provider }: { provider: OAuthProvider }) {
@@ -30,6 +39,7 @@ function ProviderOAuthCard({ provider }: { provider: OAuthProvider }) {
   const { toast } = useToast();
 
   const Icon = PROVIDER_ICONS[provider.id];
+  const source = SOURCE_LABELS[provider.credentialSource] ?? SOURCE_LABELS.none;
 
   useEffect(() => {
     if (!expanded) return;
@@ -65,8 +75,9 @@ function ProviderOAuthCard({ provider }: { provider: OAuthProvider }) {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-white/5">
           {Icon ? <Icon className="h-4 w-4" /> : null}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <span className="text-sm font-semibold text-zinc-900 dark:text-white">{provider.displayName}</span>
+          <span className={cn("ml-2 text-[10px] font-medium", source.className)}>{source.label}</span>
         </div>
         {provider.configured ? (
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -140,13 +151,41 @@ function ProviderOAuthCard({ provider }: { provider: OAuthProvider }) {
   );
 }
 
+function BuiltinCredentialsBanner() {
+  return (
+    <div className="mb-4 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200/60 dark:bg-amber-950/20 dark:ring-amber-500/20">
+      <div className="flex gap-3">
+        <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="space-y-2 text-sm text-amber-800 dark:text-amber-200">
+          <p className="font-semibold">You're using built-in OAuth credentials</p>
+          <p className="text-amber-700 dark:text-amber-300/80">
+            Gatelet ships with shared OAuth app credentials that are not yet verified by Google or Microsoft.
+            During sign-in, you'll see an "unverified app" warning — this is expected.
+          </p>
+          <p className="text-amber-700 dark:text-amber-300/80">
+            Gatelet is fully self-hosted and open source. The built-in credentials do not give the
+            publisher any access to your data — all tokens are stored locally on your machine, encrypted at rest.
+          </p>
+          <div className="flex items-start gap-2 pt-1 text-amber-700 dark:text-amber-300/80">
+            <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+            <p>To avoid the warning, register your own OAuth app and enter your credentials below.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OAuthSettings({ providers }: { providers: OAuthProvider[] }) {
   if (providers.length === 0) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">No OAuth providers available.</p>;
   }
 
+  const anyBuiltin = providers.some(p => p.credentialSource === 'builtin');
+
   return (
     <div className="space-y-3">
+      {anyBuiltin && <BuiltinCredentialsBanner />}
       {providers.map(p => (
         <ProviderOAuthCard key={p.id} provider={p} />
       ))}
