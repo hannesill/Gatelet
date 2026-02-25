@@ -44,6 +44,16 @@ function AppContent() {
     fetchStatus();
   }, [fetchStatus]);
 
+  // Listen for auth expiration from any API call
+  useEffect(() => {
+    function handleAuthExpired() {
+      setAuthed(false);
+      setStatus(null);
+    }
+    window.addEventListener('auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('auth-expired', handleAuthExpired);
+  }, []);
+
   // Handle OAuth callback query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);

@@ -27,6 +27,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export { AuthError };
 
+/** Dispatch this event to signal session expiration to App.tsx */
+export function dispatchAuthExpired(): void {
+  window.dispatchEvent(new Event('auth-expired'));
+}
+
 export const api = {
   login: (token: string, totpCode?: string) =>
     fetch('/api/login', {
@@ -60,6 +65,7 @@ export const api = {
   getPolicy: async (id: string): Promise<string> => {
     const res = await fetch(`/api/connections/${id}/policy`);
     if (res.status === 401) throw new AuthError();
+    if (!res.ok) throw new Error(`Failed to load policy (HTTP ${res.status})`);
     return res.text();
   },
 
@@ -69,7 +75,10 @@ export const api = {
       headers: { 'Content-Type': 'text/yaml' },
       body: yaml,
     });
-    return res.json();
+    if (res.status === 401) throw new AuthError();
+    const body = await res.json().catch(() => ({ error: 'Save failed' }));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
   },
 
   validatePolicy: async (id: string, yaml: string): Promise<PolicyValidation> => {
@@ -78,7 +87,10 @@ export const api = {
       headers: { 'Content-Type': 'text/yaml' },
       body: yaml,
     });
-    return res.json();
+    if (res.status === 401) throw new AuthError();
+    const body = await res.json().catch(() => ({ valid: false, errors: ['Validation request failed'] }));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
   },
 
   getApiKeys: () => request<ApiKey[]>('/api/api-keys'),

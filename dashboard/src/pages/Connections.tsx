@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { OAuthButton } from '../components/OAuthButton';
+import { OAuthInfo } from '../components/OAuthSettings';
 import { SystemHealth } from '../components/SystemHealth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus, Info, X } from 'lucide-react';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
 import type { Status } from '../types';
 
 function EmptyState({ oauthProviders }: { oauthProviders: Status['oauthProviders'] }) {
+  const [showInfo, setShowInfo] = useState(false);
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -15,6 +19,29 @@ function EmptyState({ oauthProviders }: { oauthProviders: Status['oauthProviders
     >
       <div className="absolute inset-0 bg-radial-gradient from-indigo-500/5 to-transparent pointer-events-none" />
       
+      <button 
+        onClick={() => setShowInfo(!showInfo)}
+        className="absolute right-6 top-6 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10"
+        title="About OAuth Credentials"
+      >
+        {showInfo ? <X className="h-5 w-5" /> : <Info className="h-5 w-5" />}
+      </button>
+
+      <AnimatePresence>
+        {showInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white/95 p-6 backdrop-blur-sm dark:bg-zinc-900/95"
+          >
+            <div className="max-w-md text-left">
+              <OAuthInfo />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="relative flex h-24 w-48 items-center justify-center mb-4">
         <div className="absolute left-0 top-0 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10 -rotate-12 translate-x-4">
           <GmailLogo className="h-8 w-8" />
@@ -51,6 +78,8 @@ interface Props {
 }
 
 export function Connections({ status, onRefresh }: Props) {
+  const [showInfo, setShowInfo] = useState(false);
+
   return (
     <div className="space-y-10">
       <SystemHealth />
@@ -89,12 +118,37 @@ export function Connections({ status, onRefresh }: Props) {
               animate={{ opacity: 1 }}
               className="rounded-3xl glass p-8"
             >
-              <div className="flex items-center gap-3 mb-6">
-                <Sparkles className="h-5 w-5 text-indigo-500" />
-                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-500">
-                  Available Integrations
-                </h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-indigo-500" />
+                  <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-500">
+                    Available Integrations
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => setShowInfo(!showInfo)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-zinc-200 dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10"
+                  title="About OAuth Credentials"
+                >
+                  {showInfo ? <X className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+                </button>
               </div>
+
+              <AnimatePresence>
+                {showInfo && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pb-8">
+                      <OAuthInfo />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="flex flex-wrap gap-4">
                 {status.oauthProviders.map(p => (
                   <OAuthButton key={p.id} provider={p} />

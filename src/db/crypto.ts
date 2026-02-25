@@ -134,54 +134,58 @@ export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite
   deriveKeyFromPassphrase(passphrase);
   const newKey = getMasterKey();
 
-  const connections = db.prepare('SELECT id, credentials_encrypted FROM connections').all() as Array<{
-    id: string;
-    credentials_encrypted: Buffer;
-  }>;
+  // Wrap all re-encryption in a transaction to prevent data corruption on crash
+  const migrate = db.transaction(() => {
+    const connections = db.prepare('SELECT id, credentials_encrypted FROM connections').all() as Array<{
+      id: string;
+      credentials_encrypted: Buffer;
+    }>;
 
-  for (const conn of connections) {
-    // Decrypt with old key
-    const nonce = conn.credentials_encrypted.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
-    const ciphertext = conn.credentials_encrypted.subarray(sodium.crypto_secretbox_NONCEBYTES);
-    const plaintext = Buffer.alloc(ciphertext.length - sodium.crypto_secretbox_MACBYTES);
-    if (!sodium.crypto_secretbox_open_easy(plaintext, ciphertext, nonce, oldKey)) {
-      throw new Error(`Failed to decrypt credentials for connection ${conn.id} with old key`);
+    for (const conn of connections) {
+      // Decrypt with old key
+      const nonce = conn.credentials_encrypted.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
+      const ciphertext = conn.credentials_encrypted.subarray(sodium.crypto_secretbox_NONCEBYTES);
+      const plaintext = Buffer.alloc(ciphertext.length - sodium.crypto_secretbox_MACBYTES);
+      if (!sodium.crypto_secretbox_open_easy(plaintext, ciphertext, nonce, oldKey)) {
+        throw new Error(`Failed to decrypt credentials for connection ${conn.id} with old key`);
+      }
+
+      // Re-encrypt with new key
+      const newNonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
+      sodium.randombytes_buf(newNonce);
+      const newCiphertext = Buffer.alloc(plaintext.length + sodium.crypto_secretbox_MACBYTES);
+      sodium.crypto_secretbox_easy(newCiphertext, plaintext, newNonce, newKey);
+      const newEncrypted = Buffer.concat([newNonce, newCiphertext]);
+
+      db.prepare('UPDATE connections SET credentials_encrypted = ? WHERE id = ?')
+        .run(newEncrypted, conn.id);
     }
 
-    // Re-encrypt with new key
-    const newNonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
-    sodium.randombytes_buf(newNonce);
-    const newCiphertext = Buffer.alloc(plaintext.length + sodium.crypto_secretbox_MACBYTES);
-    sodium.crypto_secretbox_easy(newCiphertext, plaintext, newNonce, newKey);
-    const newEncrypted = Buffer.concat([newNonce, newCiphertext]);
+    // Re-encrypt settings
+    const settings = db.prepare('SELECT key, value_encrypted FROM settings').all() as Array<{
+      key: string;
+      value_encrypted: Buffer;
+    }>;
 
-    db.prepare('UPDATE connections SET credentials_encrypted = ? WHERE id = ?')
-      .run(newEncrypted, conn.id);
-  }
+    for (const setting of settings) {
+      const sNonce = setting.value_encrypted.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
+      const sCiphertext = setting.value_encrypted.subarray(sodium.crypto_secretbox_NONCEBYTES);
+      const sPlaintext = Buffer.alloc(sCiphertext.length - sodium.crypto_secretbox_MACBYTES);
+      if (!sodium.crypto_secretbox_open_easy(sPlaintext, sCiphertext, sNonce, oldKey)) {
+        throw new Error(`Failed to decrypt setting "${setting.key}" with old key`);
+      }
 
-  // Re-encrypt settings
-  const settings = db.prepare('SELECT key, value_encrypted FROM settings').all() as Array<{
-    key: string;
-    value_encrypted: Buffer;
-  }>;
+      const sNewNonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
+      sodium.randombytes_buf(sNewNonce);
+      const sNewCiphertext = Buffer.alloc(sPlaintext.length + sodium.crypto_secretbox_MACBYTES);
+      sodium.crypto_secretbox_easy(sNewCiphertext, sPlaintext, sNewNonce, newKey);
+      const sNewEncrypted = Buffer.concat([sNewNonce, sNewCiphertext]);
 
-  for (const setting of settings) {
-    const sNonce = setting.value_encrypted.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
-    const sCiphertext = setting.value_encrypted.subarray(sodium.crypto_secretbox_NONCEBYTES);
-    const sPlaintext = Buffer.alloc(sCiphertext.length - sodium.crypto_secretbox_MACBYTES);
-    if (!sodium.crypto_secretbox_open_easy(sPlaintext, sCiphertext, sNonce, oldKey)) {
-      throw new Error(`Failed to decrypt setting "${setting.key}" with old key`);
+      db.prepare('UPDATE settings SET value_encrypted = ? WHERE key = ?')
+        .run(sNewEncrypted, setting.key);
     }
-
-    const sNewNonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
-    sodium.randombytes_buf(sNewNonce);
-    const sNewCiphertext = Buffer.alloc(sPlaintext.length + sodium.crypto_secretbox_MACBYTES);
-    sodium.crypto_secretbox_easy(sNewCiphertext, sPlaintext, sNewNonce, newKey);
-    const sNewEncrypted = Buffer.concat([sNewNonce, sNewCiphertext]);
-
-    db.prepare('UPDATE settings SET value_encrypted = ? WHERE key = ?')
-      .run(sNewEncrypted, setting.key);
-  }
+  });
+  migrate();
 
   // Create verifier with new key
   verifyMasterKey();

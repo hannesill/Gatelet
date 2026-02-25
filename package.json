@@ -6,6 +6,9 @@
   "workspaces": [
     "dashboard"
   ],
+  "files": [
+    "dist/"
+  ],
   "bin": {
     "gatelet": "./dist/cli.js"
   },

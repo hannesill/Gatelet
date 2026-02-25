@@ -71,107 +71,121 @@ export function startMcpServer(): http.Server {
   cleanupInterval.unref();
 
   const server = http.createServer(async (req, res) => {
-    if (req.url !== '/mcp') {
-      res.writeHead(404);
-      res.end('Not Found');
-      return;
-    }
-
-    const clientIp = req.socket.remoteAddress || 'unknown';
-    const apiKey = authenticateBearer(req.headers.authorization, clientIp);
-    if (!apiKey) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return;
-    }
-
-    // Reject oversized requests early via Content-Length
-    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    if (contentLength > MAX_BODY_SIZE) {
-      res.writeHead(413, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Request body too large' }));
-      return;
-    }
-
-    // Collect body with size limit
-    const bodyChunks: Buffer[] = [];
-    let bodySize = 0;
-    let aborted = false;
-    for await (const chunk of req) {
-      bodySize += chunk.length;
-      if (bodySize > MAX_BODY_SIZE) {
-        aborted = true;
-        break;
-      }
-      bodyChunks.push(chunk);
-    }
-    if (aborted) {
-      res.writeHead(413, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Request body too large' }));
-      return;
-    }
-
-    const bodyStr = Buffer.concat(bodyChunks).toString('utf-8');
-    let body: unknown;
     try {
-      body = bodyStr ? JSON.parse(bodyStr) : undefined;
-    } catch {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid JSON' }));
-      return;
-    }
-
-    // Check for existing session
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-    if (sessionId && sessions.has(sessionId)) {
-      const session = sessions.get(sessionId)!;
-      session.lastActive = Date.now();
-      await session.transport.handleRequest(req, res, body);
-      return;
-    }
-
-    // For new connections, check if this is an init request
-    const isInit = Array.isArray(body)
-      ? body.some((msg: Record<string, unknown>) => msg.method === 'initialize')
-      : (body as Record<string, unknown>)?.method === 'initialize';
-
-    if (isInit) {
-      // Enforce session limit
-      if (sessions.size >= MAX_SESSIONS) {
-        res.writeHead(503, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Too many active sessions' }));
+      if (req.url !== '/mcp') {
+        res.writeHead(404);
+        res.end('Not Found');
         return;
       }
 
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID(),
-        enableJsonResponse: true,
-      });
-
-      // Create a fresh McpServer with current tools for this session
-      const mcpServer = createMcpServer();
-
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          sessions.delete(transport.sessionId);
-        }
-      };
-
-      await mcpServer.connect(transport);
-      await transport.handleRequest(req, res, body);
-
-      if (transport.sessionId) {
-        sessions.set(transport.sessionId, { transport, server: mcpServer, lastActive: Date.now() });
+      const clientIp = req.socket.remoteAddress || 'unknown';
+      const apiKey = authenticateBearer(req.headers.authorization, clientIp);
+      if (!apiKey) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
       }
-    } else {
-      // Non-init request without valid session
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        jsonrpc: '2.0',
-        error: { code: -32000, message: 'Bad Request: No valid session. Send an initialize request first.' },
-        id: null,
-      }));
+
+      // Reject oversized requests early via Content-Length
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+      if (contentLength > MAX_BODY_SIZE) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Request body too large' }));
+        return;
+      }
+
+      // Collect body with size limit
+      const bodyChunks: Buffer[] = [];
+      let bodySize = 0;
+      let aborted = false;
+      try {
+        for await (const chunk of req) {
+          bodySize += chunk.length;
+          if (bodySize > MAX_BODY_SIZE) {
+            aborted = true;
+            break;
+          }
+          bodyChunks.push(chunk);
+        }
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Request aborted' }));
+        return;
+      }
+      if (aborted) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Request body too large' }));
+        return;
+      }
+
+      const bodyStr = Buffer.concat(bodyChunks).toString('utf-8');
+      let body: unknown;
+      try {
+        body = bodyStr ? JSON.parse(bodyStr) : undefined;
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        return;
+      }
+
+      // Check for existing session
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+      if (sessionId && sessions.has(sessionId)) {
+        const session = sessions.get(sessionId)!;
+        session.lastActive = Date.now();
+        await session.transport.handleRequest(req, res, body);
+        return;
+      }
+
+      // For new connections, check if this is an init request
+      const isInit = Array.isArray(body)
+        ? body.some((msg: unknown) => msg != null && typeof msg === 'object' && (msg as Record<string, unknown>).method === 'initialize')
+        : body != null && typeof body === 'object' && (body as Record<string, unknown>).method === 'initialize';
+
+      if (isInit) {
+        // Enforce session limit
+        if (sessions.size >= MAX_SESSIONS) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Too many active sessions' }));
+          return;
+        }
+
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => crypto.randomUUID(),
+          enableJsonResponse: true,
+        });
+
+        // Create a fresh McpServer with current tools for this session
+        const mcpServer = createMcpServer();
+
+        transport.onclose = () => {
+          if (transport.sessionId) {
+            sessions.delete(transport.sessionId);
+          }
+        };
+
+        await mcpServer.connect(transport);
+        await transport.handleRequest(req, res, body);
+
+        if (transport.sessionId) {
+          sessions.set(transport.sessionId, { transport, server: mcpServer, lastActive: Date.now() });
+        }
+      } else {
+        // Non-init request without valid session
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Bad Request: No valid session. Send an initialize request first.' },
+          id: null,
+        }));
+      }
+    } catch (err) {
+      console.error('MCP server error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
     }
   });
 

@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY dashboard/package.json ./dashboard/
 RUN npm ci --production
 
 COPY dist/ ./dist/

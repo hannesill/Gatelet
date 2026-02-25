@@ -5,8 +5,8 @@ import { defaultPolicyYaml } from './default-policy.js';
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 function validatePathSegment(value: string, name: string): void {
-  if (value.includes('/') || value.includes('\\') || value.includes('..')) {
-    throw new Error(`Invalid ${name}: must not contain path separators`);
+  if (/[\/\\?#&=\s\x00]|\.\./.test(value)) {
+    throw new Error(`Invalid ${name}: contains disallowed characters`);
   }
 }
 
@@ -115,7 +115,10 @@ export class OutlookCalendarProvider implements Provider {
           $top: String(top),
           $orderby: 'start/dateTime',
         });
-        if (params.filter) qs.set('$filter', params.filter as string);
+        if (params.filter) {
+          validateODataFilter(params.filter as string);
+          qs.set('$filter', params.filter as string);
+        }
         return this.graphFetch(`/me/calendars/${calendarId}/events?${qs.toString()}`, credentials);
       }
 
