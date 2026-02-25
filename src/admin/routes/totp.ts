@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { generateTotpSecret, verifyTotpCode, generateBackupCodes, verifyBackupCode } from '../totp.js';
 import { getSetting, setSetting, deleteSetting } from '../../db/settings.js';
+import { clearAllSessions } from '../session.js';
 
 const app = new Hono();
 
@@ -31,6 +32,9 @@ app.post('/totp/verify-setup', async (c) => {
   // Store the secret and enable TOTP
   setSetting('totp_secret', pendingSecret);
   setSetting('totp_enabled', 'true');
+
+  // Invalidate all existing sessions so they must re-authenticate with 2FA
+  clearAllSessions();
 
   // Generate backup codes
   const { codes, hashes } = generateBackupCodes();

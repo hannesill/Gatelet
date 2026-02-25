@@ -666,8 +666,9 @@ describe('GmailProvider', () => {
 
       const call = (mockMessages.send as MockFn).mock.calls[0][0];
       const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
-      expect(raw).toContain('To: me@example.com');
-      expect(raw).toContain('Cc: charlie@example.com');
+      // Reply-all: To = original sender, Cc = original To + original Cc
+      expect(raw).toContain('To: alice@example.com');
+      expect(raw).toContain('Cc: me@example.com, charlie@example.com');
     });
   });
 

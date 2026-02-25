@@ -33,6 +33,7 @@ export function evaluateConstraint(
       if (
         actual == null ||
         actual === '' ||
+        (typeof actual === 'string' && actual.trim() === '') ||
         (Array.isArray(actual) && actual.length === 0)
       ) {
         return {

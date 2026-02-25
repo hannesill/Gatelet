@@ -78,5 +78,5 @@ export function closeDb(): void {
 }
 
 export function resetDb(): void {
-  db = null;
+  closeDb();
 }

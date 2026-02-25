@@ -1,10 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import Database from 'better-sqlite3';
 
 // Set up test environment before any imports that use config
 const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-test-${Date.now()}`);
@@ -18,13 +15,10 @@ process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
 process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
 
 // Now import modules that use config
-import { config } from '../../src/config.js';
 import { getDb, closeDb, resetDb } from '../../src/db/database.js';
 import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
-import { createConnection } from '../../src/db/connections.js';
+import { createConnection, getConnectionWithCredentials } from '../../src/db/connections.js';
 import { createApiKey, validateApiKey } from '../../src/db/api-keys.js';
-import { queryAuditLog } from '../../src/db/audit.js';
-import { parsePolicy } from '../../src/policy/parser.js';
 
 const MOCK_POLICY = `provider: google_calendar
 account: test@gmail.com
@@ -51,7 +45,7 @@ operations:
     allow: false
 `;
 
-describe('Admin API', () => {
+describe('Data layer integration', () => {
   beforeAll(() => {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
     resetMasterKey();
@@ -96,34 +90,33 @@ describe('Admin API', () => {
       expect(conn.provider_id).toBe('google_calendar');
       expect(conn.account_name).toBe('test@gmail.com');
     });
-  });
 
-  describe('Policy parsing', () => {
-    it('parses valid YAML policy', () => {
-      const { policy, warnings } = parsePolicy(MOCK_POLICY);
-      expect(policy.provider).toBe('google_calendar');
-      expect(policy.operations.list_calendars.allow).toBe(true);
-      expect(policy.operations.create_event.constraints).toHaveLength(1);
-      expect(policy.operations.create_event.mutations).toHaveLength(2);
-      expect(warnings).toHaveLength(0);
+    it('decrypts credentials correctly after creation', () => {
+      const conn = createConnection({
+        provider_id: 'google_calendar',
+        account_name: 'decrypt-test@gmail.com',
+        credentials: { access_token: 'secret_tok', refresh_token: 'secret_ref' },
+        policy_yaml: MOCK_POLICY,
+      });
+
+      const withCreds = getConnectionWithCredentials(conn.id);
+      expect(withCreds).toBeDefined();
+      expect(withCreds!.credentials.access_token).toBe('secret_tok');
+      expect(withCreds!.credentials.refresh_token).toBe('secret_ref');
     });
 
-    it('rejects invalid YAML', () => {
-      expect(() => parsePolicy('not: [valid: yaml: policy')).toThrow();
-    });
+    it('connection listing never exposes credentials', () => {
+      const conn = createConnection({
+        provider_id: 'google_calendar',
+        account_name: 'no-leak@gmail.com',
+        credentials: { access_token: 'dont_leak_this' },
+        policy_yaml: MOCK_POLICY,
+      });
 
-    it('rejects missing provider', () => {
-      expect(() =>
-        parsePolicy('account: test\noperations:\n  op:\n    allow: true\n'),
-      ).toThrow('missing "provider"');
-    });
-  });
-
-  describe('Audit log', () => {
-    it('starts empty', () => {
-      const entries = queryAuditLog({});
-      // May have entries from other tests, just verify it returns an array
-      expect(Array.isArray(entries)).toBe(true);
+      // The getConnection (without credentials) should not have credential data
+      const connJson = JSON.stringify(conn);
+      expect(connJson).not.toContain('dont_leak_this');
+      expect(connJson).not.toContain('credentials');
     });
   });
 });

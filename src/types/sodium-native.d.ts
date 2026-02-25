@@ -15,4 +15,18 @@ declare module 'sodium-native' {
     nonce: Buffer,
     key: Buffer,
   ): boolean;
+
+  // Argon2id key derivation
+  const crypto_pwhash_OPSLIMIT_MODERATE: number;
+  const crypto_pwhash_MEMLIMIT_MODERATE: number;
+  const crypto_pwhash_ALG_ARGON2ID13: number;
+  const crypto_pwhash_SALTBYTES: number;
+  function crypto_pwhash(
+    output: Buffer,
+    password: Buffer,
+    salt: Buffer,
+    opslimit: number,
+    memlimit: number,
+    algorithm: number,
+  ): void;
 }

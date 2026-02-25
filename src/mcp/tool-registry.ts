@@ -29,6 +29,12 @@ export function buildToolRegistry(): Map<string, RegisteredTool> {
       const opPolicy = policy.operations[tool.policyOperation];
       if (!opPolicy || !opPolicy.allow) continue;
 
+      if (registry.has(tool.name)) {
+        const existing = registry.get(tool.name)!;
+        console.warn(
+          `Warning: Tool name collision "${tool.name}" — connection "${conn.account_name}" (${conn.provider_id}) overwrites connection "${existing.connectionId}" (${existing.providerId}). Only the last connection's tool will be accessible.`,
+        );
+      }
       registry.set(tool.name, {
         tool,
         connectionId: conn.id,

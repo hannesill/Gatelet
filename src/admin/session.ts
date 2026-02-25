@@ -38,9 +38,10 @@ export function clearAllSessions(): void {
 }
 
 // Clean up expired sessions periodically
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [id, session] of sessions) {
     if (session.expiresAt < now) sessions.delete(id);
   }
-}, 60 * 1000); // Every minute
+}, 60 * 1000);
+cleanupInterval.unref();

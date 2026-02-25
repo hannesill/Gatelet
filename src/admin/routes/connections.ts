@@ -156,6 +156,12 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     return c.json({ error: 'Unknown provider or provider does not support OAuth' }, 400);
   }
 
+  // Validate CSRF nonce before any state changes
+  const state = c.req.query('state');
+  if (!state || !redeemOAuthNonce(state)) {
+    return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
+  }
+
   const code = c.req.query('code');
   if (!code) {
     return c.json({ error: 'Missing authorization code' }, 400);
@@ -235,12 +241,6 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   }
 
   refreshToolRegistry();
-
-  // Validate CSRF nonce (but we no longer need the token from it)
-  const state = c.req.query('state');
-  if (state) {
-    redeemOAuthNonce(state);
-  }
 
   return c.redirect(`/?oauth=success&provider=${providerId}`);
 });

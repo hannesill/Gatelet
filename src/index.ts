@@ -15,6 +15,7 @@ import { listApiKeys } from './db/api-keys.js';
 import { getProvider } from './providers/registry.js';
 import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
+import { closeDb } from './db/database.js';
 import { promptPassphrase } from './cli-prompt.js';
 
 // Re-export so any existing imports from index.ts still work
@@ -125,8 +126,19 @@ async function main(): Promise<void> {
   }
 
   // Start servers
-  startAdminServer();
-  startMcpServer();
+  const adminServer = startAdminServer();
+  const mcpServer = startMcpServer();
+
+  // Graceful shutdown
+  function shutdown() {
+    console.log('\nShutting down...');
+    adminServer.close();
+    mcpServer.close();
+    closeDb();
+    process.exit(0);
+  }
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   // Startup summary
   const connections = listConnections();

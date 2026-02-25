@@ -5,6 +5,7 @@ const CONSTRAINT_REFERENCE = [
   { rule: 'must_equal', requiresValue: true },
   { rule: 'must_be_one_of', requiresValue: true },
   { rule: 'must_not_be_empty', requiresValue: false },
+  { rule: 'must_match', requiresValue: true },
 ];
 
 const MUTATION_REFERENCE = [

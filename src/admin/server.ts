@@ -3,6 +3,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import connectionsRoutes from './routes/connections.js';
 import policiesRoutes from './routes/policies.js';
 import apiKeysRoutes from './routes/api-keys.js';
@@ -34,7 +35,10 @@ function parseCookies(header: string | undefined): Record<string, string> {
   return cookies;
 }
 
-const hasSpa = fs.existsSync(path.join(process.cwd(), 'dist', 'dashboard', 'index.html'));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '..', '..');
+const dashboardDir = path.join(projectRoot, 'dist', 'dashboard');
+const hasSpa = fs.existsSync(path.join(dashboardDir, 'index.html'));
 
 export function createAdminApp(): Hono {
   const app = new Hono();
@@ -111,8 +115,8 @@ export function createAdminApp(): Hono {
 
   // Admin token auth middleware for API routes
   app.use('/api/*', async (c, next) => {
-    // Login and logout are handled above, skip auth for them
-    if (c.req.path === '/api/login' || c.req.path === '/api/logout') {
+    // Login, logout, and health are unauthenticated
+    if (c.req.path === '/api/login' || c.req.path === '/api/logout' || c.req.path === '/api/health') {
       return next();
     }
 
@@ -139,6 +143,36 @@ export function createAdminApp(): Hono {
     if (authHeader) {
       const match = authHeader.match(/^Bearer\s+(.+)$/i);
       if (match && match[1] === config.ADMIN_TOKEN) {
+        // If 2FA is enabled, require X-TOTP-Code header for Bearer auth
+        let totpEnabled = false;
+        try {
+          totpEnabled = getSetting('totp_enabled') === 'true';
+        } catch {
+          // Settings table may not be accessible yet
+        }
+        if (totpEnabled) {
+          const totpCode = c.req.header('X-TOTP-Code');
+          if (!totpCode) {
+            return c.json({ error: '2FA required. Provide X-TOTP-Code header.' }, 401);
+          }
+          const secret = getSetting('totp_secret');
+          if (!secret) {
+            return c.json({ error: 'TOTP configuration error' }, 500);
+          }
+          let codeValid = verifyTotpCode(secret, totpCode);
+          if (!codeValid) {
+            const hashes = JSON.parse(getSetting('totp_backup_codes') || '[]');
+            const result = verifyBackupCode(totpCode, hashes);
+            codeValid = result.valid;
+            if (result.valid) {
+              setSetting('totp_backup_codes', JSON.stringify(result.remainingHashes));
+            }
+          }
+          if (!codeValid) {
+            adminLimiter.recordFailure(clientIp);
+            return c.json({ error: 'Invalid 2FA code' }, 401);
+          }
+        }
         adminLimiter.clear(clientIp);
         return next();
       }
@@ -178,17 +212,18 @@ export function createAdminApp(): Hono {
 
   // SPA static file serving (only if dist/dashboard exists)
   if (hasSpa) {
-    app.use('/assets/*', serveStatic({ root: './dist/dashboard' }));
-    app.get('*', serveStatic({ root: './dist/dashboard', path: 'index.html' }));
+    app.use('/assets/*', serveStatic({ root: dashboardDir }));
+    app.get('*', serveStatic({ root: dashboardDir, path: 'index.html' }));
   }
 
   return app;
 }
 
-export function startAdminServer(): void {
+export function startAdminServer(): ReturnType<typeof serve> {
   const app = createAdminApp();
 
-  serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname: '127.0.0.1' }, () => {
+  const server = serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname: '127.0.0.1' }, () => {
     console.log(`Admin server listening on 127.0.0.1:${config.ADMIN_PORT}`);
   });
+  return server;
 }

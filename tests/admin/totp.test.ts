@@ -188,7 +188,7 @@ describe('TOTP Routes', () => {
     });
     const code = totp.generate();
 
-    // Step 3: Verify
+    // Step 3: Verify (this clears all sessions for security)
     const verifyRes = await req('/api/totp/verify-setup', {
       method: 'POST',
       headers: { Cookie: cookie, 'Content-Type': 'application/json' },
@@ -199,9 +199,20 @@ describe('TOTP Routes', () => {
     expect(verifyBody.enabled).toBe(true);
     expect(verifyBody.backupCodes).toHaveLength(8);
 
-    // Step 4: Status should show enabled
+    // Step 4: Re-authenticate with 2FA (old session was cleared)
+    const loginRes = await req('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN, totpCode: totp.generate() }),
+    });
+    expect(loginRes.status).toBe(200);
+    const setCookie = loginRes.headers.get('Set-Cookie') ?? '';
+    const match = setCookie.match(/gatelet_session=([^;]+)/);
+    const newCookie = match ? `gatelet_session=${match[1]}` : '';
+
+    // Step 5: Status should show enabled
     const statusRes = await req('/api/totp/status', {
-      headers: { Cookie: cookie },
+      headers: { Cookie: newCookie },
     });
     const statusBody = await statusRes.json();
     expect(statusBody.enabled).toBe(true);
@@ -294,9 +305,13 @@ describe('TOTP Routes', () => {
     const loginBody = await loginRes.json();
     expect(loginBody.ok).toBe(true);
 
-    // Check backup count decreased
+    // Re-authenticate to check status (old session was cleared when TOTP was enabled)
+    const setCookie = loginRes.headers.get('Set-Cookie') ?? '';
+    const match = setCookie.match(/gatelet_session=([^;]+)/);
+    const newCookie = match ? `gatelet_session=${match[1]}` : '';
+
     const statusRes = await req('/api/totp/status', {
-      headers: { Cookie: cookie },
+      headers: { Cookie: newCookie },
     });
     const statusBody = await statusRes.json();
     expect(statusBody.backupCodesRemaining).toBe(7);
@@ -328,10 +343,20 @@ describe('TOTP Routes', () => {
       body: JSON.stringify({ code: totp.generate() }),
     });
 
+    // Re-authenticate with 2FA (old session was cleared)
+    const loginRes = await req('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN, totpCode: totp.generate() }),
+    });
+    const setCookie = loginRes.headers.get('Set-Cookie') ?? '';
+    const match = setCookie.match(/gatelet_session=([^;]+)/);
+    const newCookie = match ? `gatelet_session=${match[1]}` : '';
+
     // Disable
     const disableRes = await req('/api/totp/disable', {
       method: 'POST',
-      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      headers: { Cookie: newCookie, 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: totp.generate() }),
     });
     expect(disableRes.status).toBe(200);
@@ -340,7 +365,7 @@ describe('TOTP Routes', () => {
 
     // Verify disabled
     const statusRes = await req('/api/totp/status', {
-      headers: { Cookie: cookie },
+      headers: { Cookie: newCookie },
     });
     const statusBody = await statusRes.json();
     expect(statusBody.enabled).toBe(false);

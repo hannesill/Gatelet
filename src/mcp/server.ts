@@ -15,6 +15,9 @@ import { sanitizeUpstreamError } from './error-sanitizer.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
 
+// Per-connection mutex for token refresh to prevent concurrent refreshes
+const refreshLocks = new Map<string, Promise<Record<string, unknown>>>();
+
 export function refreshToolRegistry(): void {
   toolRegistry = buildToolRegistry();
 }
@@ -49,7 +52,7 @@ const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 const MAX_SESSIONS = 100;
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-export function startMcpServer(): void {
+export function startMcpServer(): http.Server {
   toolRegistry = buildToolRegistry();
 
   // Each session gets its own McpServer with the latest tools at time of connection.
@@ -175,6 +178,8 @@ export function startMcpServer(): void {
   server.listen(config.MCP_PORT, () => {
     console.log(`MCP server listening on :${config.MCP_PORT}`);
   });
+
+  return server;
 }
 
 async function handleToolCall(
@@ -186,7 +191,12 @@ async function handleToolCall(
   const originalParams = structuredClone(params);
 
   const conn = getConnectionWithCredentials(registered.connectionId);
-  const settings = conn ? JSON.parse(conn.settings_json || '{}') : {};
+  let settings: Record<string, unknown> = {};
+  try {
+    settings = conn ? JSON.parse(conn.settings_json || '{}') : {};
+  } catch {
+    // Corrupted settings_json — use empty defaults
+  }
   if (!conn) {
     insertAuditEntry({
       connection_id: registered.connectionId,
@@ -234,6 +244,13 @@ async function handleToolCall(
 
   const provider = getProvider(registered.providerId);
   if (!provider) {
+    insertAuditEntry({
+      connection_id: registered.connectionId,
+      tool_name: toolName,
+      original_params: originalParams,
+      result: 'error',
+      deny_reason: `Provider not found: ${registered.providerId}`,
+    });
     return {
       content: [{ type: 'text', text: 'Error: Provider not found' }],
     };
@@ -270,12 +287,18 @@ async function handleToolCall(
           err.message.includes('Token has been expired') ||
           err.message.includes('401'))
       ) {
-        const clientId = getOAuthClientId(provider);
-        const clientSecret = getOAuthClientSecret(provider);
-        const newCreds = await provider.refreshCredentials(
-          conn.credentials,
-          { clientId: clientId ?? '', clientSecret: clientSecret ?? '' },
-        );
+        // Use per-connection mutex to prevent concurrent refresh races
+        let refreshPromise = refreshLocks.get(conn.id);
+        if (!refreshPromise) {
+          const clientId = getOAuthClientId(provider);
+          const clientSecret = getOAuthClientSecret(provider);
+          refreshPromise = provider.refreshCredentials(
+            conn.credentials,
+            { clientId: clientId ?? '', clientSecret: clientSecret ?? '' },
+          ).finally(() => refreshLocks.delete(conn.id));
+          refreshLocks.set(conn.id, refreshPromise);
+        }
+        const newCreds = await refreshPromise;
         updateConnectionCredentials(conn.id, newCreds);
         result = await provider.execute(
           toolName,

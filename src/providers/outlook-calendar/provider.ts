@@ -10,6 +10,21 @@ function validatePathSegment(value: string, name: string): void {
   }
 }
 
+/** Validate OData $filter to prevent injection. Only allow safe filter expressions. */
+function validateODataFilter(filter: string): void {
+  // Allow only: field comparisons (eq, ne, gt, ge, lt, le), contains(), startswith(),
+  // logical operators (and, or, not), ISO datetime literals, quoted strings, and whitespace
+  const safePattern = /^[\w/.':\-\s,()]+$/;
+  if (!safePattern.test(filter)) {
+    throw new Error('Invalid filter: contains disallowed characters');
+  }
+  // Block known dangerous OData functions
+  const dangerous = /\$(expand|select|count|search|compute|apply)/i;
+  if (dangerous.test(filter)) {
+    throw new Error('Invalid filter: contains disallowed OData operators');
+  }
+}
+
 export class OutlookCalendarProvider implements Provider {
   id = 'outlook_calendar';
   displayName = 'Outlook Calendar';
@@ -89,7 +104,10 @@ export class OutlookCalendarProvider implements Provider {
             $top: String(top),
             $orderby: 'start/dateTime',
           });
-          if (params.filter) qs.set('$filter', params.filter as string);
+          if (params.filter) {
+            validateODataFilter(params.filter as string);
+            qs.set('$filter', params.filter as string);
+          }
           return this.graphFetch(`/me/calendars/${calendarId}/calendarView?${qs.toString()}`, credentials);
         }
 

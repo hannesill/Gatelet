@@ -5,6 +5,11 @@ import { defaultPolicyYaml } from './default-policy.js';
 import { parseMessage } from './message-parser.js';
 import { applyContentFilters } from '../email/content-filter.js';
 
+/** Strip CR/LF to prevent email header injection */
+function sanitizeHeader(value: string): string {
+  return value.replace(/[\r\n]/g, '');
+}
+
 export class GmailProvider implements Provider {
   id = 'google_gmail';
   displayName = 'Gmail';
@@ -121,11 +126,11 @@ export class GmailProvider implements Provider {
       }
 
       case 'gmail_create_draft': {
-        const to = params.to as string;
-        const subject = params.subject as string;
+        const to = sanitizeHeader(params.to as string);
+        const subject = sanitizeHeader(params.subject as string);
         const body = params.body as string;
-        const cc = params.cc as string | undefined;
-        const bcc = params.bcc as string | undefined;
+        const cc = params.cc ? sanitizeHeader(params.cc as string) : undefined;
+        const bcc = params.bcc ? sanitizeHeader(params.bcc as string) : undefined;
         const inReplyTo = params.inReplyTo as string | undefined;
         const threadId = params.threadId as string | undefined;
 
@@ -157,14 +162,14 @@ export class GmailProvider implements Provider {
       }
 
       case 'gmail_send': {
-        const to = params.to as string;
-        const subject = params.subject as string;
+        const to = sanitizeHeader(params.to as string);
+        const subject = sanitizeHeader(params.subject as string);
         const body = params.body as string;
-        const cc = params.cc as string | undefined;
-        const bcc = params.bcc as string | undefined;
+        const cc = params.cc ? sanitizeHeader(params.cc as string) : undefined;
+        const bcc = params.bcc ? sanitizeHeader(params.bcc as string) : undefined;
 
         // Determine From address: explicit param > alias suffix > omit (use account default)
-        let from = params.from as string | undefined;
+        let from = params.from ? sanitizeHeader(params.from as string) : undefined;
         if (!from && connectionSettings?.emailAliasSuffix) {
           // account_email should be stored in credentials during OAuth
           const accountEmail = credentials.account_email as string | undefined;
@@ -223,9 +228,11 @@ export class GmailProvider implements Provider {
         const origMessageId = getHeader('Message-ID');
         const origReferences = getHeader('References');
 
-        // Determine recipient(s)
-        const to = replyAll ? origTo : origFrom;
-        const replySubject = origSubject.startsWith('Re:') ? origSubject : `Re: ${origSubject}`;
+        // Determine recipient(s): reply goes to sender; reply-all goes to sender + original To/Cc
+        const to = sanitizeHeader(origFrom);
+        const replySubject = sanitizeHeader(
+          origSubject.startsWith('Re:') ? origSubject : `Re: ${origSubject}`,
+        );
 
         const headers: string[] = [
           `To: ${to}`,
@@ -242,10 +249,20 @@ export class GmailProvider implements Provider {
             from = `${local}${connectionSettings.emailAliasSuffix}@${domain}`;
           }
         }
-        if (from) headers.unshift(`From: ${from}`);
+        if (from) headers.unshift(`From: ${sanitizeHeader(from)}`);
 
-        if (replyAll && origCc) {
-          headers.splice(headers.indexOf(`Subject: ${replySubject}`), 0, `Cc: ${origCc}`);
+        if (replyAll) {
+          // Add original To and Cc as Cc on reply-all (sender is already in To)
+          const ccParts: string[] = [];
+          if (origTo) ccParts.push(origTo);
+          if (origCc) ccParts.push(origCc);
+          if (ccParts.length > 0) {
+            headers.splice(
+              headers.indexOf(`Subject: ${replySubject}`),
+              0,
+              `Cc: ${sanitizeHeader(ccParts.join(', '))}`,
+            );
+          }
         }
 
         if (origMessageId) {
