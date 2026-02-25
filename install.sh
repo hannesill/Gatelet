@@ -7,6 +7,7 @@
 #   GATELET_DIR       Install directory     (default: ~/.gatelet)
 #   GATELET_IMAGE     Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token (default: auto-generated)
+#   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
 
 set -e
 
@@ -81,9 +82,29 @@ if [ -z "$GATELET_ADMIN_TOKEN" ]; then
   fi
 fi
 
+# -- Encryption passphrase ----------------------------------------------------
+if [ -z "$GATELET_PASSPHRASE" ]; then
+  if [ -f "$GATELET_DIR/.env" ]; then
+    EXISTING_PASSPHRASE=$(grep '^GATELET_PASSPHRASE=' "$GATELET_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
+  fi
+  if [ -n "$EXISTING_PASSPHRASE" ]; then
+    GATELET_PASSPHRASE="$EXISTING_PASSPHRASE"
+  else
+    printf "\n"
+    info "Set an encryption passphrase for your data (8+ characters)."
+    info "You'll need this if you ever move or restore your installation."
+    printf "  Passphrase: "
+    read -r GATELET_PASSPHRASE
+    if [ -z "$GATELET_PASSPHRASE" ] || [ ${#GATELET_PASSPHRASE} -lt 8 ]; then
+      error "Passphrase must be at least 8 characters."
+    fi
+  fi
+fi
+
 # -- Write .env ---------------------------------------------------------------
 cat > "$GATELET_DIR/.env" <<EOF
 GATELET_ADMIN_TOKEN=$GATELET_ADMIN_TOKEN
+GATELET_PASSPHRASE=$GATELET_PASSPHRASE
 GATELET_IMAGE=$GATELET_IMAGE
 EOF
 chmod 600 "$GATELET_DIR/.env"
@@ -100,6 +121,7 @@ services:
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
+      - GATELET_PASSPHRASE=${GATELET_PASSPHRASE}
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -111,6 +133,8 @@ services:
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.44
     command: --label-enable --interval 300
     restart: unless-stopped
 

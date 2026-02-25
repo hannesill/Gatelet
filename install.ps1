@@ -5,6 +5,7 @@
 #   GATELET_DIR          Install directory     (default: ~/.gatelet)
 #   GATELET_IMAGE        Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token   (default: auto-generated)
+#   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
 
 $ErrorActionPreference = 'Stop'
 
@@ -68,9 +69,29 @@ if (-not $AdminToken) {
     $AdminToken = [Convert]::ToBase64String($bytes)
 }
 
+# -- Encryption passphrase ----------------------------------------------------
+$Passphrase = $env:GATELET_PASSPHRASE
+
+if (-not $Passphrase) {
+    if (Test-Path $EnvFile) {
+        $existingPass = Select-String -Path $EnvFile -Pattern '^GATELET_PASSPHRASE=(.+)$' -ErrorAction SilentlyContinue
+        if ($existingPass) { $Passphrase = $existingPass.Matches[0].Groups[1].Value }
+    }
+}
+if (-not $Passphrase) {
+    Write-Host ""
+    Write-Info "Set an encryption passphrase for your data (8+ characters)."
+    Write-Info "You'll need this if you ever move or restore your installation."
+    $Passphrase = Read-Host "  Passphrase"
+    if (-not $Passphrase -or $Passphrase.Length -lt 8) {
+        Write-Fail "Passphrase must be at least 8 characters."
+    }
+}
+
 # -- Write .env ---------------------------------------------------------------
 @"
 GATELET_ADMIN_TOKEN=$AdminToken
+GATELET_PASSPHRASE=$Passphrase
 GATELET_IMAGE=$GateletImage
 "@ | Set-Content -Path $EnvFile -Encoding UTF8
 
@@ -86,6 +107,7 @@ services:
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
+      - GATELET_PASSPHRASE=${GATELET_PASSPHRASE}
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -97,6 +119,8 @@ services:
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.44
     command: --label-enable --interval 300
     restart: unless-stopped
 
