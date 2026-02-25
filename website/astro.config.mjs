@@ -1,38 +1,31 @@
 import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
+import tailwindcss from '@tailwindcss/vite';
+import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-	integrations: [
-		starlight({
-			title: 'Gatelet',
-      logo: {
-        src: '../assets/logo.svg',
-      },
-			social: {
-				github: 'https://github.com/hannesill/gatelet',
-			},
-			sidebar: [
-				{
-					label: 'Guides',
-					items: [
-						// Each item here is a convention; files should exist in src/content/docs/
-						{ label: 'Introduction', link: '/guides/introduction/' },
-						{ label: 'Installation', link: '/guides/installation/' },
-					],
-				},
-				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
-				},
-			],
-      customCss: [
-        './src/styles/custom.css',
-      ],
-		}),
-		react(),
-	],
-  // This is required for GitHub Pages
   site: 'https://gatelet.dev',
+  integrations: [
+    react(),
+    starlight({
+      title: 'Gatelet',
+      customCss: ['./src/styles/app.css'],
+      sidebar: [
+        {
+          label: 'Getting Started',
+          items: [
+            { label: 'Introduction', link: '/intro/' },
+            { label: 'Installation', link: '/installation/' },
+          ],
+        },
+      ],
+    })
+  ],
+  vite: {
+    plugins: [tailwindcss()],
+    resolve: {
+      preserveSymlinks: true,
+    }
+  }
 });

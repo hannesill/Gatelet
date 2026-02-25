@@ -4,7 +4,8 @@
   "description": "Self-hosted MCP permission proxy for AI agents",
   "type": "module",
   "workspaces": [
-    "dashboard"
+    "dashboard",
+    "website"
   ],
   "files": [
     "dist/"

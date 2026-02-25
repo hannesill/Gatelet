@@ -1,0 +1,45 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'The self-hosted MCP permission proxy for AI agents. Control exactly what your models can see and do.' } = Astro.props;
+import '../styles/app.css';
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gatelet.dev" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,700&family=JetBrains+Mono&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Prevent FOUC -->
+    <script is:inline>
+      (function() {
+        var t = localStorage.getItem('theme');
+        var d = t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', d);
+      })();
+    </script>
+  </head>
+  <body class="bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-white min-h-screen antialiased">
+    <slot />
+  </body>
+</html>
