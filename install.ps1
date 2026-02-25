@@ -89,6 +89,15 @@ services:
     networks:
       - gatelet-internal
       - gatelet-egress
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --interval 300
     restart: unless-stopped
 
 networks:
