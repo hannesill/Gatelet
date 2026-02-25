@@ -224,8 +224,9 @@ export function createAdminApp(): Hono {
 export function startAdminServer(): ReturnType<typeof serve> {
   const app = createAdminApp();
 
-  const server = serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname: '127.0.0.1' }, () => {
-    console.log(`Admin server listening on 127.0.0.1:${config.ADMIN_PORT}`);
+  const hostname = process.env.GATELET_DATA_DIR === '/data' ? '0.0.0.0' : '127.0.0.1';
+  const server = serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname }, () => {
+    console.log(`Admin server listening on ${hostname}:${config.ADMIN_PORT}`);
   });
   return server;
 }
