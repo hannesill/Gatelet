@@ -9,7 +9,7 @@ const rows = 14;
 const logosPerRow = 16;
 ---
 
-<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.02] dark:opacity-[0.03]" aria-hidden="true">
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.03] dark:opacity-[0.03]" aria-hidden="true">
   <!-- Define logo symbol once -->
   <svg class="hidden" aria-hidden="true">
     <symbol id="bg-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
@@ -32,11 +32,11 @@ const logosPerRow = 16;
       const speed = 60 + (i % 3) * 30;
       return (
         <div
-          class={`flex gap-4 whitespace-nowrap ${reverse ? 'marquee-reverse' : 'marquee'}`}
+          class={`flex whitespace-nowrap ${reverse ? 'marquee-reverse' : 'marquee'}`}
           style={`animation-duration: ${speed}s`}
         >
           {Array.from({ length: logosPerRow * 2 }).map(() => (
-            <svg class="h-32 w-32 shrink-0"><use href="#bg-logo"/></svg>
+            <svg class="h-32 w-32 shrink-0 mr-4"><use href="#bg-logo"/></svg>
           ))}
         </div>
       );

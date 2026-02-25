@@ -18,10 +18,10 @@ Yellow='\033[0;33m'
 Cyan='\033[0;36m'
 Dim='\033[2m'
 
-info()    { echo -e "${Cyan}[info]${Color_Off} $1"; }
-warn()    { echo -e "${Yellow}[warn]${Color_Off} $1"; }
-error()   { echo -e "${Red}[error]${Color_Off} $1"; exit 1; }
-success() { echo -e "${Green}  ✓${Color_Off} $1"; }
+info()    { printf "${Cyan}[info]${Color_Off} %s\n" "$1"; }
+warn()    { printf "${Yellow}[warn]${Color_Off} %s\n" "$1"; }
+error()   { printf "${Red}[error]${Color_Off} %s\n" "$1"; exit 1; }
+success() { printf "${Green}  ✓${Color_Off} %s\n" "$1"; }
 
 # -- Defaults -----------------------------------------------------------------
 GATELET_DIR="${GATELET_DIR:-$HOME/.gatelet}"
@@ -134,16 +134,16 @@ info "Starting Gatelet..."
 (cd "$GATELET_DIR" && $COMPOSE up -d)
 
 # -- Done ---------------------------------------------------------------------
-echo ""
+printf "\n"
 success "Gatelet is running!"
-echo ""
-echo -e "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001"
-echo -e "  ${Cyan}Admin token${Color_Off}  $GATELET_ADMIN_TOKEN"
-echo -e "  ${Cyan}Install dir${Color_Off}  $GATELET_DIR"
-echo ""
-echo -e "  ${Dim}MCP endpoint (for agents on the Docker network):${Color_Off}"
-echo -e "  ${Dim}http://gatelet:4000/mcp${Color_Off}"
-echo ""
-echo -e "  Manage:  cd $GATELET_DIR && $COMPOSE logs -f"
-echo -e "  Stop:    cd $GATELET_DIR && $COMPOSE down"
-echo -e "  Upgrade: cd $GATELET_DIR && $COMPOSE pull && $COMPOSE up -d"
+printf "\n"
+printf "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001\n"
+printf "  ${Cyan}Admin token${Color_Off}  %s\n" "$GATELET_ADMIN_TOKEN"
+printf "  ${Cyan}Install dir${Color_Off}  %s\n" "$GATELET_DIR"
+printf "\n"
+printf "  ${Dim}MCP endpoint (for agents on the Docker network):${Color_Off}\n"
+printf "  ${Dim}http://gatelet:4000/mcp${Color_Off}\n"
+printf "\n"
+printf "  Manage:  cd %s && %s logs -f\n" "$GATELET_DIR" "$COMPOSE"
+printf "  Stop:    cd %s && %s down\n" "$GATELET_DIR" "$COMPOSE"
+printf "  Upgrade: cd %s && %s pull && %s up -d\n" "$GATELET_DIR" "$COMPOSE" "$COMPOSE"
