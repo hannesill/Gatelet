@@ -27,9 +27,17 @@ The agent connects via a policy-enforced MCP endpoint and can only perform opera
 ## Quick Start
 
 ```bash
-docker compose up -d
-docker compose logs gatelet  # grab the admin token
-open http://localhost:4001   # paste the token to log in
+# macOS / Linux
+curl -fsSL https://gatelet.dev/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://gatelet.dev/install.ps1)"
+```
+
+This pulls the Docker image, generates an admin token, and starts Gatelet in `~/.gatelet`. The installer prints your admin token and dashboard URL when done.
+
+```
+open http://localhost:4001   # paste the admin token to log in
 ```
 
 The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included so you don't need to register your own app. For Outlook, built-in credentials may require admin consent on organizational accounts.
@@ -37,6 +45,26 @@ The dashboard walks you through setup: generate an API key, connect your account
 > **Note:** The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, you can register your own OAuth app and enter your credentials under **Settings > Integrations** in the dashboard.
 
 Docker is the recommended deployment method — it provides the filesystem and network isolation that the security model depends on.
+
+## Updating
+
+```bash
+cd ~/.gatelet && docker compose pull && docker compose up -d
+```
+
+This pulls the latest image and recreates the container. Your data volume is preserved across updates.
+
+For automatic updates, add [Watchtower](https://containrrr.dev/watchtower/) to your `~/.gatelet/docker-compose.yml`:
+
+```yaml
+watchtower:
+  image: containrrr/watchtower
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  command: --interval 3600 gatelet
+```
+
+This checks for new images every hour and restarts automatically.
 
 ## Supported Providers
 
@@ -175,12 +203,14 @@ OAuth credentials can be configured through the admin dashboard under OAuth Sett
 
 ## Docker
 
-The `docker-compose.yml` uses two networks for isolation:
+The install script sets up Docker Compose automatically. If you prefer to manage it yourself, the `docker-compose.yml` uses two networks for isolation:
 
 - **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`. This port is not published to the host.
 - **gatelet-egress** — Allows Gatelet to reach external APIs (Google, Microsoft)
 
 Admin port is bound to `127.0.0.1` only — not accessible from the network.
+
+To build from source instead of pulling the published image:
 
 ```bash
 npm run docker:build   # Build production image
