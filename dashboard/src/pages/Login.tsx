@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from '../components/Logo';
+import { DynamicBackground } from '../components/DynamicBackground';
 import { Key, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -54,6 +55,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4">
+      <DynamicBackground />
       {/* Background blobs for atmosphere */}
       <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
       <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-zinc-500/10 blur-[100px]" />

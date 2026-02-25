@@ -3,6 +3,7 @@ import { useTheme } from '../hooks/useTheme';
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from './Logo';
+import { DynamicBackground } from './DynamicBackground';
 import { 
   Link2, 
   Key, 
@@ -213,7 +214,8 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
   const heading = pageHeadings[activeTab];
 
   return (
-    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col bg-zinc-50/20 dark:bg-zinc-950 logo-pattern">
+    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col bg-zinc-50/20 dark:bg-zinc-950">
+      <DynamicBackground />
       {/* Sidebar - unified design */}
       <div className="fixed inset-y-0 left-0 w-64 border-r border-zinc-200 bg-white shadow-[8px_0_32px_rgba(0,0,0,0.02)] dark:border-white/5 dark:bg-zinc-900 dark:shadow-[8px_0_32px_rgba(0,0,0,0.2)] max-lg:hidden">
         <SidebarNav

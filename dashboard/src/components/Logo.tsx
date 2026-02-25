@@ -1,8 +1,8 @@
 import { cn } from '../utils';
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, strokeWidth = 1.5 }: { className?: string; strokeWidth?: number }) {
   return (
-    <svg className={cn("h-6 w-6", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={cn("h-6 w-6", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
       {/* Entablature / top beam */}
       <line x1="1" y1="5" x2="23" y2="5" />
       <line x1="1" y1="7" x2="23" y2="7" />
