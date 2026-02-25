@@ -14,7 +14,8 @@
     "lucide-react": "^0.575.0",
     "react": "^19",
     "react-dom": "^19",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "yaml": "^2"
   },
   "devDependencies": {
     "@codemirror/lang-yaml": "^6",

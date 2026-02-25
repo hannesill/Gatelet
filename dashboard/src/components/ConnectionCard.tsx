@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PolicyViewer } from './PolicyViewer';
-import { PolicyEditor } from './PolicyEditor';
+import { PolicyFormEditor } from './PolicyFormEditor';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
@@ -180,7 +180,6 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
 
   return (
     <motion.div
-      layout
       className={cn(
         "group glass overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-zinc-950/[0.03] hover:ring-zinc-400/40 dark:hover:ring-white/20",
         paused && "opacity-60 grayscale"
@@ -249,7 +248,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
                 className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-zinc-600 transition-all duration-200 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200"
               >
                 <Edit3 className="h-4 w-4" />
-                Edit YAML
+                Edit Policy
               </button>
             )}
           </div>
@@ -313,10 +312,9 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
       <AnimatePresence>
         {mode !== 'closed' && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="border-t border-zinc-100 bg-zinc-50/50 dark:border-white/5 dark:bg-white/[0.02]"
           >
             <div className="p-6">
@@ -328,7 +326,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
                 />
               )}
               {mode === 'editor' && (
-                <PolicyEditor
+                <PolicyFormEditor
                   connectionId={connection.id}
                   providerId={connection.provider_id}
                   onClose={() => setMode('viewer')}

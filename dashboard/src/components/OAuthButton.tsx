@@ -21,7 +21,7 @@ export function OAuthButton({ provider }: { provider: OAuthProvider }) {
       <button 
         disabled 
         className="flex items-center gap-3 rounded-2xl bg-zinc-100 px-5 py-3 text-sm font-bold text-zinc-400 cursor-not-allowed dark:bg-white/5 dark:text-zinc-600"
-        title="Configure OAuth credentials in the server config first"
+        title="Configure OAuth credentials in Settings first"
       >
         <div className="flex h-5 w-5 items-center justify-center grayscale opacity-50">
           {Logo ? <Logo className="h-4 w-4" /> : <Lock className="h-4 w-4" />}

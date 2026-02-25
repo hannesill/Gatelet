@@ -13,6 +13,10 @@ interface Props {
   providerId: string;
   onClose: () => void;
   onSaved: () => void;
+  /** When embedded inside PolicyFormEditor, skip loading/save and use external YAML */
+  embedded?: boolean;
+  externalYaml?: string;
+  onYamlChange?: (yaml: string) => void;
 }
 
 function PolicyReference({ providerId, onLoadExample }: { providerId: string; onLoadExample: (yaml: string) => void }) {
@@ -98,8 +102,11 @@ function WarningIcon({ className }: { className?: string }) {
   );
 }
 
-export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Props) {
-  const { data: initialYaml } = useApi(() => api.getPolicy(connectionId), [connectionId]);
+export function PolicyEditor({ connectionId, providerId, onClose, onSaved, embedded, externalYaml, onYamlChange }: Props) {
+  const { data: initialYaml } = useApi(
+    () => embedded ? Promise.resolve(externalYaml ?? '') : api.getPolicy(connectionId),
+    embedded ? [externalYaml] : [connectionId],
+  );
   const [value, setValue] = useState('');
   const [dirty, setDirty] = useState(false);
   const [validation, setValidation] = useState<PolicyValidation | null>(null);
@@ -108,8 +115,12 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
   const { resolved } = useTheme();
 
   useEffect(() => {
-    if (initialYaml) setValue(initialYaml);
-  }, [initialYaml]);
+    if (embedded && externalYaml !== undefined) {
+      setValue(externalYaml);
+    } else if (initialYaml) {
+      setValue(initialYaml);
+    }
+  }, [initialYaml, embedded, externalYaml]);
 
   useEffect(() => {
     if (!value) return;
@@ -127,6 +138,7 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
   function handleChange(v: string) {
     setValue(v);
     setDirty(true);
+    onYamlChange?.(v);
   }
 
   function handleLoadExample(exampleYaml: string) {
@@ -154,7 +166,7 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
     }
   }
 
-  if (!initialYaml) {
+  if (!embedded && !initialYaml) {
     return (
       <div className="flex items-center gap-2 text-sm text-zinc-500">
         <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -215,12 +227,14 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
         </div>
       </div>
 
-      <div className="mt-5 flex items-center gap-3">
-        <Button color="amber" onClick={save} disabled={saving || (validation ? !validation.valid : false)}>
-          {saving ? 'Saving...' : 'Save Policy'}
-        </Button>
-        <Button plain onClick={onClose}>Cancel</Button>
-      </div>
+      {!embedded && (
+        <div className="mt-5 flex items-center gap-3">
+          <Button color="indigo" onClick={save} disabled={saving || (validation ? !validation.valid : false)}>
+            {saving ? 'Saving...' : 'Save Policy'}
+          </Button>
+          <Button plain onClick={onClose}>Cancel</Button>
+        </div>
+      )}
     </div>
   );
 }

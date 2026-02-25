@@ -1,3 +1,4 @@
+import { parse } from 'yaml';
 import { Badge } from './catalyst/badge';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
@@ -17,80 +18,28 @@ interface ParsedOperation {
 }
 
 function parsePolicyYaml(yamlText: string): { operations: ParsedOperation[] } {
-  const ops: ParsedOperation[] = [];
-  const lines = yamlText.split('\n');
-  let inOperations = false;
-  let currentOp: ParsedOperation | null = null;
-  let inConstraints = false;
-  let inMutations = false;
+  try {
+    const doc = parse(yamlText);
+    if (!doc?.operations || typeof doc.operations !== 'object') return { operations: [] };
 
-  for (const line of lines) {
-    if (line.match(/^operations:\s*$/)) {
-      inOperations = true;
-      continue;
+    const ops: ParsedOperation[] = [];
+    for (const [name, op] of Object.entries(doc.operations)) {
+      const o = op as Record<string, unknown>;
+      ops.push({
+        name,
+        allow: o.allow === true,
+        constraints: Array.isArray(o.constraints)
+          ? o.constraints.map((c: any) => ({ field: c.field, rule: c.rule, value: c.value }))
+          : [],
+        mutations: Array.isArray(o.mutations)
+          ? o.mutations.map((m: any) => ({ field: m.field, action: m.action, value: m.value }))
+          : [],
+      });
     }
-    if (!inOperations) continue;
-
-    const opMatch = line.match(/^  (\w+):\s*$/);
-    if (opMatch) {
-      if (currentOp) ops.push(currentOp);
-      currentOp = { name: opMatch[1], allow: false, constraints: [], mutations: [] };
-      inConstraints = false;
-      inMutations = false;
-      continue;
-    }
-
-    if (!currentOp) continue;
-
-    const allowMatch = line.match(/^\s+allow:\s*(true|false)/);
-    if (allowMatch) {
-      currentOp.allow = allowMatch[1] === 'true';
-      continue;
-    }
-
-    if (line.match(/^\s+constraints:\s*$/)) {
-      inConstraints = true;
-      inMutations = false;
-      continue;
-    }
-    if (line.match(/^\s+mutations:\s*$/)) {
-      inMutations = true;
-      inConstraints = false;
-      continue;
-    }
-
-    if (inConstraints) {
-      const fieldMatch = line.match(/^\s+-\s*field:\s*(.+)/);
-      if (fieldMatch) {
-        currentOp.constraints.push({ field: fieldMatch[1].trim(), rule: '', value: undefined });
-      }
-      const ruleMatch = line.match(/^\s+rule:\s*(.+)/);
-      if (ruleMatch && currentOp.constraints.length > 0) {
-        currentOp.constraints[currentOp.constraints.length - 1].rule = ruleMatch[1].trim();
-      }
-      const valueMatch = line.match(/^\s+value:\s*(.+)/);
-      if (valueMatch && currentOp.constraints.length > 0) {
-        currentOp.constraints[currentOp.constraints.length - 1].value = valueMatch[1].trim().replace(/^"(.*)"$/, '$1');
-      }
-    }
-
-    if (inMutations) {
-      const fieldMatch = line.match(/^\s+-\s*field:\s*(.+)/);
-      if (fieldMatch) {
-        currentOp.mutations.push({ field: fieldMatch[1].trim(), action: '', value: undefined });
-      }
-      const actionMatch = line.match(/^\s+action:\s*(.+)/);
-      if (actionMatch && currentOp.mutations.length > 0) {
-        currentOp.mutations[currentOp.mutations.length - 1].action = actionMatch[1].trim();
-      }
-      const valueMatch = line.match(/^\s+value:\s*(.+)/);
-      if (valueMatch && currentOp.mutations.length > 0) {
-        currentOp.mutations[currentOp.mutations.length - 1].value = valueMatch[1].trim().replace(/^"(.*)"$/, '$1');
-      }
-    }
+    return { operations: ops };
+  } catch {
+    return { operations: [] };
   }
-  if (currentOp) ops.push(currentOp);
-  return { operations: ops };
 }
 
 export function PolicyViewer({ connectionId, providerId, onEdit }: Props) {
@@ -133,7 +82,7 @@ export function PolicyViewer({ connectionId, providerId, onEdit }: Props) {
               <div className="mt-2.5 space-y-1.5 border-t border-zinc-200 pt-2.5 dark:border-white/5">
                 {op.constraints.map((c, i) => (
                   <div key={i} className="flex items-baseline gap-2 text-xs">
-                    <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-amber-600 dark:text-amber-400">constraint</span>
+                    <span className="shrink-0 rounded bg-indigo-500/10 px-1.5 py-0.5 font-medium text-indigo-600 dark:text-indigo-400">constraint</span>
                     <span className="text-zinc-500 dark:text-zinc-400">
                       <code className="text-zinc-700 dark:text-zinc-300">{c.field}</code> {c.rule}
                       {c.value !== undefined && <> = <code className="text-zinc-700 dark:text-zinc-300">{JSON.stringify(c.value)}</code></>}
@@ -142,7 +91,7 @@ export function PolicyViewer({ connectionId, providerId, onEdit }: Props) {
                 ))}
                 {op.mutations.map((m, i) => (
                   <div key={i} className="flex items-baseline gap-2 text-xs">
-                    <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-amber-600 dark:text-amber-400">mutation</span>
+                    <span className="shrink-0 rounded bg-indigo-500/10 px-1.5 py-0.5 font-medium text-indigo-600 dark:text-indigo-400">mutation</span>
                     <span className="text-zinc-500 dark:text-zinc-400">
                       <code className="text-zinc-700 dark:text-zinc-300">{m.field}</code> &rarr; {m.action}
                       {m.value !== undefined && <> <code className="text-zinc-700 dark:text-zinc-300">{JSON.stringify(m.value)}</code></>}
