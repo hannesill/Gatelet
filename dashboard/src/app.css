@@ -72,7 +72,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  opacity: 0.025;
+  opacity: 0.035;
   pointer-events: none;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
@@ -80,7 +80,7 @@
 }
 
 .dark .noise::after {
-  opacity: 0.04;
+  opacity: 0.06;
 }
 
 /* ─── Glow effects ─── */
@@ -110,6 +110,36 @@
 /* ─── Status dot pulse ─── */
 .dot-pulse {
   animation: dot-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Solid Heavy Shadow Containers ─── */
+.glass {
+  @apply bg-white ring-1 ring-zinc-200 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:bg-zinc-900 dark:ring-white/10 dark:shadow-[0_15px_40px_rgb(0,0,0,0.4)];
+}
+
+.glass-dark {
+  @apply bg-zinc-950 ring-1 ring-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.6)];
+}
+
+/* ─── Logo Background Pattern ─── */
+.logo-pattern {
+  position: relative;
+  isolation: isolate;
+}
+
+.logo-pattern::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1' opacity='0.015'%3E%3Cline x1='1' y1='5' x2='23' y2='5'/%3E%3Cline x1='1' y1='7' x2='23' y2='7'/%3E%3Cline x1='2' y1='7' x2='2' y2='22'/%3E%3Cline x1='8.5' y1='7' x2='8.5' y2='22'/%3E%3Cline x1='15.5' y1='7' x2='15.5' y2='22'/%3E%3Cline x1='22' y1='7' x2='22' y2='22'/%3E%3Cpath d='M8.5 22V14a3.5 3.5 0 0 1 7 0v8'/%3E%3Cpath d='M2 22v-4.5a3.25 3.25 0 0 1 6.5 0V22'/%3E%3Cpath d='M15.5 22v-4.5a3.25 3.25 0 0 1 6.5 0V22'/%3E%3Cline x1='1' y1='22' x2='23' y2='22'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+  background-repeat: repeat;
+  pointer-events: none;
+}
+
+.dark .logo-pattern::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1' opacity='0.02'%3E%3Cline x1='1' y1='5' x2='23' y2='5'/%3E%3Cline x1='1' y1='7' x2='23' y2='7'/%3E%3Cline x1='2' y1='7' x2='2' y2='22'/%3E%3Cline x1='8.5' y1='7' x2='8.5' y2='22'/%3E%3Cline x1='15.5' y1='7' x2='15.5' y2='22'/%3E%3Cline x1='22' y1='7' x2='22' y2='22'/%3E%3Cpath d='M8.5 22V14a3.5 3.5 0 0 1 7 0v8'/%3E%3Cpath d='M2 22v-4.5a3.25 3.25 0 0 1 6.5 0V22'/%3E%3Cpath d='M15.5 22v-4.5a3.25 3.25 0 0 1 6.5 0V22'/%3E%3Cline x1='1' y1='22' x2='23' y2='22'/%3E%3C/svg%3E");
 }
 
 /* ─── Monospace elements ─── */

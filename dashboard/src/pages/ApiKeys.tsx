@@ -61,7 +61,7 @@ export function ApiKeys() {
   return (
     <div className="space-y-8">
       {/* Create key section */}
-      <section className="overflow-hidden rounded-3xl bg-zinc-900 p-1 shadow-2xl shadow-zinc-950/20 ring-1 ring-zinc-800 dark:ring-white/10">
+      <section className="overflow-hidden rounded-3xl glass-dark p-1 shadow-2xl shadow-zinc-950/20">
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
           <div className="flex-1">
             <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Generate Agent Key</h3>
@@ -138,7 +138,7 @@ export function ApiKeys() {
           </span>
         </div>
 
-        <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+        <div className="overflow-hidden rounded-3xl glass shadow-sm">
           {activeKeys.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-zinc-50 dark:bg-white/5">

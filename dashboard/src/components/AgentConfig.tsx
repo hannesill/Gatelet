@@ -21,7 +21,7 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl shadow-zinc-950/20 ring-1 ring-white/10"
+      className="glass-dark overflow-hidden rounded-2xl shadow-2xl shadow-zinc-950/20"
     >
       <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-5 py-3">
         <div className="flex items-center gap-2">

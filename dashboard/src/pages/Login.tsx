@@ -58,7 +58,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="font-[Fraunces] text-3xl italic text-zinc-900 dark:text-white"
+            className="font-[Fraunces] text-3xl font-bold italic text-zinc-900 dark:text-white"
           >
             Gatelet
           </motion.h1>

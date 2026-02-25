@@ -211,9 +211,9 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
   const heading = pageHeadings[activeTab];
 
   return (
-    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col bg-white dark:bg-zinc-950">
+    <div className="relative isolate flex min-h-screen w-full max-lg:flex-col bg-zinc-50/20 dark:bg-zinc-950 logo-pattern">
       {/* Sidebar - unified design */}
-      <div className="fixed inset-y-0 left-0 w-64 border-r border-zinc-100 bg-zinc-50/50 dark:border-white/5 dark:bg-zinc-900/50 backdrop-blur-xl max-lg:hidden">
+      <div className="fixed inset-y-0 left-0 w-64 border-r border-zinc-200 bg-white shadow-[8px_0_32px_rgba(0,0,0,0.02)] dark:border-white/5 dark:bg-zinc-900 dark:shadow-[8px_0_32px_rgba(0,0,0,0.2)] max-lg:hidden">
         <SidebarNav
           activeTab={activeTab}
           onTabChange={onTabChange}
@@ -223,7 +223,7 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
       </div>
 
       {/* Mobile header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-100 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/5 dark:bg-zinc-950/80 lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 shadow-md dark:border-white/5 dark:bg-zinc-950 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
@@ -291,7 +291,7 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
               >
-                <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+                <h1 className="font-[Fraunces] text-2xl font-bold italic text-zinc-900 dark:text-white sm:text-3xl">
                   {heading.title}
                 </h1>
                 <p className="mt-2 text-base text-zinc-500 dark:text-zinc-400">

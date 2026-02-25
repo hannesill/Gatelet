@@ -1,6 +1,6 @@
 # Gatelet
 
-Self-hosted MCP permission proxy for AI agents. Sits between your AI agent and personal services (Google Calendar, Outlook Calendar), holding OAuth credentials in encrypted storage and enforcing fine-grained YAML policies — including payload mutation.
+Self-hosted MCP permission proxy for AI agents. Sits between your AI agent and personal services (Google Calendar, Outlook Calendar, Gmail), holding OAuth credentials in encrypted storage and enforcing fine-grained YAML policies — including payload mutation.
 
 The agent connects via a policy-enforced MCP endpoint and can only perform operations the policy allows. Operations not listed are denied. Denied tools are invisible to the agent.
 
@@ -32,19 +32,19 @@ docker compose logs gatelet  # grab the admin token
 open http://localhost:4001   # paste the token to log in
 ```
 
-Click "Connect Google Calendar" or "Connect Outlook Calendar" to link your accounts. Built-in OAuth credentials are included — no app registration needed for Google. For Outlook, built-in credentials are also included but may require admin consent on organizational accounts (universities, enterprises).
+The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included — no app registration needed for Google. For Outlook, built-in credentials are also included but may require admin consent on organizational accounts.
 
 Docker is the recommended deployment method — it provides the filesystem and network isolation that the security model depends on.
 
 ## Supported Providers
 
-| Provider | Tools | Built-in OAuth | Notes |
-|---|---|---|---|
-| Google Calendar | list calendars, list/get/create/update events | Yes | Works out of the box |
-| Outlook Calendar | list calendars, list/get/create/update events | Yes | Personal accounts work immediately. Organizational accounts may require IT admin consent |
-| Gmail | search, read message, create draft, list drafts | Yes | Read + draft only. No send, no delete — by design |
+| Provider | Tools | Built-in OAuth |
+|---|---|---|
+| Google Calendar | list calendars, list/get/create/update events | Yes |
+| Outlook Calendar | list calendars, list/get/create/update events | Yes |
+| Gmail | search, read, create draft, list drafts, send, reply, label, archive | Yes |
 
-No send or delete operations are implemented for any provider. Absence of code is the strongest guarantee.
+No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
 ## Policy Example
 
@@ -83,7 +83,7 @@ operations:
 
 ## Email Content Filters
 
-Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML and can be customized per connection.
+Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML.
 
 ### Filter Pipeline
 
@@ -144,11 +144,12 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 - **Two trust domains:** Agent-facing (`:4000`) and admin-facing (`:4001`) are separate servers on separate ports
 - **Deny by default:** Operations not listed in a policy are denied
 - **Hidden denied tools:** Agents never see tools they can't use — they don't know they exist
-- **Defense in depth:** Dangerous operations (email send, calendar delete) are not implemented as code
+- **Defense in depth:** Dangerous operations (calendar delete) are not implemented as code
 - **Encrypted at rest:** All OAuth credentials are encrypted with XSalsa20-Poly1305 (libsodium) in SQLite
 - **HTTP transport only:** Gatelet is never a child process of the agent — no shared memory, no stdio
 - **Audit everything:** Every tool call is logged with original params, mutated params, result, and timing
 - **Payload mutation:** Even when an operation is allowed, mutations can strip or override fields before the upstream call
+- **Rate limiting:** Failed admin auth attempts are rate-limited per IP (10 per minute)
 
 ## Configuration
 
@@ -158,18 +159,14 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + master key location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard token |
-| `GOOGLE_CLIENT_ID` | built-in | Override Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | built-in | Override Google OAuth client secret |
-| `MICROSOFT_CLIENT_ID` | built-in | Override Microsoft OAuth client ID |
-| `MICROSOFT_CLIENT_SECRET` | built-in | Override Microsoft OAuth client secret |
 
-OAuth credentials can also be configured through the admin dashboard under OAuth Settings.
+OAuth credentials can be configured through the admin dashboard under OAuth Settings.
 
 ## Docker
 
 The `docker-compose.yml` uses two networks for isolation:
 
-- **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`
+- **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`. This port is not published to the host.
 - **gatelet-egress** — Allows Gatelet to reach external APIs (Google, Microsoft)
 
 Admin port is bound to `127.0.0.1` only — not accessible from the network.
@@ -181,23 +178,33 @@ docker compose up -d   # Start with compose
 
 ## Development
 
-For local development only — runs without container isolation, not suitable for production.
-
 ```bash
 npm install
-npm run dev          # Start server with tsx
+npm run dev          # Start API + dashboard (Vite dev server)
 npm test             # Run tests (vitest)
 npm run test:watch   # Watch mode
-npm run build        # Build (tsup → dist/)
+npm run build        # Build dashboard + API (tsup → dist/)
 npm start            # Run production build
 ```
+
+### Doctor
+
+Health checks for verifying your setup:
+
+```bash
+npm run doctor          # Run all checks
+npm run doctor:fix      # Auto-fix what's fixable
+```
+
+Checks data directory, master key, database schema, admin token, port availability, connections, OAuth tokens, encryption, providers, and policy validity.
 
 ### Project Structure
 
 ```
 src/
-  admin/       Admin API (Hono on :4001) + server-rendered dashboard
+  admin/       Admin API (Hono on :4001)
   db/          SQLite + encrypted credential storage (libsodium)
+  doctor/      Health checks (CLI + admin API)
   mcp/         MCP server (raw HTTP on :4000, Streamable HTTP transport)
   policy/      Policy engine (pure functions, no side effects)
   providers/   Provider implementations
@@ -207,6 +214,8 @@ src/
     email/              Shared email types, content filters, HTML stripping
   config.ts    Environment variable config
   index.ts     Entry point
+  cli.ts       CLI entry point (gatelet, gatelet doctor)
+dashboard/     Admin dashboard (React, Vite, Tailwind)
 ```
 
 ## License

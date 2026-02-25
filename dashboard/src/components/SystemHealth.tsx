@@ -52,7 +52,7 @@ export function SystemHealth() {
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="overflow-hidden rounded-2xl bg-white shadow-lg shadow-zinc-950/5 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10"
+      className="glass overflow-hidden rounded-2xl shadow-lg shadow-zinc-950/5"
     >
       <div className="flex items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-3">

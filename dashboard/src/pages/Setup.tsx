@@ -98,7 +98,7 @@ export function Setup({ oauthProviders, onComplete }: Props) {
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 shadow-2xl dark:bg-white">
             <Logo className="h-8 w-8 text-white dark:text-zinc-950" />
           </div>
-          <h1 className="font-[Fraunces] text-3xl italic text-zinc-900 dark:text-white">Initialize Gatelet</h1>
+          <h1 className="font-[Fraunces] text-3xl font-bold italic text-zinc-900 dark:text-white">Initialize Gatelet</h1>
           <p className="mt-2 text-zinc-500">Securely bridge your AI agents to real-world data</p>
           
           <div className="mt-8">

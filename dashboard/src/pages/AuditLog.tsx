@@ -181,7 +181,7 @@ export function AuditLog() {
     <div className="space-y-6">
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+        <div className="flex items-center gap-2 rounded-2xl glass p-1 shadow-sm">
           <div className="pl-3 pr-1 text-zinc-400">
             <Filter className="h-3.5 w-3.5" />
           </div>
@@ -209,7 +209,7 @@ export function AuditLog() {
         </div>
 
         {/* Search tool */}
-        <div className="flex flex-1 items-center gap-3 rounded-2xl bg-white px-4 py-2 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+        <div className="flex flex-1 items-center gap-3 rounded-2xl glass px-4 py-2 shadow-sm">
           <Search className="h-3.5 w-3.5 text-zinc-400" />
           <select 
             value={toolFilter} 
@@ -245,7 +245,7 @@ export function AuditLog() {
       )}
 
       {/* Main List */}
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-white/10">
+      <div className="overflow-hidden rounded-2xl glass shadow-sm">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
             <Loader2 className="h-8 w-8 animate-spin" />

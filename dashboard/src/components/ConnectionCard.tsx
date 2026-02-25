@@ -87,7 +87,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
   return (
     <motion.div 
       layout
-      className="group overflow-hidden rounded-2xl bg-white ring-1 ring-zinc-200/50 transition-all duration-300 hover:shadow-xl hover:shadow-zinc-950/[0.03] hover:ring-zinc-300 dark:bg-zinc-900 dark:ring-white/10 dark:hover:ring-white/20"
+      className="group glass overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-zinc-950/[0.03] hover:ring-zinc-400/40 dark:hover:ring-white/20"
     >
       <div className="p-6">
         <div className="flex items-start gap-5">
