@@ -1,0 +1,57 @@
+---
+title: Installation
+description: How to install Gatelet on your system.
+---
+
+Gatelet is distributed as a lightweight CLI and a web dashboard.
+
+## One-Command Install (Recommended)
+
+### macOS and Linux
+Run the following command in your terminal:
+
+```bash
+curl -fsSL https://gatelet.dev/install.sh | sh
+```
+
+### Windows
+Run the following command in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://gatelet.dev/install.ps1)"
+```
+
+The scripts will:
+1. Detect your Operating System and Architecture.
+2. Check for Node.js (v18+).
+3. Install the `gatelet` package globally via npm.
+
+## Manual Installation
+
+If you prefer to use `npm` or `yarn` directly:
+
+```bash
+npm install -g gatelet
+```
+
+## Docker
+
+You can also run Gatelet using Docker:
+
+```bash
+docker run -p 3000:3000 -v ~/.gatelet:/app/data hannesill/gatelet
+```
+
+## Verify Installation
+
+Check if Gatelet is installed correctly by running:
+
+```bash
+gatelet --version
+```
+
+Next, run the doctor command to ensure your environment is ready:
+
+```bash
+gatelet doctor
+```

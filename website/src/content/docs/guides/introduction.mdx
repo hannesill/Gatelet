@@ -1,0 +1,20 @@
+---
+title: Introduction
+description: What is Gatelet?
+---
+
+Gatelet is a self-hosted permission proxy for the **Model Context Protocol (MCP)**.
+
+When you connect an AI agent (like Claude Desktop or Cursor) to an MCP server (like Google Calendar or Slack), you often give it full access to all tools. Gatelet sits in between, allowing you to:
+
+- **Filter Tools:** Only expose specific tools to specific agents.
+- **Constraint Parameters:** Ensure an agent can only call `send_email` to approved domains.
+- **Manage Identity:** Centralize your OAuth tokens and API keys.
+- **Audit Access:** Keep a record of every tool execution.
+
+## How it works
+
+1. You install Gatelet on your machine or server.
+2. You connect your MCP servers (Gmail, Calendar, etc.) to Gatelet.
+3. You configure "Policies" that define what is allowed.
+4. You point your AI agent to Gatelet's MCP endpoint instead of the raw servers.
