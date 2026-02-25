@@ -13,6 +13,7 @@ import statusRoutes from './routes/status.js';
 import providersRoutes from './routes/providers.js';
 import doctorRoutes from './routes/doctor.js';
 import totpRoutes from './routes/totp.js';
+import agentConfigRoutes from './routes/agent-config.js';
 import { config } from '../config.js';
 import { createRateLimiter } from '../rate-limit.js';
 import { createSession, validateSession, deleteSession } from './session.js';
@@ -209,6 +210,7 @@ export function createAdminApp(): Hono {
   app.route('/api', providersRoutes);
   app.route('/api', doctorRoutes);
   app.route('/api', totpRoutes);
+  app.route('/api', agentConfigRoutes);
 
   // SPA static file serving (only if dist/dashboard exists)
   if (hasSpa) {
