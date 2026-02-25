@@ -451,14 +451,17 @@ operations:
       });
     });
 
-    it('GET /api/audit returns entries', async () => {
+    it('GET /api/audit returns entries with total', async () => {
       const res = await req('/api/audit', {
         headers: authHeaders(),
       });
       expect(res.status).toBe(200);
-      const entries = await res.json();
-      expect(Array.isArray(entries)).toBe(true);
-      expect(entries.length).toBeGreaterThanOrEqual(3);
+      const body = await res.json();
+      expect(body).toHaveProperty('entries');
+      expect(body).toHaveProperty('total');
+      expect(Array.isArray(body.entries)).toBe(true);
+      expect(body.entries.length).toBeGreaterThanOrEqual(3);
+      expect(body.total).toBeGreaterThanOrEqual(3);
     });
 
     it('GET /api/audit?result=denied filters entries', async () => {
@@ -466,9 +469,9 @@ operations:
         headers: authHeaders(),
       });
       expect(res.status).toBe(200);
-      const entries = await res.json();
-      expect(entries.length).toBeGreaterThanOrEqual(1);
-      for (const entry of entries) {
+      const body = await res.json();
+      expect(body.entries.length).toBeGreaterThanOrEqual(1);
+      for (const entry of body.entries) {
         expect(entry.result).toBe('denied');
       }
     });
@@ -478,8 +481,9 @@ operations:
         headers: authHeaders(),
       });
       expect(res.status).toBe(200);
-      const entries = await res.json();
-      expect(entries.length).toBe(1);
+      const body = await res.json();
+      expect(body.entries.length).toBe(1);
+      expect(body.total).toBeGreaterThanOrEqual(3);
     });
   });
 

@@ -15,7 +15,7 @@ interface Props {
   onSaved: () => void;
 }
 
-function PolicyReference({ providerId }: { providerId: string }) {
+function PolicyReference({ providerId, onLoadExample }: { providerId: string; onLoadExample: (yaml: string) => void }) {
   const { data } = useApi(() => api.getProviderReference(providerId), [providerId]);
   if (!data) return null;
 
@@ -23,10 +23,19 @@ function PolicyReference({ providerId }: { providerId: string }) {
     <div className="space-y-5 text-xs">
       <div>
         <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Operations</h4>
-        <div className="space-y-1">
+        <div className="space-y-2">
           {data.operations.map(op => (
             <div key={op.name}>
               <code className="text-zinc-700 dark:text-zinc-300">{op.policyOperation}</code>
+              {op.fields.length > 0 && (
+                <div className="ml-3 mt-0.5 flex flex-wrap gap-1">
+                  {op.fields.map(f => (
+                    <span key={f} className="rounded bg-zinc-200/60 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-white/5 dark:text-zinc-500">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -51,6 +60,16 @@ function PolicyReference({ providerId }: { providerId: string }) {
           ))}
         </div>
       </div>
+      {data.example && (
+        <div>
+          <button
+            onClick={() => onLoadExample(data.example)}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+          >
+            Load Example
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -82,6 +101,7 @@ function WarningIcon({ className }: { className?: string }) {
 export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Props) {
   const { data: initialYaml } = useApi(() => api.getPolicy(connectionId), [connectionId]);
   const [value, setValue] = useState('');
+  const [dirty, setDirty] = useState(false);
   const [validation, setValidation] = useState<PolicyValidation | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -103,6 +123,17 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
     }, 500);
     return () => clearTimeout(timeout);
   }, [value, connectionId]);
+
+  function handleChange(v: string) {
+    setValue(v);
+    setDirty(true);
+  }
+
+  function handleLoadExample(exampleYaml: string) {
+    if (dirty && !confirm('Replace current editor content with the example?')) return;
+    setValue(exampleYaml);
+    setDirty(true);
+  }
 
   async function save() {
     setSaving(true);
@@ -141,7 +172,7 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
         <div className="lg:col-span-2 space-y-3">
           <CodeMirror
             value={value}
-            onChange={setValue}
+            onChange={handleChange}
             extensions={[yaml()]}
             theme={resolved}
             className="overflow-hidden rounded-lg ring-1 ring-zinc-950/10 text-sm dark:ring-white/10 [&_.cm-editor]:!bg-white dark:[&_.cm-editor]:!bg-zinc-900"
@@ -180,7 +211,7 @@ export function PolicyEditor({ connectionId, providerId, onClose, onSaved }: Pro
         {/* Reference panel */}
         <div className="rounded-lg bg-zinc-50 p-4 ring-1 ring-zinc-950/5 dark:bg-zinc-800/40 dark:ring-white/5">
           <h4 className="mb-3 text-xs font-semibold text-zinc-700 dark:text-zinc-300">Reference</h4>
-          <PolicyReference providerId={providerId} />
+          <PolicyReference providerId={providerId} onLoadExample={handleLoadExample} />
         </div>
       </div>
 

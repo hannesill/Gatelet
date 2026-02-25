@@ -9,6 +9,7 @@ import { AuditLog } from './pages/AuditLog';
 import { Settings } from './pages/Settings';
 import { Layout, type TabName } from './components/Layout';
 import { api } from './api';
+import { Logo } from './components/Logo';
 import type { Status } from './types';
 
 /** Check auth by fetching /api/status — returns data on success, null on 401 */
@@ -64,8 +65,18 @@ function AppContent() {
     setStatus(null);
   }
 
-  // Loading — show nothing to avoid flicker
-  if (authed === null) return null;
+  // Loading
+  if (authed === null) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <Logo className="h-10 w-10 text-zinc-400 animate-pulse" />
+        <svg className="h-5 w-5 animate-spin text-zinc-400" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
 
   // Not authenticated
   if (!authed) {

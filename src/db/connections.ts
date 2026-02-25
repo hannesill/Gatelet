@@ -8,6 +8,7 @@ export interface Connection {
   account_name: string;
   policy_yaml: string;
   settings_json: string;
+  enabled: number;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +24,7 @@ interface ConnectionRow {
   credentials_encrypted: Buffer;
   policy_yaml: string;
   settings_json: string;
+  enabled: number;
   created_at: string;
   updated_at: string;
 }
@@ -31,7 +33,7 @@ export function listConnections(): Connection[] {
   const db = getDb();
   const rows = db
     .prepare(
-      'SELECT id, provider_id, account_name, policy_yaml, settings_json, created_at, updated_at FROM connections',
+      'SELECT id, provider_id, account_name, policy_yaml, settings_json, enabled, created_at, updated_at FROM connections',
     )
     .all() as Connection[];
   return rows;
@@ -44,7 +46,7 @@ export function findConnectionByProviderAccount(
   const db = getDb();
   return db
     .prepare(
-      'SELECT id, provider_id, account_name, policy_yaml, settings_json, created_at, updated_at FROM connections WHERE provider_id = ? AND account_name = ?',
+      'SELECT id, provider_id, account_name, policy_yaml, settings_json, enabled, created_at, updated_at FROM connections WHERE provider_id = ? AND account_name = ?',
     )
     .get(providerId, accountName) as Connection | undefined;
 }
@@ -53,7 +55,7 @@ export function getConnection(id: string): Connection | undefined {
   const db = getDb();
   return db
     .prepare(
-      'SELECT id, provider_id, account_name, policy_yaml, settings_json, created_at, updated_at FROM connections WHERE id = ?',
+      'SELECT id, provider_id, account_name, policy_yaml, settings_json, enabled, created_at, updated_at FROM connections WHERE id = ?',
     )
     .get(id) as Connection | undefined;
 }
@@ -75,6 +77,7 @@ export function getConnectionWithCredentials(
     account_name: row.account_name,
     policy_yaml: row.policy_yaml,
     settings_json: row.settings_json,
+    enabled: row.enabled,
     created_at: row.created_at,
     updated_at: row.updated_at,
     credentials,
@@ -133,4 +136,12 @@ export function updateConnectionSettings(id: string, settings: Record<string, un
   db.prepare(
     "UPDATE connections SET settings_json = ?, updated_at = datetime('now') WHERE id = ?",
   ).run(JSON.stringify(settings), id);
+}
+
+export function toggleConnectionEnabled(id: string, enabled: boolean): boolean {
+  const db = getDb();
+  const result = db.prepare(
+    "UPDATE connections SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(enabled ? 1 : 0, id);
+  return result.changes > 0;
 }

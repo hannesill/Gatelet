@@ -6,6 +6,7 @@ export interface ConnectionWithMeta {
   enabledTools: number;
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
+  enabled: boolean;
   created_at: string;
   updated_at: string;
   policy_yaml: string;
@@ -43,13 +44,21 @@ export interface OAuthProvider {
 
 export interface AuditEntry {
   id: string;
+  api_key_id: string | null;
+  connection_id: string | null;
   tool_name: string;
   result: string;
   deny_reason: string | null;
   original_params: string | null;
   mutated_params: string | null;
+  response_summary: string | null;
   duration_ms: number | null;
   timestamp: string;
+}
+
+export interface AuditResponse {
+  entries: AuditEntry[];
+  total: number;
 }
 
 export interface DoctorCheck {

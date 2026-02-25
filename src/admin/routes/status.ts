@@ -14,6 +14,7 @@ interface ConnectionWithMeta {
   enabledTools: number;
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
+  enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ app.get('/status', (c) => {
       enabledTools,
       totalTools,
       tokenStatus: getTokenStatus(conn.id),
+      enabled: conn.enabled !== 0,
       created_at: conn.created_at,
       updated_at: conn.updated_at,
     };

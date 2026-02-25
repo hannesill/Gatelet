@@ -12,7 +12,7 @@ export interface RegisteredTool {
 
 export function buildToolRegistry(): Map<string, RegisteredTool> {
   const registry = new Map<string, RegisteredTool>();
-  const connections = listConnections();
+  const connections = listConnections().filter(c => c.enabled !== 0);
 
   for (const conn of connections) {
     const provider = getProvider(conn.provider_id);

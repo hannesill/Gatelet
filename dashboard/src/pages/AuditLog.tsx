@@ -3,21 +3,27 @@ import { useApi } from '../hooks/useApi';
 import { api } from '../api';
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Filter, 
-  Clock, 
-  ChevronRight, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Search,
+  Filter,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  XCircle,
   AlertTriangle,
   FileCode,
   Terminal,
   Zap,
   Info,
-  Loader2
+  Loader2,
+  Key,
+  Link2,
+  FileText
 } from 'lucide-react';
 import type { AuditEntry } from '../types';
+
+const PAGE_SIZE = 50;
 
 function relativeTime(timestamp: string): string {
   const now = Date.now();
@@ -71,6 +77,18 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
               {relativeTime(entry.timestamp)}
             </span>
             <span className="capitalize">{entry.result}</span>
+            {entry.api_key_id && (
+              <span className="flex items-center gap-1" title="API Key ID">
+                <Key className="h-3 w-3" />
+                {entry.api_key_id.slice(0, 12)}...
+              </span>
+            )}
+            {entry.connection_id && (
+              <span className="flex items-center gap-1" title="Connection ID">
+                <Link2 className="h-3 w-3" />
+                {entry.connection_id.slice(0, 12)}...
+              </span>
+            )}
           </div>
         </div>
 
@@ -95,6 +113,13 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
                   <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                     <p>{entry.deny_reason}</p>
+                  </div>
+                )}
+
+                {entry.response_summary && (
+                  <div className="flex items-start gap-3 rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-white/5 dark:text-zinc-300">
+                    <FileText className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400" />
+                    <p>{entry.response_summary}</p>
                   </div>
                 )}
 
@@ -124,7 +149,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
                   )}
                 </div>
 
-                {!entry.deny_reason && !entry.original_params && !entry.mutated_params && (
+                {!entry.deny_reason && !entry.original_params && !entry.mutated_params && !entry.response_summary && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Info className="h-8 w-8 text-zinc-200 dark:text-zinc-800" />
                     <p className="mt-2 text-sm text-zinc-500">No extra details available for this call.</p>
@@ -156,9 +181,11 @@ export function AuditLog() {
   const [toolFilter, setToolFilter] = useState('');
   const [resultFilter, setResultFilter] = useState('');
   const [period, setPeriod] = useState('24h');
+  const [page, setPage] = useState(0);
 
   const params: Record<string, string> = {
-    limit: '100',
+    limit: String(PAGE_SIZE),
+    offset: String(page * PAGE_SIZE),
     ...periodToParams(period),
     ...(toolFilter ? { tool_name: toolFilter } : {}),
     ...(resultFilter ? { result: resultFilter } : {}),
@@ -166,16 +193,27 @@ export function AuditLog() {
 
   const { data, loading } = useApi(
     () => api.getAudit(params),
-    [toolFilter, resultFilter, period],
+    [toolFilter, resultFilter, period, page],
   );
 
-  const toolNames = [...new Set(data?.map(e => e.tool_name) ?? [])].sort();
+  const entries = data?.entries ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const toolNames = [...new Set(entries.map(e => e.tool_name))].sort();
 
   // Count by result type
   const counts = { allowed: 0, denied: 0, error: 0 };
-  data?.forEach(e => {
+  entries.forEach(e => {
     if (e.result in counts) counts[e.result as keyof typeof counts]++;
   });
+
+  function handleFilterChange(setter: (v: string) => void) {
+    return (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setter(e.target.value);
+      setPage(0);
+    };
+  }
 
   return (
     <div className="space-y-6">
@@ -185,9 +223,9 @@ export function AuditLog() {
           <div className="pl-3 pr-1 text-zinc-400">
             <Filter className="h-3.5 w-3.5" />
           </div>
-          <select 
-            value={period} 
-            onChange={e => setPeriod(e.target.value)}
+          <select
+            value={period}
+            onChange={handleFilterChange(setPeriod)}
             className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
           >
             <option value="1h">Last hour</option>
@@ -196,9 +234,9 @@ export function AuditLog() {
             <option value="all">All time</option>
           </select>
           <div className="w-px h-4 bg-zinc-200 dark:bg-white/10 mx-1" />
-          <select 
-            value={resultFilter} 
-            onChange={e => setResultFilter(e.target.value)}
+          <select
+            value={resultFilter}
+            onChange={handleFilterChange(setResultFilter)}
             className="bg-transparent border-0 text-xs font-semibold py-1.5 focus:ring-0 dark:text-zinc-300"
           >
             <option value="">All results</option>
@@ -211,9 +249,9 @@ export function AuditLog() {
         {/* Search tool */}
         <div className="flex flex-1 items-center gap-3 rounded-2xl glass px-4 py-2 shadow-sm">
           <Search className="h-3.5 w-3.5 text-zinc-400" />
-          <select 
-            value={toolFilter} 
-            onChange={e => setToolFilter(e.target.value)}
+          <select
+            value={toolFilter}
+            onChange={handleFilterChange(setToolFilter)}
             className="flex-1 bg-transparent border-0 text-xs font-semibold p-0 focus:ring-0 dark:text-zinc-300"
           >
             <option value="">Search all tools...</option>
@@ -223,7 +261,7 @@ export function AuditLog() {
       </div>
 
       {/* Summary Chips */}
-      {data && data.length > 0 && (
+      {entries.length > 0 && (
         <div className="flex gap-2">
           {counts.allowed > 0 && (
             <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
@@ -239,7 +277,7 @@ export function AuditLog() {
           )}
           <div className="flex-1" />
           <div className="text-xs font-medium text-zinc-400 pt-1">
-            {data.length} entries shown
+            {total} total &middot; page {page + 1} of {totalPages}
           </div>
         </div>
       )}
@@ -251,7 +289,7 @@ export function AuditLog() {
             <Loader2 className="h-8 w-8 animate-spin" />
             <p className="mt-4 text-sm font-medium">Fetching audit trail...</p>
           </div>
-        ) : data && data.length === 0 ? (
+        ) : entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-zinc-50 dark:bg-white/5 mb-4">
               <FileCode className="h-8 w-8 text-zinc-300 dark:text-zinc-700" />
@@ -261,12 +299,37 @@ export function AuditLog() {
           </div>
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-white/5">
-            {data?.map((entry) => (
+            {entries.map((entry) => (
               <AuditRow key={entry.id ?? entry.timestamp} entry={entry} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-zinc-400 dark:hover:bg-white/5"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </button>
+          <span className="text-xs font-medium text-zinc-400">
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium text-zinc-600 transition-all hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed dark:text-zinc-400 dark:hover:bg-white/5"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

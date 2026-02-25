@@ -1,4 +1,4 @@
-import type { Status, ApiKey, AuditEntry, DoctorCheck, PolicyValidation, ProviderReference } from './types';
+import type { Status, ApiKey, AuditResponse, DoctorCheck, PolicyValidation, ProviderReference } from './types';
 
 class AuthError extends Error {
   constructor() {
@@ -43,6 +43,20 @@ export const api = {
 
   deleteConnection: (id: string) => request<{ deleted: boolean }>(`/api/connections/${id}`, { method: 'DELETE' }),
 
+  toggleConnection: (id: string, enabled: boolean) =>
+    request<{ updated: boolean; enabled: boolean }>(`/api/connections/${id}/enabled`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+
+  getConnectionSettings: (id: string) => request<Record<string, unknown>>(`/api/connections/${id}/settings`),
+
+  saveConnectionSettings: (id: string, settings: Record<string, unknown>) =>
+    request<{ updated: boolean }>(`/api/connections/${id}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }),
+
   getPolicy: async (id: string): Promise<string> => {
     const res = await fetch(`/api/connections/${id}/policy`);
     if (res.status === 401) throw new AuthError();
@@ -77,7 +91,7 @@ export const api = {
   revokeApiKey: (id: string) => request<{ revoked: boolean }>(`/api/api-keys/${id}`, { method: 'DELETE' }),
 
   getAudit: (params: Record<string, string>) =>
-    request<AuditEntry[]>(`/api/audit?${new URLSearchParams(params)}`),
+    request<AuditResponse>(`/api/audit?${new URLSearchParams(params)}`),
 
   getDoctor: () => request<DoctorCheck[]>('/api/doctor'),
 

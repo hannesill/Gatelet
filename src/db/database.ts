@@ -66,6 +66,11 @@ export function getDb(): Database.Database {
   } catch {
     // Column already exists
   }
+  try {
+    db.exec(`ALTER TABLE connections ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1`);
+  } catch {
+    // Column already exists
+  }
 
   return db;
 }

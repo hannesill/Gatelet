@@ -1,13 +1,18 @@
+import { useState } from 'react';
 import { useToast } from '../hooks/useToast';
-import { Copy, Terminal, CheckCircle2 } from 'lucide-react';
+import { Copy, Terminal, CheckCircle2, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function AgentConfig({ apiKey }: { apiKey: string }) {
   const { toast } = useToast();
+  const [mcpUrl, setMcpUrl] = useState(
+    `http://${window.location.hostname}:4000/mcp`,
+  );
+
   const config = JSON.stringify({
     mcpServers: {
       gatelet: {
-        url: 'http://localhost:4000/mcp',
+        url: mcpUrl,
         headers: { Authorization: `Bearer ${apiKey}` },
       },
     },
@@ -18,7 +23,7 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="glass-dark overflow-hidden rounded-2xl shadow-2xl shadow-zinc-950/20"
@@ -35,6 +40,19 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
           <Copy className="h-3 w-3" />
           Copy JSON
         </button>
+      </div>
+      <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.03] px-5 py-2.5">
+        <Pencil className="h-3 w-3 shrink-0 text-zinc-500" />
+        <label className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+          MCP URL
+        </label>
+        <input
+          type="text"
+          value={mcpUrl}
+          onChange={e => setMcpUrl(e.target.value)}
+          className="flex-1 rounded-md border-0 bg-white/5 px-2.5 py-1 text-xs text-zinc-300 ring-1 ring-white/10 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+          spellCheck={false}
+        />
       </div>
       <div className="relative">
         <pre className="overflow-x-auto p-6 font-mono text-xs leading-relaxed text-zinc-300 scrollbar-hide">

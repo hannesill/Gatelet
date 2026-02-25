@@ -9,6 +9,7 @@ import {
   updateConnectionPolicy,
   getConnectionSettings,
   updateConnectionSettings,
+  toggleConnectionEnabled,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
@@ -115,6 +116,23 @@ app.put('/connections/:id/settings', async (c) => {
 
   updateConnectionSettings(id, body);
   return c.json({ updated: true });
+});
+
+app.patch('/connections/:id/enabled', async (c) => {
+  const id = c.req.param('id');
+  const conn = getConnection(id);
+  if (!conn) {
+    return c.json({ error: 'Connection not found' }, 404);
+  }
+
+  const body = await c.req.json();
+  if (typeof body.enabled !== 'boolean') {
+    return c.json({ error: 'enabled must be a boolean' }, 400);
+  }
+
+  toggleConnectionEnabled(id, body.enabled);
+  refreshToolRegistry();
+  return c.json({ updated: true, enabled: body.enabled });
 });
 
 app.get('/connections/oauth/:providerId/start', (c) => {
