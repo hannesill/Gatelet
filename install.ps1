@@ -141,7 +141,7 @@ Write-Host "  Admin token  $AdminToken" -ForegroundColor Cyan
 Write-Host "  Install dir  $GateletDir" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  MCP endpoint (for agents on the Docker network):" -ForegroundColor DarkGray
-Write-Host "  http://gatelet:4000/sse" -ForegroundColor DarkGray
+Write-Host "  http://gatelet:4000/mcp" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Manage:  cd $GateletDir; $Compose logs -f"
 Write-Host "  Stop:    cd $GateletDir; $Compose down"

@@ -24,7 +24,7 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -37,10 +37,9 @@
   to { opacity: 1; }
 }
 
-@keyframes gradient-drift {
-  0% { background-position: 0% 50%; }
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 @keyframes dot-pulse {
@@ -53,24 +52,62 @@
   50% { transform: translateY(-6px); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .animate-in {
-  animation: fadeInUp 0.35s ease-out both;
+  animation: fadeInUp 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 .animate-fade {
   animation: fadeIn 0.3s ease-out both;
 }
 
-.stagger-1 { animation-delay: 60ms; }
-.stagger-2 { animation-delay: 120ms; }
-.stagger-3 { animation-delay: 180ms; }
-.stagger-4 { animation-delay: 240ms; }
-.stagger-5 { animation-delay: 300ms; }
+.stagger-1 { animation-delay: 80ms; }
+.stagger-2 { animation-delay: 160ms; }
+.stagger-3 { animation-delay: 240ms; }
+.stagger-4 { animation-delay: 320ms; }
+.stagger-5 { animation-delay: 400ms; }
+.stagger-6 { animation-delay: 500ms; }
+
+/* ─── Gradient text ─── */
+.gradient-text {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7, #4f46e5);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc, #818cf8);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* ─── CSS-only backgrounds (replaces 900-element React component) ─── */
+.bg-grid {
+  background-image: radial-gradient(circle, rgb(99 102 241 / 0.3) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-grid-video {
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.12), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 65% 0%, rgba(124, 58, 237, 0.08), transparent 60%);
+}
+
+.dark .hero-glow {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99, 102, 241, 0.08), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 65% 0%, rgba(124, 58, 237, 0.06), transparent 60%);
+}
 
 /* ─── Scroll-triggered reveal ─── */
 .reveal {
@@ -172,6 +209,27 @@
 /* ─── Logo float animation ─── */
 .logo-float {
   animation: gentle-float 4s ease-in-out infinite;
+}
+
+/* ─── Marquee (scrolling logo background) ─── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes marquee-reverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+.marquee {
+  animation: marquee linear infinite;
+  will-change: transform;
+}
+
+.marquee-reverse {
+  animation: marquee-reverse linear infinite;
+  will-change: transform;
 }
 
 /* ─── Monospace elements ─── */

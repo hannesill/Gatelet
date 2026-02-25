@@ -1,30 +1,57 @@
-# Gatelet
+<p align="center">
+  <img src="assets/logo.png" alt="Gatelet" width="120" height="120" />
+</p>
 
-Self-hosted MCP permission proxy for AI agents. Sits between your AI agent and personal services (Google Calendar, Outlook Calendar, Gmail), holding OAuth credentials in encrypted storage and enforcing fine-grained YAML policies — including payload mutation.
+<h1 align="center">Gatelet</h1>
 
-The agent connects via a policy-enforced MCP endpoint and can only perform operations the policy allows. Operations not listed are denied. Denied tools are invisible to the agent.
+<p align="center">
+  <strong>The missing permission layer for your AI agents.</strong><br/>
+  Control exactly what your models can see and do — via MCP.
+</p>
+
+<p align="center">
+  <a href="https://github.com/hannesill/Gatelet/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="MIT License" /></a>
+  <a href="https://github.com/hannesill/Gatelet/releases"><img src="https://img.shields.io/github/v/release/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="Release" /></a>
+  <a href="https://github.com/hannesill/Gatelet"><img src="https://img.shields.io/github/stars/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="GitHub Stars" /></a>
+</p>
+
+<p align="center">
+  <a href="https://gatelet.dev">Website</a> · <a href="https://gatelet.dev/intro">Docs</a> · <a href="https://github.com/hannesill/Gatelet/issues">Issues</a>
+</p>
+
+---
+
+Gatelet is a self-hosted MCP permission proxy that sits between your AI agent and your personal services. It holds OAuth credentials in encrypted storage and enforces fine-grained YAML policies — including payload mutation.
+
+Your agent connects via a policy-enforced MCP endpoint and can only perform operations the policy allows. Operations not listed are denied. Denied tools are invisible — the agent never knows they exist.
 
 ## How It Works
 
 ```
-                                                    ┌──────────────┐
-                                                   ┌▸│ Google Cal   │
-┌─────────┐     MCP/HTTP      ┌──────────┐        │ └──────────────┘
-│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │ ───────┤ ┌──────────────┐
-│          │  bearer token     │          │        ├▸│ Outlook Cal  │
-└─────────┘                    └──────────┘        │ └──────────────┘
-                                    │              │ ┌──────────────┐
-                               :4001 Admin         └▸│ Gmail        │
-                               (localhost only)      └──────────────┘
+                                                ┌──────────────┐
+                                               ┌▸│ Google Cal   │
+┌─────────┐     MCP/HTTP      ┌──────────┐    │ └──────────────┘
+│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │ ───┤ ┌──────────────┐
+│          │  bearer token     │          │    ├▸│ Outlook Cal  │
+└─────────┘                    └──────────┘    │ └──────────────┘
+                                    │          │ ┌──────────────┐
+                               :4001 Admin     └▸│ Gmail        │
+                               (localhost)       └──────────────┘
 ```
 
-1. You connect your accounts (Google, Microsoft) via the admin dashboard on `:4001`
-2. You write YAML policies that define what the agent can do
+1. Connect your accounts (Google, Microsoft) via the admin dashboard on `:4001`
+2. Write YAML policies that define what the agent can do
 3. Agent connects to `:4000/mcp` with an API key — sees only allowed tools
-4. On each tool call: validate constraints, apply mutations, call upstream API
+4. Each tool call is validated against constraints, mutations are applied, then forwarded upstream
 5. Every call is audit-logged with parameters, result, and timing
 
 ## Quick Start
+
+```bash
+npx gatelet@latest
+```
+
+Or via install script:
 
 ```bash
 # macOS / Linux
@@ -40,31 +67,29 @@ This pulls the Docker image, generates an admin token, and starts Gatelet in `~/
 open http://localhost:4001   # paste the admin token to log in
 ```
 
-The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included so you don't need to register your own app. For Outlook, built-in credentials may require admin consent on organizational accounts.
+The dashboard walks you through setup: generate an API key, connect your accounts via OAuth, copy the MCP config into your agent. Built-in OAuth credentials are included so you don't need to register your own app.
 
-> **Note:** The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, you can register your own OAuth app and enter your credentials under **Settings > Integrations** in the dashboard.
+> **Note:** The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, register your own OAuth app under **Settings > Integrations** in the dashboard.
 
-Docker is the recommended deployment method — it provides the filesystem and network isolation that the security model depends on.
+Docker is the recommended deployment method — it provides the filesystem and network isolation the security model depends on.
+
+### Encryption Passphrase
+
+On first run, Gatelet prompts for an encryption passphrase (8+ characters). This passphrase derives the master key used to encrypt all OAuth credentials and secrets at rest. You'll need it every time the server starts.
+
+For automated/Docker deployments, set the `GATELET_PASSPHRASE` environment variable to skip the interactive prompt.
 
 ## Updating
+
+The install script includes [Watchtower](https://containrrr.dev/watchtower/), which automatically pulls new images and restarts the container. Updates are checked every 5 minutes.
+
+To update manually instead:
 
 ```bash
 cd ~/.gatelet && docker compose pull && docker compose up -d
 ```
 
-This pulls the latest image and recreates the container. Your data volume is preserved across updates.
-
-For automatic updates, add [Watchtower](https://containrrr.dev/watchtower/) to your `~/.gatelet/docker-compose.yml`:
-
-```yaml
-watchtower:
-  image: containrrr/watchtower
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  command: --interval 3600 gatelet
-```
-
-This checks for new images every hour and restarts automatically.
+Your data volume is preserved across updates.
 
 ## Supported Providers
 
@@ -76,7 +101,22 @@ This checks for new images every hour and restarts automatically.
 
 No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
-## Policy Example
+## Supported Agents
+
+The admin dashboard can install Gatelet's MCP config directly into your agent's configuration file:
+
+| Agent | Config file |
+|---|---|
+| OpenClaw | `~/.openclaw/config.json` |
+| Claude Code | `~/.claude.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
+| Codex | `~/.codex/config.toml` |
+
+Or configure any MCP-compatible agent manually — point it at `http://gatelet:4000/mcp` (Docker network) or `http://localhost:4000/mcp` (local) with a Bearer token.
+
+## Policies
+
+Policies are YAML files that define what an agent can do with a connected account. Here's an example:
 
 ```yaml
 provider: google_calendar
@@ -107,9 +147,39 @@ operations:
   # delete_event: not implemented in code → impossible
 ```
 
-**Constraints** validate input fields — reject the call if violated. Denial messages include expected vs actual values so the agent can self-correct.
+### Constraints
 
-**Mutations** modify fields before sending upstream — the agent never knows. Use these to strip attendees, force private visibility, or set default values.
+Validate input fields before the call is made. If a constraint is violated, the call is rejected with a message showing expected vs actual values — so the agent can self-correct.
+
+| Rule | Description |
+|---|---|
+| `must_equal` | Field must exactly match the given value |
+| `must_be_one_of` | Field must be one of the values in the given array |
+| `must_not_be_empty` | Field must not be null, empty, or whitespace |
+| `must_match` | Field must match a regex pattern (JavaScript syntax, case-insensitive) |
+
+### Mutations
+
+Modify fields before sending upstream. The agent never knows. Use these to strip attendees, force private visibility, or set default values.
+
+| Action | Description |
+|---|---|
+| `set` | Set the field to a given value (supports nested paths via dot notation, e.g. `start.timeZone`) |
+| `delete` | Remove the field entirely |
+
+### Field Policies
+
+Operations can optionally restrict which fields the agent is allowed to send:
+
+```yaml
+create_event:
+  allow: true
+  allowed_fields: [calendarId, summary, start, end]   # only these fields accepted
+  # or:
+  denied_fields: [attendees, guestsCanInviteOthers]    # these fields stripped
+```
+
+`allowed_fields` is a whitelist — all other fields are stripped. `denied_fields` is a blacklist — listed fields are stripped. Use one or the other (not both).
 
 ## Email Content Filters
 
@@ -125,17 +195,22 @@ Messages pass through three stages in order:
 
 Blocked messages return a notice — the agent knows the message exists but cannot read its content.
 
-### Default Blocked Subjects
+<details>
+<summary><strong>Default blocked subjects</strong></summary>
 
-Messages matching these are blocked entirely (case-insensitive substring match):
+`password reset` · `reset your password` · `verification code` · `security code` · `two-factor` · `2FA` · `one-time password` · `OTP` · `sign-in attempt` · `login alert` · `security alert` · `confirm your identity`
 
-`password reset` `reset your password` `verification code` `security code` `two-factor` `2FA` `one-time password` `OTP` `sign-in attempt` `login alert` `security alert` `confirm your identity`
+</details>
 
-### Default Blocked Sender Domains
+<details>
+<summary><strong>Default blocked sender domains</strong></summary>
 
-`accounts.google.com` `accountprotection.microsoft.com`
+`accounts.google.com` · `accountprotection.microsoft.com`
 
-### Default PII Redaction
+</details>
+
+<details>
+<summary><strong>Default PII redaction</strong></summary>
 
 | What | Example | Replaced with |
 |---|---|---|
@@ -148,6 +223,8 @@ Messages matching these are blocked entirely (case-insensitive substring match):
 | Bank account number | `account: 12345678901` | `account [REDACTED]` |
 
 Prices, dates, order numbers, tracking numbers, phone numbers, flight numbers, ZIP codes, and confirmation codes are **not redacted** — agents need these to be useful.
+
+</details>
 
 ### Customizing Filters
 
@@ -171,24 +248,27 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 
 ## Security Model
 
-- **Two trust domains:** Agent-facing (`:4000`) and admin-facing (`:4001`) are separate servers on separate ports
-- **Deny by default:** Operations not listed in a policy are denied
-- **Hidden denied tools:** Agents never see tools they can't use — they don't know they exist
-- **Defense in depth:** Dangerous operations (calendar delete) are not implemented as code
-- **Encrypted at rest:** All OAuth credentials are encrypted with XSalsa20-Poly1305 (libsodium) in SQLite
-- **HTTP transport only:** Gatelet is never a child process of the agent — no shared memory, no stdio
-- **Audit everything:** Every tool call is logged with original params, mutated params, result, and timing
-- **Payload mutation:** Even when an operation is allowed, mutations can strip or override fields before the upstream call
-- **Rate limiting:** Failed admin auth attempts are rate-limited per IP (10 per minute)
+| Principle | How |
+|---|---|
+| **Two trust domains** | Agent-facing (`:4000`) and admin-facing (`:4001`) are separate servers on separate ports |
+| **Deny by default** | Operations not listed in a policy are denied |
+| **Hidden denied tools** | Agents never see tools they can't use — they don't know they exist |
+| **Defense in depth** | Dangerous operations (calendar delete) are not implemented as code |
+| **Passphrase encryption** | Master key derived from passphrase via Argon2id; credentials encrypted with XSalsa20-Poly1305 (libsodium) |
+| **HTTP transport only** | Gatelet is never a child process of the agent — no shared memory, no stdio |
+| **Two-factor auth** | Admin dashboard supports TOTP 2FA with backup codes |
+| **Audit everything** | Every tool call logged with original params, mutated params, result, and timing |
+| **Payload mutation** | Even when an operation is allowed, mutations can strip or override fields before the upstream call |
+| **Rate limiting** | Failed auth attempts (admin and API key) are rate-limited per IP (10 per minute) |
 
-## Why Not a CLI?
+### Why Not a CLI?
 
 Many MCPs are thin API wrappers that would be better as CLIs invoked by agent skills. Gatelet is not one of them — it's a security boundary, not a tool.
 
-- **Network isolation is the point.** Gatelet runs as a separate HTTP service, never as a child process. A CLI runs inside the agent's sandbox, sharing filesystem and process access. A compromised agent could inspect the binary, read config, or call upstream APIs directly.
-- **Tool visibility requires protocol-level control.** Gatelet only registers allowed tools in MCP — denied tools don't exist from the agent's perspective. A CLI can only return "not found" errors after the fact, leaking what operations exist.
-- **Credentials never touch the agent process.** OAuth tokens live in Gatelet's encrypted database, accessed only over HTTP. A CLI would need tokens passed as arguments or read from files the agent can reach.
-- **Transparent policy enforcement.** The agent calls `gmail_search` thinking it's talking to Gmail. Gatelet silently applies mutations, strips fields, and audits everything. No wrapper awareness, no routing around it.
+- **Network isolation is the point.** Gatelet runs as a separate HTTP service, never as a child process. A CLI runs inside the agent's sandbox, sharing filesystem and process access.
+- **Tool visibility requires protocol-level control.** Gatelet only registers allowed tools in MCP — denied tools don't exist. A CLI can only return "not found" errors after the fact, leaking what operations exist.
+- **Credentials never touch the agent process.** OAuth tokens live in Gatelet's encrypted database, accessed only over HTTP.
+- **Transparent policy enforcement.** The agent calls `gmail_search` thinking it's talking to Gmail. Gatelet silently applies mutations, strips fields, and audits everything.
 
 ## Configuration
 
@@ -198,23 +278,24 @@ Many MCPs are thin API wrappers that would be better as CLIs invoked by agent sk
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + master key location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard token |
+| `GATELET_PASSPHRASE` | prompted | Encryption passphrase — set this for automated/Docker deployments |
 
-OAuth credentials can be configured through the admin dashboard under OAuth Settings.
+OAuth credentials can be configured through the admin dashboard under Settings > Integrations.
 
 ## Docker
 
-The install script sets up Docker Compose automatically. If you prefer to manage it yourself, the `docker-compose.yml` uses two networks for isolation:
+The install script sets up Docker Compose automatically. The `docker-compose.yml` uses two networks for isolation:
 
-- **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`. This port is not published to the host.
-- **gatelet-egress** — Allows Gatelet to reach external APIs (Google, Microsoft)
+- **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`. Not published to the host.
+- **gatelet-egress** — Allows Gatelet to reach external APIs (Google, Microsoft).
 
 Admin port is bound to `127.0.0.1` only — not accessible from the network.
 
-To build from source instead of pulling the published image:
+To build from source:
 
 ```bash
-npm run docker:build   # Build production image
-docker compose up -d   # Start with compose
+npm run docker:build
+docker compose up -d
 ```
 
 ## Development
@@ -233,17 +314,20 @@ npm start            # Run production build
 Health checks for verifying your setup:
 
 ```bash
-npm run doctor          # Run all checks
-npm run doctor:fix      # Auto-fix what's fixable
-```
+gatelet doctor          # Run all checks
+gatelet doctor --fix    # Auto-fix what's fixable
+gatelet doctor --json   # Machine-readable output
 
-Checks data directory, master key, database schema, admin token, port availability, connections, OAuth tokens, encryption, providers, and policy validity.
+# Or via npm scripts during development:
+npm run doctor
+npm run doctor:fix
+```
 
 ### Project Structure
 
 ```
 src/
-  admin/       Admin API (Hono on :4001)
+  admin/       Admin API + routes (Hono on :4001)
   db/          SQLite + encrypted credential storage (libsodium)
   doctor/      Health checks (CLI + admin API)
   mcp/         MCP server (raw HTTP on :4000, Streamable HTTP transport)
@@ -257,8 +341,9 @@ src/
   index.ts     Entry point
   cli.ts       CLI entry point (gatelet, gatelet doctor)
 dashboard/     Admin dashboard (React, Vite, Tailwind)
+website/       Landing page (Astro, gatelet.dev)
 ```
 
 ## License
 
-MIT
+[MIT](LICENSE)

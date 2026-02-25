@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -36,19 +35,12 @@ export function ThemeToggle() {
           key={opt.value}
           onClick={() => setTheme(opt.value)}
           className={cn(
-            'relative cursor-pointer rounded-full p-1.5 transition-colors duration-200',
+            'relative cursor-pointer rounded-full p-1.5 transition-all duration-200',
             theme === opt.value
-              ? 'text-indigo-600 dark:text-indigo-400'
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-white/10 dark:text-indigo-400'
               : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300',
           )}
         >
-          {theme === opt.value && (
-            <motion.div
-              layoutId="website-theme-pill"
-              className="absolute inset-0 rounded-full bg-white shadow-sm dark:bg-white/10"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-            />
-          )}
           <opt.icon className="relative z-10 h-3.5 w-3.5" />
         </button>
       ))}

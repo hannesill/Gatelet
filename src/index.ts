@@ -154,7 +154,7 @@ async function main(): Promise<void> {
     .join(', ');
 
   console.log('');
-  console.log('Gatelet v0.5');
+  console.log('Gatelet v0.2.0');
   console.log('');
   console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/`);
   console.log(`  MCP:    http://localhost:${config.MCP_PORT}/mcp`);

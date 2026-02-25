@@ -29,7 +29,7 @@ export function getRegisteredToolCount(): number {
 function createMcpServer(): McpServer {
   const mcpServer = new McpServer({
     name: 'gatelet',
-    version: '0.1.0',
+    version: '0.2.0',
   });
 
   for (const [name, registered] of toolRegistry) {

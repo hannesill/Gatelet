@@ -1,15 +1,16 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Logo from '../components/Logo.astro';
-import { DynamicBackground } from '../components/DynamicBackground';
+import DynamicBackground from '../components/DynamicBackground.astro';
 import { GitHubStars } from '../components/GitHubStars';
-import { CopyCommand } from '../components/CopyCommand';
+import { InstallCommand } from '../components/InstallCommand';
 import { ThemeToggle } from '../components/ThemeToggle';
 ---
 
 <Layout title="Gatelet — The Permission Layer for AI Agents">
   <!-- ═══ Global background ═══ -->
-  <DynamicBackground client:only="react" />
+  <DynamicBackground />
+  <div class="fixed inset-0 -z-[9] pointer-events-none hero-glow" aria-hidden="true"></div>
 
   <!-- ═══ Sticky navigation ═══ -->
   <nav id="main-nav" class="sticky top-0 z-50 border-b border-transparent">
@@ -45,30 +46,25 @@ import { ThemeToggle } from '../components/ThemeToggle';
         Open Source &middot; Self-Hosted
       </div>
 
-      <!-- Logo -->
-      <div class="animate-in stagger-1 logo-float relative mb-10 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-indigo-600 shadow-2xl shadow-indigo-500/25 glow-indigo ring-1 ring-white/10 sm:h-28 sm:w-28">
-        <Logo class="h-12 w-12 text-white sm:h-14 sm:w-14" strokeWidth={1.5} />
-      </div>
-
-      <!-- Heading -->
-      <h1 class="animate-in stagger-2 font-[Fraunces] text-6xl font-bold italic tracking-tight text-zinc-900 dark:text-white sm:text-8xl">
+      <!-- Heading with gradient -->
+      <h1 class="animate-in stagger-1 gradient-text font-[Fraunces] text-6xl font-bold italic tracking-tight sm:text-8xl">
         Gatelet
       </h1>
 
       <!-- Subtitle -->
-      <p class="animate-in stagger-3 mt-6 text-lg font-semibold text-zinc-700 dark:text-zinc-300 sm:text-xl">
+      <p class="animate-in stagger-2 mt-6 text-lg font-semibold text-zinc-700 dark:text-zinc-300 sm:text-xl">
         The permission layer for AI agents
       </p>
 
       <!-- Description -->
-      <p class="animate-in stagger-4 mx-auto mt-4 max-w-xl text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
+      <p class="animate-in stagger-3 mx-auto mt-4 max-w-xl text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
         A self-hosted MCP proxy that controls exactly what your models can see and do.
         Dangerous operations don't just get denied &mdash; they don't exist.
       </p>
 
-      <!-- Install command -->
-      <div class="animate-in stagger-5 w-full max-w-lg">
-        <CopyCommand command="npx @hannesill/gatelet@latest" client:load />
+      <!-- OS-aware install command -->
+      <div class="animate-in stagger-4 w-full flex justify-center">
+        <InstallCommand client:load />
       </div>
 
       <!-- CTAs -->
@@ -81,6 +77,47 @@ import { ThemeToggle } from '../components/ThemeToggle';
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
           View on GitHub
         </a>
+      </div>
+
+      <!-- Demo video placeholder -->
+      <div class="animate-in stagger-6 relative mx-auto mt-16 w-full max-w-4xl sm:mt-20">
+        <!-- Glow behind the video frame -->
+        <div class="absolute -inset-8 rounded-3xl bg-indigo-500/8 blur-3xl dark:bg-indigo-500/5" aria-hidden="true"></div>
+
+        <!-- Window frame -->
+        <div class="relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-zinc-200 dark:ring-white/10">
+          <!-- Browser chrome -->
+          <div class="flex items-center gap-2 border-b border-zinc-200 bg-zinc-100 px-4 py-3 dark:border-white/5 dark:bg-zinc-900">
+            <div class="flex gap-1.5">
+              <div class="h-3 w-3 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+              <div class="h-3 w-3 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+              <div class="h-3 w-3 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+            </div>
+            <div class="mx-auto flex items-center gap-2 rounded-lg bg-white px-4 py-1 text-xs text-zinc-500 shadow-sm dark:bg-white/5 dark:shadow-none">
+              <svg class="h-3 w-3 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              localhost:4001
+            </div>
+          </div>
+
+          <!-- Video content area -->
+          <div class="relative flex aspect-video items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-950/80 via-zinc-950 to-purple-950/50">
+            <!-- Subtle grid pattern -->
+            <div class="absolute inset-0 bg-grid-video opacity-30"></div>
+
+            <!-- Play button -->
+            <button class="group relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-white/15 hover:ring-white/30 cursor-pointer active:scale-105">
+              <svg class="h-8 w-8 text-white ml-1 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </button>
+
+            <!-- Label -->
+            <p class="absolute bottom-6 text-sm font-medium text-white/30">Demo coming soon</p>
+          </div>
+        </div>
+
+        <!-- Reflection glow beneath -->
+        <div class="mx-auto -mt-4 h-24 w-[60%] rounded-[50%] bg-indigo-500/10 blur-3xl dark:bg-indigo-400/8" aria-hidden="true"></div>
       </div>
     </section>
 
@@ -138,7 +175,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
             </svg>
           </div>
           <h3 class="mb-1 text-base font-bold text-zinc-900 dark:text-white">Your Services</h3>
-          <p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Gmail, Calendar, Slack, and any MCP server</p>
+          <p class="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Gmail, Google Calendar, Outlook Calendar</p>
         </div>
       </div>
 
@@ -165,8 +202,8 @@ import { ThemeToggle } from '../components/ThemeToggle';
               <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               Constrained
             </span>
-            <code class="text-sm text-zinc-800 dark:text-zinc-200">gmail.search</code>
-            <span class="ml-auto hidden text-xs text-zinc-400 sm:block">query must contain <code class="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600 dark:bg-white/5 dark:text-zinc-300">"from:team@"</code></span>
+            <code class="text-sm text-zinc-800 dark:text-zinc-200">calendar.createEvent</code>
+            <span class="ml-auto hidden text-xs text-zinc-400 sm:block">calendarId <code class="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600 dark:bg-white/5 dark:text-zinc-300">must_equal "primary"</code></span>
           </div>
           <!-- Hidden 1 -->
           <div class="flex items-center gap-4 px-6 py-3.5">
@@ -184,7 +221,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
               Hidden
             </span>
             <code class="text-sm text-zinc-400 line-through dark:text-zinc-600">calendar.deleteEvent</code>
-            <span class="ml-auto hidden text-xs text-zinc-400 sm:block">Tool doesn't exist to agent</span>
+            <span class="ml-auto hidden text-xs text-zinc-400 sm:block">Not implemented in code</span>
           </div>
         </div>
       </div>
@@ -209,8 +246,8 @@ import { ThemeToggle } from '../components/ThemeToggle';
           </div>
           <h3 class="mb-2 text-lg font-bold text-zinc-900 dark:text-white">Defense in Depth</h3>
           <p class="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Dangerous operations like sending emails or deleting events aren't just blocked &mdash;
-            the code to execute them doesn't exist. Absence of implementation is the ultimate guarantee.
+            Delete operations aren't just blocked &mdash;
+            the code to execute them doesn't exist. Send and reply are disabled by default policy and hidden from the agent.
           </p>
         </div>
 
@@ -222,7 +259,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
           <h3 class="mb-2 text-lg font-bold text-zinc-900 dark:text-white">Granular Constraints</h3>
           <p class="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
             Set field-level constraints on any tool parameter. Restrict allowed values, enforce defaults,
-            and ensure agents can only access exactly what you explicitly permit.
+            and mutate payloads before they reach upstream APIs &mdash; transparently.
           </p>
         </div>
 
@@ -276,25 +313,29 @@ import { ThemeToggle } from '../components/ThemeToggle';
             <div class="h-3 w-3 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
             <div class="h-3 w-3 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
           </div>
-          <span class="text-xs font-medium text-zinc-400">gatelet.yaml</span>
+          <span class="text-xs font-medium text-zinc-400">gmail-policy.yaml</span>
         </div>
         <!-- YAML content with syntax colors -->
-        <pre class="overflow-x-auto p-6 text-[13px] leading-[1.7] scrollbar-hide"><code><span class="text-zinc-500"># Gmail connection policy</span>
-<span class="text-indigo-600 dark:text-indigo-400">connections</span><span class="text-zinc-500">:</span>
-  <span class="text-indigo-600 dark:text-indigo-400">gmail</span><span class="text-zinc-500">:</span>
-    <span class="text-indigo-600 dark:text-indigo-400">provider</span><span class="text-zinc-500">:</span> <span class="text-emerald-600 dark:text-emerald-400">google</span>
-    <span class="text-indigo-600 dark:text-indigo-400">scopes</span><span class="text-zinc-500">:</span>
-      <span class="text-zinc-500">-</span> <span class="text-emerald-600 dark:text-emerald-400">gmail.readonly</span>
-    <span class="text-indigo-600 dark:text-indigo-400">tools</span><span class="text-zinc-500">:</span>
-      <span class="text-indigo-600 dark:text-indigo-400">gmail_search</span><span class="text-zinc-500">:</span>
-        <span class="text-indigo-600 dark:text-indigo-400">constraints</span><span class="text-zinc-500">:</span>
-          <span class="text-indigo-600 dark:text-indigo-400">query</span><span class="text-zinc-500">:</span>
-            <span class="text-indigo-600 dark:text-indigo-400">must_contain</span><span class="text-zinc-500">:</span> <span class="text-amber-600 dark:text-amber-400">"from:team@company.com"</span>
-      <span class="text-indigo-600 dark:text-indigo-400">gmail_get_message</span><span class="text-zinc-500">:</span>
-        <span class="text-indigo-600 dark:text-indigo-400">allow</span><span class="text-zinc-500">:</span> <span class="text-amber-600 dark:text-amber-400">true</span>
+        <pre class="overflow-x-auto p-6 text-[13px] leading-[1.7] scrollbar-hide"><code><span class="text-zinc-500"># Gmail policy for your AI assistant</span>
+<span class="text-indigo-600 dark:text-indigo-400">provider</span><span class="text-zinc-500">:</span> <span class="text-emerald-600 dark:text-emerald-400">google_gmail</span>
+<span class="text-indigo-600 dark:text-indigo-400">account</span><span class="text-zinc-500">:</span> <span class="text-emerald-600 dark:text-emerald-400">me@gmail.com</span>
 
-      <span class="text-zinc-500"># gmail_send is not listed</span>
-      <span class="text-zinc-500"># → invisible to the agent</span></code></pre>
+<span class="text-indigo-600 dark:text-indigo-400">operations</span><span class="text-zinc-500">:</span>
+  <span class="text-indigo-600 dark:text-indigo-400">search</span><span class="text-zinc-500">:</span>
+    <span class="text-indigo-600 dark:text-indigo-400">allow</span><span class="text-zinc-500">:</span> <span class="text-amber-600 dark:text-amber-400">true</span>
+
+  <span class="text-indigo-600 dark:text-indigo-400">read_message</span><span class="text-zinc-500">:</span>
+    <span class="text-indigo-600 dark:text-indigo-400">allow</span><span class="text-zinc-500">:</span> <span class="text-amber-600 dark:text-amber-400">true</span>
+    <span class="text-indigo-600 dark:text-indigo-400">guards</span><span class="text-zinc-500">:</span>
+      <span class="text-indigo-600 dark:text-indigo-400">block_subjects</span><span class="text-zinc-500">:</span>
+        <span class="text-zinc-500">-</span> <span class="text-emerald-600 dark:text-emerald-400">password reset</span>
+        <span class="text-zinc-500">-</span> <span class="text-emerald-600 dark:text-emerald-400">verification code</span>
+
+  <span class="text-indigo-600 dark:text-indigo-400">create_draft</span><span class="text-zinc-500">:</span>
+    <span class="text-indigo-600 dark:text-indigo-400">allow</span><span class="text-zinc-500">:</span> <span class="text-amber-600 dark:text-amber-400">true</span>
+
+  <span class="text-zinc-500"># send &mdash; not listed &rarr; invisible to agent</span>
+  <span class="text-zinc-500"># reply &mdash; not listed &rarr; invisible to agent</span></code></pre>
       </div>
     </section>
 
