@@ -66,6 +66,12 @@ operations:
 
   send:
     allow: false
+    # To enable sending with alias enforcement:
+    # allow: true
+    # constraints:
+    #   - field: from
+    #     rule: must_match
+    #     value: "\\\\+agent@"
     constraints:
       - field: to
         rule: must_not_be_empty
@@ -79,11 +85,17 @@ operations:
 
   reply:
     allow: false
+    # To enable replying:
+    # allow: true
     constraints:
       - field: messageId
         rule: must_not_be_empty
       - field: body
         rule: must_not_be_empty
+    mutations:
+      - field: replyAll
+        action: set
+        value: false
 
   label:
     allow: true

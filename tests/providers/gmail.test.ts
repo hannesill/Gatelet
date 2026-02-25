@@ -594,6 +594,7 @@ describe('GmailProvider', () => {
 
       expect(result.messageId).toBe('reply1');
       expect(result.threadId).toBe('thread1');
+      expect(result.inReplyTo).toBe('<orig@example.com>');
 
       const call = (mockMessages.send as MockFn).mock.calls[0][0];
       const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
@@ -602,6 +603,37 @@ describe('GmailProvider', () => {
       expect(raw).toContain('In-Reply-To: <orig@example.com>');
       expect(raw).toContain('References: <orig@example.com>');
       expect(call.requestBody.threadId).toBe('thread1');
+    });
+
+    it('builds full References chain from original References header', async () => {
+      const mockWithReferences = {
+        data: {
+          id: 'orig2',
+          threadId: 'thread2',
+          payload: {
+            headers: [
+              { name: 'From', value: 'alice@example.com' },
+              { name: 'To', value: 'me@example.com' },
+              { name: 'Subject', value: 'Re: Thread' },
+              { name: 'Message-ID', value: '<msg2@example.com>' },
+              { name: 'References', value: '<msg0@example.com> <msg1@example.com>' },
+            ],
+          },
+        },
+      };
+      (mockMessages.get as MockFn).mockResolvedValue(mockWithReferences);
+      (mockMessages.send as MockFn).mockResolvedValue({
+        data: { id: 'reply4', threadId: 'thread2', labelIds: ['SENT'] },
+      });
+
+      await provider.execute('gmail_reply', {
+        messageId: 'orig2',
+        body: 'Continuing the thread',
+      }, creds);
+
+      const call = (mockMessages.send as MockFn).mock.calls[0][0];
+      const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
+      expect(raw).toContain('References: <msg0@example.com> <msg1@example.com> <msg2@example.com>');
     });
 
     it('respects replyAll=false default (no Cc)', async () => {
@@ -620,7 +652,7 @@ describe('GmailProvider', () => {
       expect(raw).not.toContain('Cc:');
     });
 
-    it('includes Cc when replyAll=true', async () => {
+    it('sends to all original recipients when replyAll=true', async () => {
       (mockMessages.get as MockFn).mockResolvedValue(mockOriginal);
       (mockMessages.send as MockFn).mockResolvedValue({
         data: { id: 'reply3', threadId: 'thread1', labelIds: ['SENT'] },
@@ -634,16 +666,15 @@ describe('GmailProvider', () => {
 
       const call = (mockMessages.send as MockFn).mock.calls[0][0];
       const raw = Buffer.from(call.requestBody.raw, 'base64url').toString('utf-8');
-      expect(raw).toContain('Cc:');
-      expect(raw).toContain('me@example.com');
-      expect(raw).toContain('charlie@example.com');
+      expect(raw).toContain('To: me@example.com');
+      expect(raw).toContain('Cc: charlie@example.com');
     });
   });
 
   describe('gmail_label', () => {
     it('adds and removes labels', async () => {
       (mockMessages.modify as MockFn).mockResolvedValue({
-        data: { id: 'msg1', labelIds: ['STARRED'] },
+        data: { id: 'msg1', threadId: 't1', labelIds: ['STARRED'] },
       });
 
       const result = await provider.execute('gmail_label', {
@@ -653,6 +684,7 @@ describe('GmailProvider', () => {
       }, creds) as any;
 
       expect(result.messageId).toBe('msg1');
+      expect(result.threadId).toBe('t1');
       expect(result.labelIds).toEqual(['STARRED']);
 
       const call = (mockMessages.modify as MockFn).mock.calls[0][0];
@@ -666,6 +698,7 @@ describe('GmailProvider', () => {
       }, creds) as any;
 
       expect(result.modified).toBe(false);
+      expect(result.reason).toBe('No labels to add or remove');
       expect(mockMessages.modify).not.toHaveBeenCalled();
     });
 
@@ -689,7 +722,7 @@ describe('GmailProvider', () => {
   describe('gmail_archive', () => {
     it('removes INBOX label', async () => {
       (mockMessages.modify as MockFn).mockResolvedValue({
-        data: { id: 'msg1', labelIds: ['IMPORTANT'] },
+        data: { id: 'msg1', threadId: 't1', labelIds: ['IMPORTANT'] },
       });
 
       const result = await provider.execute('gmail_archive', {
@@ -697,6 +730,8 @@ describe('GmailProvider', () => {
       }, creds) as any;
 
       expect(result.messageId).toBe('msg1');
+      expect(result.threadId).toBe('t1');
+      expect(result.archived).toBe(true);
       const call = (mockMessages.modify as MockFn).mock.calls[0][0];
       expect(call.requestBody.removeLabelIds).toEqual(['INBOX']);
     });

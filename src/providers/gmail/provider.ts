@@ -209,7 +209,7 @@ export class GmailProvider implements Provider {
           userId: 'me',
           id: messageId,
           format: 'metadata',
-          metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Message-ID'],
+          metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Message-ID', 'References'],
         });
 
         const origHeaders = original.data.payload?.headers ?? [];
@@ -221,13 +221,14 @@ export class GmailProvider implements Provider {
         const origCc = getHeader('Cc');
         const origSubject = getHeader('Subject');
         const origMessageId = getHeader('Message-ID');
+        const origReferences = getHeader('References');
 
-        // Reply goes to the original sender
-        const replyTo = origFrom;
+        // Determine recipient(s)
+        const to = replyAll ? origTo : origFrom;
         const replySubject = origSubject.startsWith('Re:') ? origSubject : `Re: ${origSubject}`;
 
         const headers: string[] = [
-          `To: ${replyTo}`,
+          `To: ${to}`,
           `Subject: ${replySubject}`,
           'Content-Type: text/plain; charset="UTF-8"',
         ];
@@ -243,15 +244,16 @@ export class GmailProvider implements Provider {
         }
         if (from) headers.unshift(`From: ${from}`);
 
-        if (replyAll) {
-          // Add original To and Cc (excluding self) as Cc
-          const ccAddresses = [origTo, origCc].filter(Boolean).join(', ');
-          if (ccAddresses) headers.splice(headers.indexOf(`Subject: ${replySubject}`), 0, `Cc: ${ccAddresses}`);
+        if (replyAll && origCc) {
+          headers.splice(headers.indexOf(`Subject: ${replySubject}`), 0, `Cc: ${origCc}`);
         }
 
         if (origMessageId) {
           headers.push(`In-Reply-To: ${origMessageId}`);
-          headers.push(`References: ${origMessageId}`);
+          const references = origReferences
+            ? `${origReferences} ${origMessageId}`
+            : origMessageId;
+          headers.push(`References: ${references}`);
         }
 
         const rawMessage = Buffer.from(
@@ -269,7 +271,7 @@ export class GmailProvider implements Provider {
         return {
           messageId: res.data.id,
           threadId: res.data.threadId,
-          labelIds: res.data.labelIds,
+          inReplyTo: origMessageId,
         };
       }
 
@@ -279,7 +281,7 @@ export class GmailProvider implements Provider {
         const removeLabelIds = params.removeLabelIds as string[] | undefined;
 
         if (!addLabelIds?.length && !removeLabelIds?.length) {
-          return { messageId, modified: false };
+          return { messageId, modified: false, reason: 'No labels to add or remove' };
         }
 
         // Check protected labels
@@ -306,6 +308,7 @@ export class GmailProvider implements Provider {
 
         return {
           messageId: res.data.id,
+          threadId: res.data.threadId,
           labelIds: res.data.labelIds,
         };
       }
@@ -323,7 +326,9 @@ export class GmailProvider implements Provider {
 
         return {
           messageId: res.data.id,
+          threadId: res.data.threadId,
           labelIds: res.data.labelIds,
+          archived: true,
         };
       }
 
@@ -385,6 +390,7 @@ export class GmailProvider implements Provider {
       refresh_token: newCreds.refresh_token ?? credentials.refresh_token,
       expiry_date: newCreds.expiry_date,
       token_type: newCreds.token_type,
+      account_email: credentials.account_email,
     };
   }
 }
