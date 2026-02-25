@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../api';
 import { cn } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Filter,
@@ -99,68 +98,60 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
         )} />
       </button>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="px-6 pb-6 pt-2">
-              <div className="space-y-4">
-                {entry.deny_reason && (
-                  <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <p>{entry.deny_reason}</p>
-                  </div>
-                )}
-
-                {entry.response_summary && (
-                  <div className="flex items-start gap-3 rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-white/5 dark:text-zinc-300">
-                    <FileText className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400" />
-                    <p>{entry.response_summary}</p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {entry.original_params && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                        <Terminal className="h-3 w-3" />
-                        Input Parameters
-                      </div>
-                      <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-zinc-300 scrollbar-hide">
-                        {entry.original_params}
-                      </pre>
-                    </div>
-                  )}
-
-                  {entry.mutated_params && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
-                        <FileCode className="h-3 w-3" />
-                        Mutated Parameters
-                      </div>
-                      <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-amber-200/80 scrollbar-hide">
-                        {entry.mutated_params}
-                      </pre>
-                    </div>
-                  )}
+      {expanded && (
+        <div className="animate-fade overflow-hidden">
+          <div className="px-6 pb-6 pt-2">
+            <div className="space-y-4">
+              {entry.deny_reason && (
+                <div className="flex items-start gap-3 rounded-2xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>{entry.deny_reason}</p>
                 </div>
+              )}
 
-                {!entry.deny_reason && !entry.original_params && !entry.mutated_params && !entry.response_summary && (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Info className="h-8 w-8 text-zinc-200 dark:text-zinc-800" />
-                    <p className="mt-2 text-sm text-zinc-500">No extra details available for this call.</p>
+              {entry.response_summary && (
+                <div className="flex items-start gap-3 rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-white/5 dark:text-zinc-300">
+                  <FileText className="h-4 w-4 shrink-0 mt-0.5 text-zinc-400" />
+                  <p>{entry.response_summary}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {entry.original_params && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                      <Terminal className="h-3 w-3" />
+                      Input Parameters
+                    </div>
+                    <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-zinc-300 scrollbar-hide">
+                      {entry.original_params}
+                    </pre>
+                  </div>
+                )}
+
+                {entry.mutated_params && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-500">
+                      <FileCode className="h-3 w-3" />
+                      Mutated Parameters
+                    </div>
+                    <pre className="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-xs leading-relaxed text-amber-200/80 scrollbar-hide">
+                      {entry.mutated_params}
+                    </pre>
                   </div>
                 )}
               </div>
+
+              {!entry.deny_reason && !entry.original_params && !entry.mutated_params && !entry.response_summary && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Info className="h-8 w-8 text-zinc-200 dark:text-zinc-800" />
+                  <p className="mt-2 text-sm text-zinc-500">No extra details available for this call.</p>
+                </div>
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

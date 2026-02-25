@@ -37,6 +37,27 @@
   to { opacity: 1; }
 }
 
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes marquee-reverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
 @keyframes gradient-drift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -56,11 +77,30 @@
   animation: fadeIn 0.3s ease-out both;
 }
 
+.animate-scale {
+  animation: fadeInScale 0.5s ease-out both;
+}
+
 .stagger-1 { animation-delay: 60ms; }
 .stagger-2 { animation-delay: 120ms; }
 .stagger-3 { animation-delay: 180ms; }
 .stagger-4 { animation-delay: 240ms; }
 .stagger-5 { animation-delay: 300ms; }
+.stagger-6 { animation-delay: 360ms; }
+
+/* ─── Mobile sidebar transition ─── */
+.sidebar-backdrop {
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.sidebar-panel {
+  animation: slideInLeft 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
 
 /* ─── Noise texture overlay ─── */
 .noise {

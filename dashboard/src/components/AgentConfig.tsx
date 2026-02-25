@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { Copy, Terminal, CheckCircle2, Pencil, Download, Loader2, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 type Tool = 'openclaw' | 'claude-code' | 'gemini-cli' | 'codex';
 
@@ -102,11 +101,7 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-dark overflow-hidden rounded-2xl shadow-2xl shadow-zinc-950/20"
-    >
+    <div className="animate-in glass-dark overflow-hidden rounded-2xl shadow-2xl shadow-zinc-950/20">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-5 py-3">
         <div className="flex items-center gap-2">
@@ -163,11 +158,7 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
           >
             {tool.label}
             {activeTool === tool.id && (
-              <motion.div
-                layoutId="agent-tab-indicator"
-                className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500"
-                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              />
+              <div className="absolute inset-x-0 bottom-0 h-0.5 bg-indigo-500 transition-all" />
             )}
           </button>
         ))}
@@ -206,6 +197,6 @@ export function AgentConfig({ apiKey }: { apiKey: string }) {
           {installResult.message}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

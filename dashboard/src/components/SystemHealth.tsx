@@ -3,11 +3,10 @@ import { useApi } from '../hooks/useApi';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  AlertTriangle, 
-  Wrench, 
-  CheckCircle2, 
+import {
+  AlertTriangle,
+  Wrench,
+  CheckCircle2,
   ShieldAlert,
   ChevronRight,
   Activity,
@@ -49,11 +48,7 @@ export function SystemHealth() {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass overflow-hidden rounded-2xl shadow-lg shadow-zinc-950/5"
-    >
+    <div className="animate-in glass overflow-hidden rounded-2xl shadow-lg shadow-zinc-950/5">
       <div className="flex items-center justify-between gap-4 p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
@@ -95,6 +90,6 @@ export function SystemHealth() {
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

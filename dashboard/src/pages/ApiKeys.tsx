@@ -6,14 +6,13 @@ import { useApi } from '../hooks/useApi';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Copy, 
-  Key, 
-  Trash2, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Plus,
+  Copy,
+  Key,
+  Trash2,
+  CheckCircle2,
+  Clock,
   ShieldAlert,
   ArrowRight,
   Fingerprint,
@@ -75,8 +74,8 @@ export function ApiKeys() {
               className="w-full min-w-[200px] rounded-2xl border-none bg-white/5 px-4 py-2.5 text-sm text-white placeholder-zinc-600 ring-1 ring-white/10 transition-all focus:bg-white/10 focus:ring-2 focus:ring-indigo-500 sm:w-64"
               onKeyDown={e => e.key === 'Enter' && createKey()}
             />
-            <button 
-              onClick={createKey} 
+            <button
+              onClick={createKey}
               disabled={creating || !newKeyName.trim()}
               className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-indigo-500 disabled:opacity-50"
             >
@@ -92,42 +91,35 @@ export function ApiKeys() {
       </section>
 
       {/* Newly created key - High visibility */}
-      <AnimatePresence>
-        {createdKey && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="space-y-6 overflow-hidden"
-          >
-            <div className="relative rounded-3xl bg-amber-50 p-6 ring-1 ring-amber-200 dark:bg-amber-950/20 dark:ring-amber-500/30">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 shadow-lg shadow-amber-500/20">
-                  <Fingerprint className="h-6 w-6 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-base font-bold text-amber-900 dark:text-amber-200">Security Notice</h4>
-                  <p className="mt-1 text-sm text-amber-700/80 dark:text-amber-400/80">
-                    Copy this key immediately. For your security, we cannot display it again.
-                  </p>
-                  <div className="mt-4 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 break-all rounded-xl bg-white/50 px-4 py-3 font-mono text-sm font-bold text-amber-900 ring-1 ring-amber-200 dark:bg-black/20 dark:text-amber-100 dark:ring-amber-500/20">
-                      {createdKey}
-                    </code>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(createdKey); toast('Copied to clipboard'); }}
-                      className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-white shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95"
-                    >
-                      <Copy className="h-5 w-5" />
-                    </button>
-                  </div>
+      {createdKey && (
+        <div className="animate-in space-y-6">
+          <div className="relative rounded-3xl bg-amber-50 p-6 ring-1 ring-amber-200 dark:bg-amber-950/20 dark:ring-amber-500/30">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 shadow-lg shadow-amber-500/20">
+                <Fingerprint className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-base font-bold text-amber-900 dark:text-amber-200">Security Notice</h4>
+                <p className="mt-1 text-sm text-amber-700/80 dark:text-amber-400/80">
+                  Copy this key immediately. For your security, we cannot display it again.
+                </p>
+                <div className="mt-4 flex items-center gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-xl bg-white/50 px-4 py-3 font-mono text-sm font-bold text-amber-900 ring-1 ring-amber-200 dark:bg-black/20 dark:text-amber-100 dark:ring-amber-500/20">
+                    {createdKey}
+                  </code>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(createdKey); toast('Copied to clipboard'); }}
+                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-white shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Copy className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
             </div>
-            <AgentConfig apiKey={createdKey} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+          <AgentConfig apiKey={createdKey} />
+        </div>
+      )}
 
       {/* Active keys list */}
       <section className="space-y-4">

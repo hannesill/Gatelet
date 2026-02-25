@@ -1,19 +1,18 @@
 import { useState, type ReactNode } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { cn } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Logo } from './Logo';
 import { DynamicBackground } from './DynamicBackground';
-import { 
-  Link2, 
-  Key, 
-  FileText, 
-  LogOut, 
-  Menu, 
-  X, 
-  Shield, 
-  Sun, 
-  Moon, 
+import {
+  Link2,
+  Key,
+  FileText,
+  LogOut,
+  Menu,
+  X,
+  Shield,
+  Sun,
+  Moon,
   Monitor,
   Activity,
   Zap
@@ -74,16 +73,12 @@ function ThemeToggle() {
           className={cn(
             'relative rounded-full p-1.5 transition-all duration-200',
             theme === opt.value
-              ? 'bg-white text-indigo-600 shadow-sm dark:bg-white/10 dark:text-indigo-400'
+              ? 'text-indigo-600 dark:text-indigo-400'
               : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
           )}
         >
           {theme === opt.value && (
-            <motion.div
-              layoutId="theme-pill"
-              className="absolute inset-0 rounded-full bg-white dark:bg-white/10 shadow-sm"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-            />
+            <div className="absolute inset-0 rounded-full bg-white dark:bg-white/10 shadow-sm" />
           )}
           <opt.icon className="relative z-10 h-3.5 w-3.5" />
         </button>
@@ -143,11 +138,7 @@ function SidebarNav({
                   )}
                 >
                   {active && (
-                    <motion.div
-                      layoutId="active-tab"
-                      className="absolute inset-0 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/5 ring-1 ring-indigo-500/20 dark:ring-indigo-500/20"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
+                    <div className="absolute inset-0 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/5 ring-1 ring-indigo-500/20 dark:ring-indigo-500/20" />
                   )}
                   <Icon className={cn(
                     'relative z-10 h-4.5 w-4.5 transition-colors duration-200',
@@ -246,76 +237,49 @@ export function Layout({ summary, activeTab, onTabChange, onLogout, children }: 
       </header>
 
       {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-zinc-950/20 backdrop-blur-sm dark:bg-black/40"
-              onClick={() => setMobileOpen(false)}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="sidebar-backdrop fixed inset-0 bg-zinc-950/20 backdrop-blur-sm dark:bg-black/40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="sidebar-panel fixed inset-y-0 left-0 w-72 bg-white shadow-2xl dark:bg-zinc-900">
+            <div className="absolute right-4 top-4 z-10">
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 dark:hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <SidebarNav
+              activeTab={activeTab}
+              onTabChange={onTabChange}
+              summary={summary}
+              onLogout={onLogout}
+              onNavigate={() => setMobileOpen(false)}
             />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl dark:bg-zinc-900"
-            >
-              <div className="absolute right-4 top-4 z-10">
-                <button
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 dark:hover:text-white"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <SidebarNav
-                activeTab={activeTab}
-                onTabChange={onTabChange}
-                summary={summary}
-                onLogout={onLogout}
-                onNavigate={() => setMobileOpen(false)}
-              />
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       {/* Main content area */}
       <main className="flex flex-1 flex-col lg:pl-64">
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <header className="mb-10">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-              >
-                <h1 className="font-[Fraunces] text-2xl font-bold italic text-zinc-900 dark:text-white sm:text-3xl">
-                  {heading.title}
-                </h1>
-                <p className="mt-2 text-base text-zinc-500 dark:text-zinc-400">
-                  {heading.description}
-                </p>
-              </motion.div>
-            </AnimatePresence>
+            <div key={activeTab} className="animate-in">
+              <h1 className="font-[Fraunces] text-2xl font-bold italic text-zinc-900 dark:text-white sm:text-3xl">
+                {heading.title}
+              </h1>
+              <p className="mt-2 text-base text-zinc-500 dark:text-zinc-400">
+                {heading.description}
+              </p>
+            </div>
           </header>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div key={activeTab} className="animate-fade">
+            {children}
+          </div>
         </div>
       </main>
     </div>

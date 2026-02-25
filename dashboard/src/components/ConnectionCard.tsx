@@ -4,7 +4,6 @@ import { PolicyFormEditor } from './PolicyFormEditor';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Link2,
   ChevronDown,
@@ -179,7 +178,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
   }
 
   return (
-    <motion.div
+    <div
       className={cn(
         "group glass overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-zinc-950/[0.03] hover:ring-zinc-400/40 dark:hover:ring-white/20",
         paused && "opacity-60 grayscale"
@@ -309,40 +308,33 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
       </div>
 
       {/* Expandable Section */}
-      <AnimatePresence>
-        {mode !== 'closed' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="border-t border-zinc-100 bg-zinc-50/50 dark:border-white/5 dark:bg-white/[0.02]"
-          >
-            <div className="p-6">
-              {mode === 'viewer' && (
-                <PolicyViewer
-                  connectionId={connection.id}
-                  providerId={connection.provider_id}
-                  onEdit={() => setMode('editor')}
-                />
-              )}
-              {mode === 'editor' && (
-                <PolicyFormEditor
-                  connectionId={connection.id}
-                  providerId={connection.provider_id}
-                  onClose={() => setMode('viewer')}
-                  onSaved={onDisconnect}
-                />
-              )}
-              {mode === 'settings' && (
-                <ConnectionSettings
-                  connectionId={connection.id}
-                  providerId={connection.provider_id}
-                />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {mode !== 'closed' && (
+        <div className="animate-fade border-t border-zinc-100 bg-zinc-50/50 dark:border-white/5 dark:bg-white/[0.02]">
+          <div className="p-6">
+            {mode === 'viewer' && (
+              <PolicyViewer
+                connectionId={connection.id}
+                providerId={connection.provider_id}
+                onEdit={() => setMode('editor')}
+              />
+            )}
+            {mode === 'editor' && (
+              <PolicyFormEditor
+                connectionId={connection.id}
+                providerId={connection.provider_id}
+                onClose={() => setMode('viewer')}
+                onSaved={onDisconnect}
+              />
+            )}
+            {mode === 'settings' && (
+              <ConnectionSettings
+                connectionId={connection.id}
+                providerId={connection.provider_id}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
