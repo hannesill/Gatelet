@@ -188,7 +188,7 @@ This prevents the agent from moving messages to trash or marking them as spam. T
 
 ## Organizer guard (Calendar)
 
-Google Calendar's `update_event` supports a `require_organizer_self` guard:
+Google Calendar and Outlook Calendar's `update_event` supports a `require_organizer_self` guard:
 
 ```yaml
 update_event:

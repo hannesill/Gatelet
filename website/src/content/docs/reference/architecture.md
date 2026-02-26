@@ -80,7 +80,7 @@ src/
   cli.ts       CLI entry point (gatelet, gatelet doctor)
 dashboard/     Admin dashboard (React, Vite, Tailwind)
 website/       Documentation site (Astro, Starlight)
-tests/         Test suite (vitest, 322 tests)
+tests/         Test suite (vitest, 424 tests)
 ```
 
 ## Key modules
@@ -106,7 +106,7 @@ Raw HTTP server using the MCP SDK's `StreamableHTTPServerTransport`. Handles:
 
 ### Admin API (`src/admin/`)
 
-Hono framework with 9 route modules:
+Hono framework with 10 route modules:
 
 - Connections (OAuth flow, CRUD)
 - Policies (YAML management)
@@ -117,7 +117,12 @@ Hono framework with 9 route modules:
 - Providers (list all available tools)
 - Doctor (health checks)
 - TOTP (2FA setup)
+- Agent Config (auto-install into agent config files)
 
 ### Database (`src/db/`)
 
 SQLite with WAL mode and foreign key constraints. All credentials are encrypted with libsodium before storage. The database module handles schema migrations automatically on startup.
+
+## Token refresh
+
+If an upstream API call fails due to an expired OAuth token, Gatelet automatically refreshes the token and retries the request. Per-connection mutex prevents concurrent refresh races. No agent or user action is required.

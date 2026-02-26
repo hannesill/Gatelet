@@ -87,6 +87,19 @@ Update an existing Outlook calendar event.
 | `attendees` | array | no | `[{ emailAddress: { address, name? }, type? }]` |
 | `isAllDay` | boolean | no | Whether the event is all day |
 
+## Guards
+
+### `require_organizer_self`
+
+Available on `update_event`. When enabled, the agent can only update events where the connected account is the organizer:
+
+```yaml
+update_event:
+  allow: true
+  guards:
+    require_organizer_self: true
+```
+
 ## Default policy
 
 ```yaml
@@ -111,6 +124,10 @@ operations:
 ```
 
 The default policy is read-only. Enable `create_event` and `update_event` as needed.
+
+:::note
+Unlike Google Calendar, the Outlook Calendar default policy does not include default mutations for `create_event` or `update_event`. If you enable these operations, consider adding mutations to strip attendees or restrict fields — see the [Mutations](/concepts/mutations/) guide.
+:::
 
 ## Not implemented
 

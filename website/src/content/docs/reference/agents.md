@@ -63,6 +63,16 @@ Then configure your agent to connect to localhost:
 }
 ```
 
+### Codex (TOML)
+
+Codex uses TOML configuration. Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.gatelet]
+url = "http://localhost:4000/mcp"
+http_headers = { "Authorization" = "Bearer YOUR_API_KEY" }
+```
+
 ## What the agent sees
 
 Once configured, the agent sees only the tools allowed by your policies. For example, if you've connected a Google Calendar account with the default policy:
@@ -83,6 +93,14 @@ If you connect multiple accounts (e.g. both Google Calendar and Gmail), the agen
 - `calendar_list_events` (Google Calendar)
 - `outlook_list_events` (Outlook Calendar)
 - `gmail_search` (Gmail)
+
+:::note
+If you connect two accounts of the same provider type (e.g., two Google Calendar accounts), their tool names will collide since both register tools like `calendar_list_events`. Only the last connection's tools will be accessible. Use one connection per provider type.
+:::
+
+:::note
+Each agent expects a slightly different MCP config format. The dashboard's **Setup** page handles this automatically. If configuring manually, refer to your agent's documentation for the exact format.
+:::
 
 ## API key management
 

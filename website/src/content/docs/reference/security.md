@@ -14,7 +14,7 @@ Gatelet runs two separate HTTP servers on separate ports:
 | **Agent-facing** | `:4000` | AI agents | Bearer token auth, Docker internal network |
 | **Admin-facing** | `:4001` | Human operators | Admin token + optional TOTP 2FA, localhost only |
 
-The admin port is bound to `127.0.0.1` in Docker — it's not accessible from the network.
+The admin port is published to `127.0.0.1` only in Docker Compose — it's not accessible from the network.
 
 ## Deny by default
 

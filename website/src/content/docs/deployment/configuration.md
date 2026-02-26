@@ -79,6 +79,16 @@ Dashboard-configured credentials take precedence over environment variables.
 | `audit_log` | Tool call audit trail |
 | `settings` | Encrypted global settings (OAuth credentials, TOTP secrets) |
 
+## Health check endpoint
+
+The admin server exposes a public (unauthenticated) health check:
+
+```
+GET http://localhost:4001/api/health
+```
+
+Returns `{"status":"ok"}`. Useful for monitoring and load balancer health checks.
+
 ## Rate limiting
 
 Failed authentication attempts are rate-limited per IP:

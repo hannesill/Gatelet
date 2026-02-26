@@ -175,6 +175,8 @@ operations:
           replace: "[REDACTED-SSN]"
         - pattern: "\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b"
           replace: "[REDACTED-CC]"
+        - pattern: "\\b\\d{4}[\\s-]?\\d{6}[\\s-]?\\d{5}\\b"
+          replace: "[REDACTED-CC]"
         - pattern: "\\bCVV[:\\s]*\\d{3,4}\\b"
           replace: "CVV [REDACTED]"
         - pattern: "\\b[A-Z]{1,2}\\d{6,9}\\b"
