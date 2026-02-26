@@ -95,9 +95,6 @@ This is less secure — the token is visible in `docker inspect` and process lis
 
 The `gatelet-data` volume persists:
 - SQLite database (`gatelet.db`) — connections, API keys, audit log, settings
-- Encryption salt (`master.salt`)
-- Key verifier (`master.key.verifier`)
-- Admin token (`admin.token`)
 
 The data volume is preserved across updates and container recreations.
 

@@ -10,7 +10,7 @@ export function GmailLogo({ className }: { className?: string }) {
       <path d="M58 108h14V74L52 59v43c0 3.315 2.685 6 6 6z" fill="#4285F4"/>
       <path d="M120 108h14c3.315 0 6-2.685 6-6V59l-20 15v34z" fill="#34A853"/>
       <path d="M120 48v26l20-15v-8c0-7.415-8.465-11.65-14.4-7.2L120 48z" fill="#FBBC04"/>
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M72 74V48l24 18 24-18v26L96 92 72 74z" fill="#EA4335"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M72 74V48l24 18 24-18v26L96 92 72 74z" fill="#EA4335"/>
       <path d="M52 51v8l20 15V48l-5.6-4.2C60.465 39.35 52 43.585 52 51z" fill="#C5221F"/>
     </svg>
   );

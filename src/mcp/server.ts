@@ -12,6 +12,7 @@ import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { config } from '../config.js';
 import { stripUnknownParams, applyFieldPolicy } from './param-filter.js';
 import { sanitizeUpstreamError } from './error-sanitizer.js';
+import { VERSION } from '../version.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
 
@@ -29,7 +30,7 @@ export function getRegisteredToolCount(): number {
 function createMcpServer(apiKeyId: string): McpServer {
   const mcpServer = new McpServer({
     name: 'gatelet',
-    version: '0.2.0',
+    version: VERSION,
   });
 
   for (const [name, registered] of toolRegistry) {

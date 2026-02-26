@@ -22,7 +22,6 @@ const statusConfig = {
 
 export function SystemHealth() {
   const { data, refetch } = useApi(() => api.getDoctor(), []);
-  const [fixing, setFixExpand] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const { toast } = useToast();
 

@@ -54,13 +54,3 @@ The doctor command runs 15+ checks including:
 | Network | Docker networks are configured correctly |
 
 Each check reports pass, fail, or fixable status. The `--fix` flag attempts to resolve fixable issues automatically (e.g. creating missing directories, setting permissions).
-
-## npx
-
-You can also run Gatelet via npx without installing globally:
-
-```bash
-npx gatelet@latest
-npx gatelet@latest doctor
-npx gatelet@latest doctor --fix
-```

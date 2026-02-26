@@ -10,6 +10,7 @@ import { Settings } from './pages/Settings';
 import { Layout, type TabName } from './components/Layout';
 import { api } from './api';
 import { Logo } from './components/Logo';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import type { Status } from './types';
 
 /** Check auth by fetching /api/status — returns data on success, null on 401, throws on network error */
@@ -166,7 +167,9 @@ export function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </ToastProvider>
     </ThemeProvider>
   );

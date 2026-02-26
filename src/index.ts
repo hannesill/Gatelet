@@ -15,6 +15,7 @@ import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 import { closeDb } from './db/database.js';
 import path from 'node:path';
+import { VERSION } from './version.js';
 
 // Re-export so any existing imports from index.ts still work
 export { startTime } from './start-time.js';
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
     .join(', ');
 
   console.log('');
-  console.log('Gatelet v0.2.0');
+  console.log(`Gatelet v${VERSION}`);
   console.log('');
   // In Docker, mask the token — agents on the host can read `docker logs` without sudo.
   // The full token is retrievable via `sudo cat /usr/local/etc/gatelet/secrets/admin-token`.

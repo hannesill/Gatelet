@@ -86,6 +86,8 @@ function generatePkce(): { codeVerifier: string; codeChallenge: string } {
   return { codeVerifier, codeChallenge };
 }
 
+import { stripSensitivePatterns } from './sanitize.js';
+
 const app = new Hono();
 
 app.get('/connections', (c) => {
@@ -391,12 +393,12 @@ app.post('/connections/:id/test', async (c) => {
         return c.json({ ok: true, preview: testPreview(conn.provider_id, result) });
       } catch (refreshErr: unknown) {
         const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
-        return c.json({ ok: false, error: msg });
+        return c.json({ ok: false, error: stripSensitivePatterns(msg) });
       }
     }
 
     const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: msg });
+    return c.json({ ok: false, error: stripSensitivePatterns(msg) });
   }
 });
 

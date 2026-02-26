@@ -75,7 +75,7 @@ export function createAdminApp(): Hono {
     adminLimiter.clear(clientIp);
     const sessionId = createSession();
 
-    c.header('Set-Cookie', `gatelet_session=${sessionId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400`);
+    c.header('Set-Cookie', `gatelet_session=${sessionId}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400`);
     return c.json({ ok: true });
   });
 
@@ -86,7 +86,7 @@ export function createAdminApp(): Hono {
     if (sessionId) {
       deleteSession(sessionId);
     }
-    c.header('Set-Cookie', 'gatelet_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+    c.header('Set-Cookie', 'gatelet_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
     return c.json({ ok: true });
   });
 
