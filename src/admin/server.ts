@@ -172,7 +172,7 @@ export function startAdminServer(): ReturnType<typeof serve> {
   // inside a container makes the port unreachable from the host, even with
   // -p 127.0.0.1:4001:4001. Host-level restriction is handled by the compose
   // port mapping, not the app bind address.
-  const hostname = process.env.GATELET_DATA_DIR === '/data' ? '0.0.0.0' : '127.0.0.1';
+  const hostname = config.IS_DOCKER ? '0.0.0.0' : '127.0.0.1';
   const server = serve({ fetch: app.fetch, port: config.ADMIN_PORT, hostname }, () => {
     console.log(`Admin server listening on ${hostname}:${config.ADMIN_PORT}`);
   });

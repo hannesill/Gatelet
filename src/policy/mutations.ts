@@ -1,7 +1,7 @@
 import type { Mutation } from './types.js';
 import { setByPath, deleteByPath } from './field-path.js';
 
-export function applyMutation(
+function applyMutation(
   mutation: Mutation,
   params: Record<string, unknown>,
 ): void {

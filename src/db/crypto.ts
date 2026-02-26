@@ -4,11 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
 
-const ARGON2_OPSLIMIT = sodium.crypto_pwhash_OPSLIMIT_MODERATE;
-const ARGON2_MEMLIMIT = sodium.crypto_pwhash_MEMLIMIT_MODERATE;
-const ARGON2_ALG = sodium.crypto_pwhash_ALG_ARGON2ID13;
-const SALT_BYTES = sodium.crypto_pwhash_SALTBYTES;
-
 let masterKey: Buffer | null = null;
 
 /**
@@ -41,9 +36,10 @@ export function needsMigration(): boolean {
  * Derive the old master key from a passphrase using Argon2id (migration only).
  */
 function deriveKeyFromPassphrase(passphrase: string, saltPath: string): Buffer {
+  const saltBytes = sodium.crypto_pwhash_SALTBYTES;
   const salt = fs.readFileSync(saltPath);
-  if (salt.length !== SALT_BYTES) {
-    throw new Error(`Invalid salt file: expected ${SALT_BYTES} bytes, got ${salt.length}`);
+  if (salt.length !== saltBytes) {
+    throw new Error(`Invalid salt file: expected ${saltBytes} bytes, got ${salt.length}`);
   }
 
   const key = Buffer.alloc(sodium.crypto_secretbox_KEYBYTES);
@@ -51,9 +47,9 @@ function deriveKeyFromPassphrase(passphrase: string, saltPath: string): Buffer {
     key,
     Buffer.from(passphrase),
     salt,
-    ARGON2_OPSLIMIT,
-    ARGON2_MEMLIMIT,
-    ARGON2_ALG,
+    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    sodium.crypto_pwhash_ALG_ARGON2ID13,
   );
   return key;
 }

@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import { Hono } from 'hono';
 import { listConnections, getConnectionWithCredentials } from '../../db/connections.js';
 import { listApiKeys } from '../../db/api-keys.js';
@@ -6,6 +5,7 @@ import { getProvider, getAllProviders } from '../../providers/registry.js';
 import { parsePolicy } from '../../policy/parser.js';
 import { getSetting, setSetting, getOAuthClientId, getOAuthClientSecret, getOAuthCredentialSource } from '../../db/settings.js';
 import { startTime } from '../../start-time.js';
+import { config } from '../../config.js';
 
 interface ConnectionWithMeta {
   id: string;
@@ -111,7 +111,7 @@ app.get('/status', (c) => {
     oauthProviders,
     setupCompleted,
     runtime: {
-      docker: fs.existsSync('/.dockerenv') || process.env.GATELET_DATA_DIR === '/data',
+      docker: config.IS_DOCKER,
     },
   });
 });

@@ -8,7 +8,7 @@ describe('sanitizeUpstreamError', () => {
       'list_events',
     );
     expect(result.agentMessage).toContain('Authentication error');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
     expect(result.logMessage).toContain('401');
   });
 
@@ -18,7 +18,7 @@ describe('sanitizeUpstreamError', () => {
       'list_events',
     );
     expect(result.agentMessage).toContain('Authentication error');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('classifies 403/permission errors', () => {
@@ -27,7 +27,7 @@ describe('sanitizeUpstreamError', () => {
       'create_event',
     );
     expect(result.agentMessage).toContain('Permission denied');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('classifies 404/not found errors', () => {
@@ -36,7 +36,7 @@ describe('sanitizeUpstreamError', () => {
       'get_event',
     );
     expect(result.agentMessage).toContain('Resource not found');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('classifies 429/rate limit errors', () => {
@@ -45,7 +45,7 @@ describe('sanitizeUpstreamError', () => {
       'list_events',
     );
     expect(result.agentMessage).toContain('Rate limit');
-    expect(result.retryable).toBe(true);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('classifies quota errors as rate limit', () => {
@@ -54,7 +54,7 @@ describe('sanitizeUpstreamError', () => {
       'create_event',
     );
     expect(result.agentMessage).toContain('Rate limit');
-    expect(result.retryable).toBe(true);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('classifies 400/validation errors', () => {
@@ -63,7 +63,7 @@ describe('sanitizeUpstreamError', () => {
       'create_event',
     );
     expect(result.agentMessage).toContain('Invalid request');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('returns generic message for unknown errors', () => {
@@ -73,7 +73,7 @@ describe('sanitizeUpstreamError', () => {
     );
     expect(result.agentMessage).toContain('failed');
     expect(result.agentMessage).toContain('logged');
-    expect(result.retryable).toBe(false);
+    expect(result).not.toHaveProperty('retryable');
   });
 
   it('does not leak sensitive info in agentMessage', () => {

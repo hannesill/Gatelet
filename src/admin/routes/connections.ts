@@ -14,6 +14,7 @@ import {
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
+import { isAuthError, refreshConnectionCredentials } from '../../providers/token-refresh.js';
 import { config } from '../../config.js';
 import { refreshToolRegistry } from '../../mcp/server.js';
 import crypto from 'node:crypto';
@@ -354,41 +355,21 @@ app.post('/connections/:id/test', async (c) => {
   }
 
   let credentials = conn.credentials;
-  const settings = JSON.parse(conn.settings_json || '{}');
+  const settings = getConnectionSettings(conn.id);
 
   try {
-    // If token is expired, try refreshing first
+    // If token is expired, try refreshing proactively
     const expiry = credentials.expiry_date;
     if (typeof expiry === 'number' && expiry < Date.now() && provider.refreshCredentials) {
-      const clientId = getOAuthClientId(provider);
-      const clientSecret = getOAuthClientSecret(provider);
-      credentials = await provider.refreshCredentials(credentials, {
-        clientId: clientId ?? '',
-        clientSecret: clientSecret ?? '',
-      });
-      updateConnectionCredentials(conn.id, credentials);
+      credentials = await refreshConnectionCredentials(conn.id, provider, credentials);
     }
 
     const result = await provider.execute(testOp.tool, testOp.params, credentials, undefined, settings);
     return c.json({ ok: true, preview: testPreview(conn.provider_id, result) });
   } catch (err: unknown) {
-    // Try refresh on auth errors
-    if (
-      provider.refreshCredentials &&
-      err instanceof Error &&
-      (err.message.includes('invalid_grant') ||
-        err.message.includes('Token has been expired') ||
-        err.message.includes('401'))
-    ) {
+    if (provider.refreshCredentials && isAuthError(err)) {
       try {
-        const clientId = getOAuthClientId(provider);
-        const clientSecret = getOAuthClientSecret(provider);
-        credentials = await provider.refreshCredentials(credentials, {
-          clientId: clientId ?? '',
-          clientSecret: clientSecret ?? '',
-        });
-        updateConnectionCredentials(conn.id, credentials);
-
+        credentials = await refreshConnectionCredentials(conn.id, provider, credentials);
         const result = await provider.execute(testOp.tool, testOp.params, credentials, undefined, settings);
         return c.json({ ok: true, preview: testPreview(conn.provider_id, result) });
       } catch (refreshErr: unknown) {

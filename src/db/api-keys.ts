@@ -10,7 +10,7 @@ export interface ApiKey {
   revoked_at: string | null;
 }
 
-export function hashKey(rawKey: string): string {
+function hashKey(rawKey: string): string {
   return crypto.createHash('sha256').update(rawKey).digest('hex');
 }
 

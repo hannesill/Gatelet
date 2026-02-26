@@ -58,18 +58,10 @@ export function evaluateConstraint(
 
     case 'must_match': {
       const pattern = constraint.value as string;
-      if (!isSafeRegex(pattern)) {
-        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has unsafe regex (potential ReDoS): ${JSON.stringify(pattern)}` };
-      }
-      // Auto-anchor so must_match is a full-field match (safe default for a security tool).
-      // Users who need substring matching can write .*pattern.* explicitly.
+      // Regex safety (isSafeRegex) and validity (new RegExp) are validated at parse time
+      // in parser.ts. No need to re-check here — policies are immutable after parsing.
       const anchored = `^(?:${pattern})$`;
-      let regex: RegExp;
-      try {
-        regex = new RegExp(anchored);
-      } catch {
-        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has invalid regex: ${JSON.stringify(pattern)}` };
-      }
+      const regex = new RegExp(anchored);
       if (actual == null) {
         return {
           ok: false,

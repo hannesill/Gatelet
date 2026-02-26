@@ -119,7 +119,10 @@ operations:
     expect(() => parsePolicy(yamlWithBadRegex)).toThrow('unsafe regex');
   });
 
-  it('FINDING-NEW-03: unsafe regex rejected at runtime as defense-in-depth', () => {
+  it('FINDING-NEW-03: unsafe regex blocked at parse time only (no runtime re-check)', () => {
+    // Runtime no longer re-validates regex safety — the parser is the single
+    // validation point. If an unsafe regex somehow bypasses parsing, it would
+    // execute (the risk is accepted because policies are immutable after parsing).
     const constraint: Constraint = {
       field: 'summary',
       rule: 'must_match',
@@ -127,7 +130,8 @@ operations:
     };
     const result = evaluateConstraint(constraint, { summary: 'test' });
     expect(result.ok).toBe(false);
-    expect(result.reason).toContain('unsafe regex');
+    // The constraint fails because 'test' doesn't match the pattern, not because it's unsafe
+    expect(result.reason).toContain('must_match');
   });
 });
 

@@ -3,21 +3,18 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import http from 'node:http';
 import { buildToolRegistry, type RegisteredTool } from './tool-registry.js';
 import { authenticateBearer, isMcpRateLimited } from './auth.js';
-import { getConnectionWithCredentials, updateConnectionCredentials } from '../db/connections.js';
+import { getConnectionWithCredentials, getConnectionSettings } from '../db/connections.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluate } from '../policy/engine.js';
 import { getProvider } from '../providers/registry.js';
 import { insertAuditEntry } from '../db/audit.js';
-import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { config } from '../config.js';
 import { stripUnknownParams, applyFieldPolicy } from './param-filter.js';
 import { sanitizeUpstreamError } from './error-sanitizer.js';
+import { isAuthError, refreshConnectionCredentials } from '../providers/token-refresh.js';
 import { VERSION } from '../version.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
-
-// Per-connection mutex for token refresh to prevent concurrent refreshes
-const refreshLocks = new Map<string, Promise<Record<string, unknown>>>();
 
 export function refreshToolRegistry(): void {
   toolRegistry = buildToolRegistry();
@@ -209,7 +206,7 @@ export function startMcpServer(): http.Server {
 
   // In Docker, bind to 0.0.0.0 — Docker port forwarding requires it.
   // Outside Docker, bind to 127.0.0.1 to avoid exposing the MCP port on the LAN.
-  const hostname = process.env.GATELET_DATA_DIR === '/data' ? '0.0.0.0' : '127.0.0.1';
+  const hostname = config.IS_DOCKER ? '0.0.0.0' : '127.0.0.1';
   server.listen(config.MCP_PORT, hostname, () => {
     console.log(`MCP server listening on ${hostname}:${config.MCP_PORT}`);
   });
@@ -227,12 +224,7 @@ export async function handleToolCall(
   const originalParams = structuredClone(params);
 
   const conn = getConnectionWithCredentials(registered.connectionId);
-  let settings: Record<string, unknown> = {};
-  try {
-    settings = conn ? JSON.parse(conn.settings_json || '{}') : {};
-  } catch {
-    // Corrupted settings_json — use empty defaults
-  }
+  const settings = conn ? getConnectionSettings(registered.connectionId) : {};
   if (!conn) {
     insertAuditEntry({
       api_key_id: apiKeyId,
@@ -320,26 +312,8 @@ export async function handleToolCall(
         settings,
       );
     } catch (err: unknown) {
-      if (
-        provider.refreshCredentials &&
-        err instanceof Error &&
-        (err.message.includes('invalid_grant') ||
-          err.message.includes('Token has been expired') ||
-          err.message.includes('401'))
-      ) {
-        // Use per-connection mutex to prevent concurrent refresh races
-        let refreshPromise = refreshLocks.get(conn.id);
-        if (!refreshPromise) {
-          const clientId = getOAuthClientId(provider);
-          const clientSecret = getOAuthClientSecret(provider);
-          refreshPromise = provider.refreshCredentials(
-            conn.credentials,
-            { clientId: clientId ?? '', clientSecret: clientSecret ?? '' },
-          ).finally(() => refreshLocks.delete(conn.id));
-          refreshLocks.set(conn.id, refreshPromise);
-        }
-        const newCreds = await refreshPromise;
-        updateConnectionCredentials(conn.id, newCreds);
+      if (provider.refreshCredentials && isAuthError(err)) {
+        const newCreds = await refreshConnectionCredentials(conn.id, provider, conn.credentials);
         result = await provider.execute(
           toolName,
           finalParams,

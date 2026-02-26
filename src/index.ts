@@ -17,9 +17,6 @@ import { closeDb } from './db/database.js';
 import path from 'node:path';
 import { VERSION } from './version.js';
 
-// Re-export so any existing imports from index.ts still work
-export { startTime } from './start-time.js';
-
 function initMasterKey(adminToken: string): void {
   fs.mkdirSync(config.DATA_DIR, { recursive: true });
 
@@ -128,8 +125,7 @@ async function main(): Promise<void> {
   // In Docker, mask the token — agents on the host can read `docker logs` without sudo.
   // The full token is retrievable via `sudo cat /usr/local/etc/gatelet/secrets/admin-token`.
   // Outside Docker, print the full URL for convenience (token is already on disk at admin.token).
-  const isDocker = config.DATA_DIR === '/data';
-  if (isDocker) {
+  if (config.IS_DOCKER) {
     console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}  (token masked — use sudo cat /usr/local/etc/gatelet/secrets/admin-token)`);
   } else {
     console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${encodeURIComponent(config.ADMIN_TOKEN!)}`);

@@ -4,12 +4,8 @@ import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
 import {
-  AlertTriangle,
   Wrench,
-  CheckCircle2,
   ShieldAlert,
-  ChevronRight,
-  Activity,
   Loader2
 } from 'lucide-react';
 

@@ -1,8 +1,6 @@
 import crypto from 'node:crypto';
 
 interface Session {
-  id: string;
-  createdAt: number;
   expiresAt: number;
 }
 
@@ -12,8 +10,6 @@ const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
 export function createSession(): string {
   const id = crypto.randomBytes(32).toString('hex');
   sessions.set(id, {
-    id,
-    createdAt: Date.now(),
     expiresAt: Date.now() + SESSION_TTL,
   });
   return id;

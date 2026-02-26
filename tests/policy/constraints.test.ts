@@ -171,13 +171,13 @@ describe('must_match', () => {
     expect(resultUndefined.ok).toBe(false);
   });
 
-  it('returns error for invalid regex', () => {
-    const result = evaluateConstraint(
+  it('throws for invalid regex (validation happens at parse time)', () => {
+    // Invalid regexes are caught at policy parse time, not at evaluation time.
+    // If one somehow reaches evaluateConstraint, it throws a SyntaxError.
+    expect(() => evaluateConstraint(
       { field: 'x', rule: 'must_match', value: '[invalid(' },
       { x: 'test' },
-    );
-    expect(result.ok).toBe(false);
-    expect(result.reason).toContain('invalid regex');
+    )).toThrow(SyntaxError);
   });
 });
 

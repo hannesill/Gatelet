@@ -1,7 +1,6 @@
 interface SanitizedError {
   agentMessage: string;
   logMessage: string;
-  retryable: boolean;
 }
 
 /**
@@ -19,7 +18,6 @@ export function sanitizeUpstreamError(
     return {
       agentMessage: `Authentication error for ${toolName}. The connection may need to be re-authorized by the admin.`,
       logMessage,
-      retryable: false,
     };
   }
 
@@ -27,7 +25,6 @@ export function sanitizeUpstreamError(
     return {
       agentMessage: `Rate limit exceeded for ${toolName}. Try again later.`,
       logMessage,
-      retryable: true,
     };
   }
 
@@ -35,7 +32,6 @@ export function sanitizeUpstreamError(
     return {
       agentMessage: `Resource not found for ${toolName}. The ID may be incorrect or the resource may have been deleted.`,
       logMessage,
-      retryable: false,
     };
   }
 
@@ -43,7 +39,6 @@ export function sanitizeUpstreamError(
     return {
       agentMessage: `Permission denied for ${toolName}. The connected account may not have access to this resource.`,
       logMessage,
-      retryable: false,
     };
   }
 
@@ -51,14 +46,12 @@ export function sanitizeUpstreamError(
     return {
       agentMessage: `Invalid request for ${toolName}. Check the parameters and try again.`,
       logMessage,
-      retryable: false,
     };
   }
 
   return {
     agentMessage: `${toolName} failed. The error has been logged. Try again or contact the admin if the problem persists.`,
     logMessage,
-    retryable: false,
   };
 }
 
