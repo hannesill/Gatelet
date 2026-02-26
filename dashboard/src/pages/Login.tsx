@@ -12,6 +12,39 @@ export function Login({ onLogin }: { onLogin: () => void }) {
   const [requires2FA, setRequires2FA] = useState(false);
   const totpInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-login from ?token= query param (e.g. clickable URL from install script)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    if (!urlToken) return;
+
+    // Strip token from URL immediately to prevent bookmark/history leakage
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete('token');
+    history.replaceState(null, '', clean.pathname + clean.search);
+
+    // Auto-submit login
+    setToken(urlToken);
+    setLoading(true);
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: urlToken }),
+    })
+      .then(res => res.json().catch(() => null))
+      .then(data => {
+        if (data?.requires2FA) {
+          setRequires2FA(true);
+        } else if (data?.ok) {
+          onLogin();
+        } else {
+          setError(data?.error || 'Invalid token');
+        }
+      })
+      .catch(() => setError('Connection failed'))
+      .finally(() => setLoading(false));
+  }, [onLogin]);
+
   useEffect(() => {
     if (requires2FA && totpInputRef.current) {
       totpInputRef.current.focus();

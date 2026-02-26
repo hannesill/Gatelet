@@ -23,15 +23,16 @@ import type { OAuthProvider } from '../types';
 
 interface Props {
   oauthProviders: OAuthProvider[];
+  runtime?: { docker: boolean };
   onComplete: () => void;
 }
 
 function StepIndicator({ current }: { current: number }) {
   const steps = [
-    { label: 'Identity', icon: Key },
     { label: 'Connect', icon: Link2 },
-    { label: 'Secure', icon: Shield },
+    { label: 'Identity', icon: Key },
     { label: 'Integrate', icon: Settings },
+    { label: 'Secure', icon: Shield },
   ];
 
   return (
@@ -61,7 +62,7 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-export function Setup({ oauthProviders, onComplete }: Props) {
+export function Setup({ oauthProviders, runtime, onComplete }: Props) {
   const [step, setStep] = useState(1);
   const [keyName, setKeyName] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -108,8 +109,36 @@ export function Setup({ oauthProviders, onComplete }: Props) {
 
         {/* Card Content */}
         <div className="overflow-hidden rounded-[32px] bg-white/80 p-8 shadow-2xl shadow-zinc-950/5 ring-1 ring-zinc-200 backdrop-blur-xl dark:bg-zinc-900/80 dark:shadow-black/40 dark:ring-white/10">
-          {step === 1 && !keyGenerated && (
+          {/* Step 1: Connect Services */}
+          {step === 1 && (
             <div key="step1" className="animate-in space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect Services</h2>
+                <p className="mt-1 text-sm text-zinc-500">Grant your agent access to your accounts.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {oauthProviders.map(p => (
+                  <OAuthButton key={p.id} provider={p} />
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/5">
+                <p className="text-xs text-zinc-400">You can add more services later.</p>
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
+                >
+                  Continue
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Name Agent + API Key */}
+          {step === 2 && !keyGenerated && (
+            <div key="step2" className="animate-in space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Name your Agent</h2>
                 <p className="mt-1 text-sm text-zinc-500">Choose a name to identify this connection.</p>
@@ -138,8 +167,8 @@ export function Setup({ oauthProviders, onComplete }: Props) {
             </div>
           )}
 
-          {step === 1 && keyGenerated && createdKey && (
-            <div key="step1-key" className="animate-in space-y-6">
+          {step === 2 && keyGenerated && createdKey && (
+            <div key="step2-key" className="animate-in space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Your API Key</h2>
                 <p className="mt-1 text-sm text-zinc-500">This is the bearer token your agent will use to connect.</p>
@@ -171,7 +200,7 @@ export function Setup({ oauthProviders, onComplete }: Props) {
               </div>
 
               <button
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
               >
                 Continue
@@ -180,43 +209,21 @@ export function Setup({ oauthProviders, onComplete }: Props) {
             </div>
           )}
 
-          {step === 2 && (
-            <div key="step2" className="animate-in space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect Services</h2>
-                <p className="mt-1 text-sm text-zinc-500">Grant your agent access to your accounts.</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {oauthProviders.map(p => (
-                  <OAuthButton key={p.id} provider={p} />
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/5">
-                <p className="text-xs text-zinc-400">You can add more services later.</p>
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
-                >
-                  Continue
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
+          {/* Step 3: Agent Config */}
+          {step === 3 && createdKey && (
             <div key="step3" className="animate-in space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Secure your Dashboard</h2>
-                <p className="mt-1 text-sm text-zinc-500">Protect your admin panel with two-factor authentication.</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect your Agent</h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Add this MCP server config to your agent so it can reach Gatelet.
+                  Pick your agent below, then click <strong>Add to Config</strong> to write it automatically — or copy the snippet and paste it into the config file yourself.
+                </p>
               </div>
 
-              <TotpSetup />
+              <AgentConfig apiKey={createdKey} runtime={runtime} />
 
               <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/5">
-                <p className="text-xs text-zinc-400">You can set this up later in Settings.</p>
+                <p className="text-xs text-zinc-400">You can configure this later.</p>
                 <button
                   onClick={() => setStep(4)}
                   className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
@@ -228,25 +235,26 @@ export function Setup({ oauthProviders, onComplete }: Props) {
             </div>
           )}
 
-          {step === 4 && createdKey && (
+          {/* Step 4: 2FA (optional) — Launch Dashboard is primary CTA */}
+          {step === 4 && (
             <div key="step4" className="animate-in space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect your Agent</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Add this MCP server config to your agent so it can reach Gatelet.
-                  Pick your agent below, then click <strong>Add to Config</strong> to write it automatically — or copy the snippet and paste it into the config file yourself.
-                </p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Secure your Dashboard</h2>
+                <p className="mt-1 text-sm text-zinc-500">Protect your admin panel with two-factor authentication.</p>
               </div>
 
-              <AgentConfig apiKey={createdKey} />
+              <TotpSetup />
 
-              <button
-                onClick={onComplete}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white transition-all hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-              >
-                <Sparkles className="h-4 w-4" />
-                Launch Dashboard
-              </button>
+              <div className="flex flex-col gap-3 pt-4 border-t border-zinc-100 dark:border-white/5">
+                <button
+                  onClick={onComplete}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white transition-all hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Launch Dashboard
+                </button>
+                <p className="text-center text-xs text-zinc-400">You can set up 2FA later in Settings.</p>
+              </div>
             </div>
           )}
         </div>

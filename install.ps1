@@ -200,8 +200,7 @@ try {
 Write-Host ""
 Write-Ok "Gatelet is running!"
 Write-Host ""
-Write-Host "  Dashboard    http://localhost:4001" -ForegroundColor Cyan
-Write-Host "  Admin token  $AdminToken" -ForegroundColor Cyan
+Write-Host "  Dashboard    http://localhost:4001/?token=$AdminToken" -ForegroundColor Cyan
 Write-Host "  Install dir  $GateletDir" -ForegroundColor Cyan
 Write-Host "  Secrets dir  $SecretsDir (current user only)" -ForegroundColor DarkGray
 Write-Host ""

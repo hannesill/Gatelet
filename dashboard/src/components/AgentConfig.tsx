@@ -62,10 +62,12 @@ function buildConfig(tool: Tool, url: string, key: string): string {
   }
 }
 
-export function AgentConfig({ apiKey }: { apiKey: string }) {
+export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { docker: boolean } }) {
   const { toast } = useToast();
-  const [mcpUrl, setMcpUrl] = useState(
-    `http://${window.location.hostname}:4000/mcp`,
+  const [mcpUrl, setMcpUrl] = useState(() =>
+    runtime?.docker
+      ? 'http://gatelet:4000/mcp'
+      : `http://${window.location.hostname}:4000/mcp`,
   );
   const [activeTool, setActiveTool] = useState<Tool>(getStoredTab);
   const [installing, setInstalling] = useState(false);

@@ -98,6 +98,7 @@ function AppContent() {
     return (
       <Setup
         oauthProviders={status.oauthProviders}
+        runtime={status.runtime}
         onComplete={() => {
           setShowSetup(false);
           fetchStatus();

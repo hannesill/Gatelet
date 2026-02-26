@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { Hono } from 'hono';
 import { listConnections, getConnectionWithCredentials } from '../../db/connections.js';
 import { listApiKeys } from '../../db/api-keys.js';
@@ -98,6 +99,9 @@ app.get('/status', (c) => {
     tools,
     apiKeys: { total: totalKeys, active: activeKeys },
     oauthProviders,
+    runtime: {
+      docker: fs.existsSync('/.dockerenv') || process.env.GATELET_DATA_DIR === '/data',
+    },
   });
 });
 
