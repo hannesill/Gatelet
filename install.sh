@@ -28,6 +28,7 @@ success() { printf "${Green}  ✓${Color_Off} %s\n" "$1"; }
 # -- Defaults -----------------------------------------------------------------
 GATELET_DIR="${GATELET_DIR:-$HOME/.gatelet}"
 GATELET_IMAGE="${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}"
+
 GATELET_SECRETS_DIR="${GATELET_SECRETS_DIR:-/usr/local/etc/gatelet/secrets}"
 
 # -- Preflight checks ---------------------------------------------------------
@@ -111,7 +112,7 @@ if [ -z "$GATELET_PASSPHRASE" ]; then
   fi
 fi
 
-# -- Write secrets to root-owned directory ------------------------------------
+# -- Write secrets to root-owned directory (backup, not used by Docker) --------
 info "Storing secrets in $GATELET_SECRETS_DIR (requires sudo)..."
 sudo mkdir -p "$GATELET_SECRETS_DIR"
 printf '%s' "$GATELET_ADMIN_TOKEN" | sudo tee "$GATELET_SECRETS_DIR/admin-token" > /dev/null
@@ -136,7 +137,7 @@ services:
       - "127.0.0.1:4001:4001"  # Admin dashboard — localhost only
     volumes:
       - gatelet-data:/data
-      - ${GATELET_SECRETS_DIR}:/run/secrets/gatelet:ro
+      - gatelet-secrets:/run/secrets/gatelet:ro
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
@@ -167,11 +168,21 @@ networks:
 
 volumes:
   gatelet-data:
+  gatelet-secrets:
+    external: true
 COMPOSE
 
 # -- Pull & start -------------------------------------------------------------
 info "Pulling $GATELET_IMAGE..."
 (cd "$GATELET_DIR" && $COMPOSE pull)
+
+# Seed secrets into a Docker volume (avoids bind-mount issues on macOS where
+# Docker can only mount paths under /Users, not root-owned system dirs).
+info "Loading secrets into Docker..."
+docker volume create gatelet-secrets >/dev/null 2>&1 || true
+printf '%s' "$GATELET_ADMIN_TOKEN" | docker run --rm -i -v gatelet-secrets:/secrets "$GATELET_IMAGE" sh -c 'cat > /secrets/admin-token && chmod 600 /secrets/admin-token'
+printf '%s' "$GATELET_PASSPHRASE"  | docker run --rm -i -v gatelet-secrets:/secrets "$GATELET_IMAGE" sh -c 'cat > /secrets/passphrase && chmod 600 /secrets/passphrase'
+success "Secrets loaded"
 
 info "Starting Gatelet..."
 (cd "$GATELET_DIR" && $COMPOSE up -d)

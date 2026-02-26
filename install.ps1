@@ -125,10 +125,7 @@ GATELET_IMAGE=$GateletImage
 "@ | Set-Content -Path $EnvFile -Encoding UTF8
 
 # -- Write docker-compose.yml ------------------------------------------------
-# Use forward slashes for the secrets path in compose
-$SecretsMount = $SecretsDir -replace '\\', '/'
-
-(@'
+@'
 services:
   gatelet:
     image: ${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}
@@ -136,7 +133,7 @@ services:
       - "127.0.0.1:4001:4001"  # Admin dashboard — localhost only
     volumes:
       - gatelet-data:/data
-      - __SECRETS_DIR__:/run/secrets/gatelet:ro
+      - gatelet-secrets:/run/secrets/gatelet:ro
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
@@ -167,7 +164,9 @@ networks:
 
 volumes:
   gatelet-data:
-'@ -replace '__SECRETS_DIR__', $SecretsMount) | Set-Content -Path $ComposeFile -Encoding UTF8
+  gatelet-secrets:
+    external: true
+'@ | Set-Content -Path $ComposeFile -Encoding UTF8
 
 # -- Pull & start -------------------------------------------------------------
 Write-Info "Pulling $GateletImage..."
@@ -178,6 +177,14 @@ try {
     } else {
         docker-compose pull
     }
+
+    # Seed secrets into a Docker volume (avoids bind-mount issues where Docker
+    # cannot access host directories with restrictive ACLs).
+    Write-Info "Loading secrets into Docker..."
+    docker volume create gatelet-secrets 2>$null | Out-Null
+    $AdminToken | docker run --rm -i -v gatelet-secrets:/secrets $GateletImage sh -c 'cat > /secrets/admin-token && chmod 600 /secrets/admin-token'
+    $Passphrase | docker run --rm -i -v gatelet-secrets:/secrets $GateletImage sh -c 'cat > /secrets/passphrase && chmod 600 /secrets/passphrase'
+    Write-Ok "Secrets loaded"
 
     Write-Info "Starting Gatelet..."
     if ($Compose -eq "docker compose") {

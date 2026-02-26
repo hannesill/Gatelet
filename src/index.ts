@@ -21,6 +21,24 @@ import { promptPassphrase } from './cli-prompt.js';
 // Re-export so any existing imports from index.ts still work
 export { startTime } from './start-time.js';
 
+const isDocker = process.env.GATELET_DATA_DIR === '/data';
+
+function resolvePassphraseOrDie(): string {
+  const passphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+  if (passphrase) return passphrase;
+
+  if (isDocker) {
+    console.error('Error: Cannot read passphrase from secrets volume.');
+    console.error('');
+    console.error('  Expected file: ' + (process.env.GATELET_PASSPHRASE_FILE || '(GATELET_PASSPHRASE_FILE not set)'));
+    console.error('  Re-run the install script to reseed the secrets volume.');
+    console.error('');
+    process.exit(1);
+  }
+
+  return ''; // Caller will fall through to interactive prompt
+}
+
 async function initMasterKey(): Promise<void> {
   fs.mkdirSync(config.DATA_DIR, { recursive: true });
 
@@ -32,7 +50,7 @@ async function initMasterKey(): Promise<void> {
     console.log('');
 
     let passphrase: string;
-    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    const envPassphrase = resolvePassphraseOrDie();
     if (envPassphrase) {
       passphrase = envPassphrase;
     } else {
@@ -63,7 +81,7 @@ async function initMasterKey(): Promise<void> {
   // Case 2: Existing passphrase installation
   if (isPassphraseMode()) {
     let passphrase: string;
-    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    const envPassphrase = resolvePassphraseOrDie();
     if (envPassphrase) {
       passphrase = envPassphrase;
     } else {
@@ -82,7 +100,7 @@ async function initMasterKey(): Promise<void> {
   // Case 3: Fresh install — prompt for passphrase
   if (isFreshInstall()) {
     let passphrase: string;
-    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    const envPassphrase = resolvePassphraseOrDie();
     if (envPassphrase) {
       passphrase = envPassphrase;
     } else {
