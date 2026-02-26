@@ -2,7 +2,31 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 
-let _adminToken: string | undefined = process.env.GATELET_ADMIN_TOKEN;
+/**
+ * Read a secret from a file path (Docker secrets / _FILE convention).
+ * Returns the file contents trimmed, or undefined if the path doesn't exist.
+ */
+export function readSecretFile(filePath: string): string | undefined {
+  try {
+    return fs.readFileSync(filePath, 'utf-8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Resolve a secret: _FILE env var (read from file) > direct env var > undefined.
+ */
+export function resolveEnvSecret(envName: string): string | undefined {
+  const filePath = process.env[`${envName}_FILE`];
+  if (filePath) {
+    const value = readSecretFile(filePath);
+    if (value) return value;
+  }
+  return process.env[envName];
+}
+
+let _adminToken: string | undefined = resolveEnvSecret('GATELET_ADMIN_TOKEN');
 
 export const config = {
   get MCP_PORT() { return Number(process.env.GATELET_MCP_PORT) || 4000; },

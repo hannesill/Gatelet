@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { config, loadAdminToken, saveAdminToken } from './config.js';
+import { config, loadAdminToken, saveAdminToken, resolveEnvSecret } from './config.js';
 import { getDb } from './db/database.js';
 import {
   deriveKeyFromPassphrase,
@@ -32,8 +32,9 @@ async function initMasterKey(): Promise<void> {
     console.log('');
 
     let passphrase: string;
-    if (process.env.GATELET_PASSPHRASE) {
-      passphrase = process.env.GATELET_PASSPHRASE;
+    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    if (envPassphrase) {
+      passphrase = envPassphrase;
     } else {
       passphrase = await promptPassphrase('Enter a new passphrase: ');
       const confirm = await promptPassphrase('Confirm passphrase: ');
@@ -62,8 +63,9 @@ async function initMasterKey(): Promise<void> {
   // Case 2: Existing passphrase installation
   if (isPassphraseMode()) {
     let passphrase: string;
-    if (process.env.GATELET_PASSPHRASE) {
-      passphrase = process.env.GATELET_PASSPHRASE;
+    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    if (envPassphrase) {
+      passphrase = envPassphrase;
     } else {
       passphrase = await promptPassphrase('Enter Gatelet passphrase: ');
     }
@@ -80,8 +82,9 @@ async function initMasterKey(): Promise<void> {
   // Case 3: Fresh install — prompt for passphrase
   if (isFreshInstall()) {
     let passphrase: string;
-    if (process.env.GATELET_PASSPHRASE) {
-      passphrase = process.env.GATELET_PASSPHRASE;
+    const envPassphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+    if (envPassphrase) {
+      passphrase = envPassphrase;
     } else {
       console.log('');
       console.log('Welcome to Gatelet! Set a passphrase to encrypt your data.');

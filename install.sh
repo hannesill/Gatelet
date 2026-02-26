@@ -8,6 +8,7 @@
 #   GATELET_IMAGE     Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token (default: auto-generated)
 #   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
+#   GATELET_SECRETS_DIR  Secrets directory   (default: /usr/local/etc/gatelet/secrets)
 
 set -e
 
@@ -27,6 +28,7 @@ success() { printf "${Green}  ✓${Color_Off} %s\n" "$1"; }
 # -- Defaults -----------------------------------------------------------------
 GATELET_DIR="${GATELET_DIR:-$HOME/.gatelet}"
 GATELET_IMAGE="${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}"
+GATELET_SECRETS_DIR="${GATELET_SECRETS_DIR:-/usr/local/etc/gatelet/secrets}"
 
 # -- Preflight checks ---------------------------------------------------------
 info "Checking prerequisites..."
@@ -71,25 +73,28 @@ mkdir -p "$GATELET_DIR"
 
 # -- Admin token --------------------------------------------------------------
 if [ -z "$GATELET_ADMIN_TOKEN" ]; then
-  if [ -f "$GATELET_DIR/.env" ]; then
-    # Preserve existing token on reinstall
+  # Check existing secrets file first, then legacy .env
+  if [ -f "$GATELET_SECRETS_DIR/admin-token" ]; then
+    GATELET_ADMIN_TOKEN=$(sudo cat "$GATELET_SECRETS_DIR/admin-token" 2>/dev/null || true)
+  elif [ -f "$GATELET_DIR/.env" ]; then
     EXISTING_TOKEN=$(grep '^GATELET_ADMIN_TOKEN=' "$GATELET_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
-  fi
-  if [ -n "$EXISTING_TOKEN" ]; then
     GATELET_ADMIN_TOKEN="$EXISTING_TOKEN"
-  else
+  fi
+  if [ -z "$GATELET_ADMIN_TOKEN" ]; then
     GATELET_ADMIN_TOKEN=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
   fi
 fi
 
 # -- Encryption passphrase ----------------------------------------------------
 if [ -z "$GATELET_PASSPHRASE" ]; then
-  if [ -f "$GATELET_DIR/.env" ]; then
+  # Check existing secrets file first, then legacy .env
+  if [ -f "$GATELET_SECRETS_DIR/passphrase" ]; then
+    GATELET_PASSPHRASE=$(sudo cat "$GATELET_SECRETS_DIR/passphrase" 2>/dev/null || true)
+  elif [ -f "$GATELET_DIR/.env" ]; then
     EXISTING_PASSPHRASE=$(grep '^GATELET_PASSPHRASE=' "$GATELET_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
-  fi
-  if [ -n "$EXISTING_PASSPHRASE" ]; then
     GATELET_PASSPHRASE="$EXISTING_PASSPHRASE"
-  else
+  fi
+  if [ -z "$GATELET_PASSPHRASE" ]; then
     printf "\n"
     info "Set an encryption passphrase for your data (8+ characters)."
     info "You'll need this if you ever move or restore your installation."
@@ -101,27 +106,36 @@ if [ -z "$GATELET_PASSPHRASE" ]; then
   fi
 fi
 
-# -- Write .env ---------------------------------------------------------------
+# -- Write secrets to root-owned directory ------------------------------------
+info "Storing secrets in $GATELET_SECRETS_DIR (requires sudo)..."
+sudo mkdir -p "$GATELET_SECRETS_DIR"
+printf '%s' "$GATELET_ADMIN_TOKEN" | sudo tee "$GATELET_SECRETS_DIR/admin-token" > /dev/null
+printf '%s' "$GATELET_PASSPHRASE"  | sudo tee "$GATELET_SECRETS_DIR/passphrase"  > /dev/null
+sudo chown -R root "$GATELET_SECRETS_DIR"
+sudo chmod 700 "$GATELET_SECRETS_DIR"
+sudo chmod 600 "$GATELET_SECRETS_DIR/admin-token" "$GATELET_SECRETS_DIR/passphrase"
+success "Secrets stored (root-only access)"
+
+# -- Write .env (non-sensitive config only) -----------------------------------
 cat > "$GATELET_DIR/.env" <<EOF
-GATELET_ADMIN_TOKEN=$GATELET_ADMIN_TOKEN
-GATELET_PASSPHRASE=$GATELET_PASSPHRASE
 GATELET_IMAGE=$GATELET_IMAGE
 EOF
 chmod 600 "$GATELET_DIR/.env"
 
 # -- Write docker-compose.yml ------------------------------------------------
-cat > "$GATELET_DIR/docker-compose.yml" <<'COMPOSE'
+cat > "$GATELET_DIR/docker-compose.yml" <<COMPOSE
 services:
   gatelet:
-    image: ${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}
+    image: \${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}
     ports:
       - "127.0.0.1:4001:4001"  # Admin dashboard — localhost only
     volumes:
       - gatelet-data:/data
+      - ${GATELET_SECRETS_DIR}:/run/secrets/gatelet:ro
     environment:
       - GATELET_DATA_DIR=/data
-      - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
-      - GATELET_PASSPHRASE=${GATELET_PASSPHRASE}
+      - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
+      - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -164,6 +178,7 @@ printf "\n"
 printf "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001\n"
 printf "  ${Cyan}Admin token${Color_Off}  %s\n" "$GATELET_ADMIN_TOKEN"
 printf "  ${Cyan}Install dir${Color_Off}  %s\n" "$GATELET_DIR"
+printf "  ${Cyan}Secrets dir${Color_Off}  %s ${Dim}(root-only)${Color_Off}\n" "$GATELET_SECRETS_DIR"
 printf "\n"
 printf "  ${Dim}MCP endpoint (for agents on the Docker network):${Color_Off}\n"
 printf "  ${Dim}http://gatelet:4000/mcp${Color_Off}\n"
