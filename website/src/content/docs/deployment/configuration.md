@@ -13,7 +13,9 @@ Gatelet is configured through environment variables and the admin dashboard.
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + encryption keys location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard authentication token |
+| `GATELET_ADMIN_TOKEN_FILE` | — | Path to file containing admin token (Docker secrets) |
 | `GATELET_PASSPHRASE` | prompted | Encryption passphrase for credential storage |
+| `GATELET_PASSPHRASE_FILE` | — | Path to file containing passphrase (Docker secrets) |
 
 ### `GATELET_MCP_PORT`
 
@@ -36,6 +38,22 @@ The token used to authenticate with the admin dashboard. If not set, Gatelet che
 The passphrase used to derive the master encryption key via Argon2id. All OAuth credentials and secrets are encrypted at rest using this key.
 
 If not set, Gatelet prompts interactively on startup. Set this for automated/Docker deployments.
+
+### Secret file convention (`_FILE`)
+
+Both `GATELET_ADMIN_TOKEN` and `GATELET_PASSPHRASE` support the `_FILE` suffix convention used by Docker secrets. When `GATELET_PASSPHRASE_FILE` is set, Gatelet reads the passphrase from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
+
+This lets you store secrets in root-owned files and mount them read-only into the container:
+
+```yaml
+volumes:
+  - /usr/local/etc/gatelet/secrets:/run/secrets/gatelet:ro
+environment:
+  - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
+  - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
+```
+
+The default install script uses this approach automatically — secrets are stored in `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), so they cannot be read without `sudo`.
 
 ## OAuth credentials
 

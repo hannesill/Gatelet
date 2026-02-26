@@ -11,7 +11,14 @@ export default defineConfig({
     starlight({
       title: 'Gatelet',
       customCss: ['./src/styles/starlight.css'],
+      components: {
+        Header: './src/components/DocsHeader.astro',
+      },
       head: [
+        {
+          tag: 'script',
+          content: `(function(){var t=localStorage.getItem('theme');if(t)localStorage.setItem('starlight-theme',t);var d=t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.classList.toggle('dark',d)})();`,
+        },
         {
           tag: 'link',
           attrs: {
@@ -41,6 +48,25 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/hannesill/gatelet' },
       ],
+      tableOfContents: {
+        minHeadingLevel: 2,
+        maxHeadingLevel: 3,
+      },
+      expressiveCode: {
+        themes: ['github-dark', 'github-light'],
+        styleOverrides: {
+          borderRadius: '0.75rem',
+          borderColor: 'var(--sl-color-hairline)',
+          codeFontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          codeFontSize: '0.8125rem',
+          codeLineHeight: '1.7',
+          codePaddingBlock: '1rem',
+          codePaddingInline: '1.25rem',
+          frames: {
+            editorTabBarBorderBottomColor: 'var(--sl-color-hairline)',
+          },
+        },
+      },
       sidebar: [
         {
           label: 'Getting Started',

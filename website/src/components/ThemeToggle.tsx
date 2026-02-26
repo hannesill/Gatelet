@@ -14,11 +14,15 @@ export function ThemeToggle() {
     setThemeState(t);
     if (t === 'system') {
       localStorage.removeItem('theme');
+      localStorage.removeItem('starlight-theme');
       const dark = matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     } else {
       localStorage.setItem('theme', t);
+      localStorage.setItem('starlight-theme', t);
       document.documentElement.classList.toggle('dark', t === 'dark');
+      document.documentElement.dataset.theme = t;
     }
   }
 

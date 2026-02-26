@@ -1,0 +1,137 @@
+---
+import config from 'virtual:starlight/user-config';
+import Search from 'virtual:starlight/components/Search';
+import { ThemeToggle } from './ThemeToggle';
+
+const shouldRenderSearch =
+  config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+---
+
+<div class="header">
+  <div class="title-wrapper sl-flex">
+    <a href="/" class="site-title sl-flex">
+      <div class="logo-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="1" y1="5" x2="23" y2="5" />
+          <line x1="1" y1="7" x2="23" y2="7" />
+          <line x1="2" y1="7" x2="2" y2="22" />
+          <line x1="8.5" y1="7" x2="8.5" y2="22" />
+          <line x1="15.5" y1="7" x2="15.5" y2="22" />
+          <line x1="22" y1="7" x2="22" y2="22" />
+          <path d="M8.5 22V14a3.5 3.5 0 0 1 7 0v8" />
+          <path d="M2 22v-4.5a3.25 3.25 0 0 1 6.5 0V22" />
+          <path d="M15.5 22v-4.5a3.25 3.25 0 0 1 6.5 0V22" />
+          <line x1="1" y1="22" x2="23" y2="22" />
+        </svg>
+      </div>
+      <span class="logo-text">Gatelet</span>
+    </a>
+  </div>
+  <div class="sl-flex print:hidden">
+    {shouldRenderSearch && <Search />}
+  </div>
+  <div class="sl-hidden md:sl-flex print:hidden right-group">
+    <a href="https://github.com/hannesill/gatelet" target="_blank" rel="noopener noreferrer" class="github-link">
+      GitHub
+    </a>
+    <ThemeToggle client:load />
+  </div>
+</div>
+
+<style>
+  /* Layout styles (from Starlight's default Header) */
+  .header {
+    display: flex;
+    gap: var(--sl-nav-gap);
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+  }
+
+  .title-wrapper {
+    overflow: clip;
+    padding: 0.25rem;
+    margin: -0.25rem;
+    min-width: 0;
+  }
+
+  .right-group {
+    gap: 1rem;
+    align-items: center;
+  }
+
+  @media (min-width: 50rem) {
+    :global(:root[data-has-sidebar]) {
+      --__sidebar-pad: calc(2 * var(--sl-nav-pad-x));
+    }
+    :global(:root:not([data-has-toc])) {
+      --__toc-width: 0rem;
+    }
+    .header {
+      --__sidebar-width: max(0rem, var(--sl-content-inline-start, 0rem) - var(--sl-nav-pad-x));
+      --__main-column-fr: calc(
+        (
+            100% + var(--__sidebar-pad, 0rem) - var(--__toc-width, var(--sl-sidebar-width)) -
+              (2 * var(--__toc-width, var(--sl-nav-pad-x))) - var(--sl-content-inline-start, 0rem) -
+              var(--sl-content-width)
+          ) / 2
+      );
+      display: grid;
+      grid-template-columns:
+        minmax(
+          calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))),
+          auto
+        )
+        1fr
+        auto;
+      align-content: center;
+    }
+  }
+
+  /* Custom branding */
+  .site-title {
+    gap: 0.75rem;
+    text-decoration: none;
+    align-items: center;
+  }
+
+  .logo-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.75rem;
+    background: #4f46e5;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    flex-shrink: 0;
+  }
+
+  .logo-box svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    stroke: white;
+  }
+
+  .logo-text {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    color: var(--sl-color-text);
+  }
+
+  .github-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--sl-color-text);
+    opacity: 0.5;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+
+  .github-link:hover {
+    opacity: 0.9;
+  }
+</style>
