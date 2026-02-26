@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { RegisteredTool as SdkRegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import http from 'node:http';
 import { buildToolRegistry, type RegisteredTool } from './tool-registry.js';
@@ -16,34 +17,101 @@ import { VERSION } from '../version.js';
 
 let toolRegistry: Map<string, RegisteredTool>;
 
+// Active MCP sessions — module-scoped so refreshToolRegistry() can notify them.
+const sessions = new Map<string, {
+  transport: StreamableHTTPServerTransport;
+  server: McpServer;
+  apiKeyId: string;
+  lastActive: number;
+  toolHandles: Map<string, SdkRegisteredTool>;
+}>();
+
+/**
+ * Rebuild the tool registry from the database and notify all active MCP
+ * sessions so connected clients see the updated tool list immediately.
+ */
 export function refreshToolRegistry(): void {
   toolRegistry = buildToolRegistry();
+
+  for (const [sessionId, session] of sessions) {
+    try {
+      // Remove tools no longer in the registry
+      for (const [name, handle] of session.toolHandles) {
+        if (!toolRegistry.has(name)) {
+          handle.remove();
+          session.toolHandles.delete(name);
+        }
+      }
+
+      // Add tools that are new in the registry
+      for (const [name, registered] of toolRegistry) {
+        if (!session.toolHandles.has(name)) {
+          const toolDef = registered.tool;
+          const handle = session.server.tool(
+            name,
+            toolDef.description,
+            toolDef.inputSchema,
+            async (params: Record<string, unknown>) => {
+              const current = toolRegistry.get(name);
+              if (!current) {
+                return { content: [{ type: 'text' as const, text: 'Error: Tool no longer available' }] };
+              }
+              return handleToolCall(name, params, current, session.apiKeyId);
+            },
+          );
+          session.toolHandles.set(name, handle);
+        }
+      }
+
+      session.server.sendToolListChanged();
+    } catch (err) {
+      console.error(`Failed to update tools for session ${sessionId}:`, err);
+    }
+  }
 }
 
 export function getRegisteredToolCount(): number {
   return toolRegistry?.size ?? 0;
 }
 
-function createMcpServer(apiKeyId: string): McpServer {
-  const mcpServer = new McpServer({
-    name: 'gatelet',
-    version: VERSION,
-  });
+function registerToolsOnServer(
+  mcpServer: McpServer,
+  apiKeyId: string,
+): Map<string, SdkRegisteredTool> {
+  const handles = new Map<string, SdkRegisteredTool>();
 
   for (const [name, registered] of toolRegistry) {
     const toolDef = registered.tool;
 
-    mcpServer.tool(
+    const handle = mcpServer.tool(
       name,
       toolDef.description,
       toolDef.inputSchema,
       async (params: Record<string, unknown>) => {
-        return handleToolCall(name, params, registered, apiKeyId);
+        // Look up from current registry so policy changes are always reflected
+        const current = toolRegistry.get(name);
+        if (!current) {
+          return { content: [{ type: 'text' as const, text: 'Error: Tool no longer available' }] };
+        }
+        return handleToolCall(name, params, current, apiKeyId);
       },
     );
+    handles.set(name, handle);
   }
 
-  return mcpServer;
+  return handles;
+}
+
+function createMcpServer(apiKeyId: string): {
+  server: McpServer;
+  toolHandles: Map<string, SdkRegisteredTool>;
+} {
+  const server = new McpServer({
+    name: 'gatelet',
+    version: VERSION,
+  });
+  const toolHandles = registerToolsOnServer(server, apiKeyId);
+  return { server, toolHandles };
 }
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
@@ -52,15 +120,6 @@ const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 export function startMcpServer(): http.Server {
   toolRegistry = buildToolRegistry();
-
-  // Each session gets its own McpServer with the latest tools at time of connection.
-  // This ensures new connections/tools are picked up without restarting.
-  const sessions = new Map<string, {
-    transport: StreamableHTTPServerTransport;
-    server: McpServer;
-    apiKeyId: string;
-    lastActive: number;
-  }>();
 
   // Periodic session cleanup
   const cleanupInterval = setInterval(() => {
@@ -172,7 +231,7 @@ export function startMcpServer(): http.Server {
         });
 
         // Create a fresh McpServer with current tools for this session
-        const mcpServer = createMcpServer(apiKey.id);
+        const { server: mcpServer, toolHandles } = createMcpServer(apiKey.id);
 
         transport.onclose = () => {
           if (transport.sessionId) {
@@ -184,7 +243,7 @@ export function startMcpServer(): http.Server {
         await transport.handleRequest(req, res, body);
 
         if (transport.sessionId) {
-          sessions.set(transport.sessionId, { transport, server: mcpServer, apiKeyId: apiKey.id, lastActive: Date.now() });
+          sessions.set(transport.sessionId, { transport, server: mcpServer, toolHandles, apiKeyId: apiKey.id, lastActive: Date.now() });
         }
       } else {
         // Non-init request without valid session
