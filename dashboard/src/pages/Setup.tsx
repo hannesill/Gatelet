@@ -4,6 +4,8 @@ import { OAuthButton } from '../components/OAuthButton';
 import { TotpSetup } from '../components/TotpSetup';
 import { PresetSelector } from '../components/PresetSelector';
 import { TestConnectionButton } from '../components/TestConnectionButton';
+import { DynamicBackground } from '../components/DynamicBackground';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { detectPreset } from '../lib/preset-detection';
 import { Logo } from '../components/Logo';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
@@ -219,17 +221,21 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
 
   return (
     <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4">
-      {/* Visual background elements */}
-      <div className="absolute top-0 left-0 h-full w-full pointer-events-none">
-        <div className="absolute -top-48 -left-48 h-[600px] w-[600px] rounded-full bg-indigo-500/5 blur-[120px]" />
-        <div className="absolute top-1/2 -right-48 h-[600px] w-[600px] rounded-full bg-zinc-500/5 blur-[120px]" />
+      <DynamicBackground />
+      {/* Background blobs for atmosphere */}
+      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
+      <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-zinc-500/10 blur-[100px]" />
+
+      {/* Theme toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
       </div>
 
       <div className="animate-in relative w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 shadow-2xl dark:bg-white">
-            <Logo className="h-8 w-8 text-white dark:text-zinc-950" />
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-2xl shadow-indigo-500/40 ring-4 ring-white dark:ring-zinc-950">
+            <Logo className="h-9 w-9 text-white" />
           </div>
           <h1 className="font-[Fraunces] text-3xl font-bold italic text-zinc-900 dark:text-white">Initialize Gatelet</h1>
           <p className="mt-2 text-zinc-500">Securely bridge your AI agents to real-world data</p>

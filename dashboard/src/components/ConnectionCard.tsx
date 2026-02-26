@@ -29,6 +29,8 @@ const PROVIDER_ICONS: Record<string, any> = {
   google_gmail: GmailLogo,
 };
 
+const PROVIDERS_WITH_SETTINGS = new Set(['google_gmail']);
+
 const PROVIDER_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   google_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
   outlook_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
@@ -79,12 +81,6 @@ function ConnectionSettings({ connectionId, providerId }: { connectionId: string
       if (typeof s.emailAliasSuffix === 'string') setEmailAliasSuffix(s.emailAliasSuffix);
     });
   }, [connectionId]);
-
-  if (providerId !== 'google_gmail') {
-    return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">No settings available for this provider.</p>
-    );
-  }
 
   if (settings === null) {
     return (
@@ -273,18 +269,20 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
               </button>
             )}
 
-            <button
-              onClick={() => setMode(mode === 'settings' ? 'closed' : 'settings')}
-              className={cn(
-                'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200',
-                mode === 'settings'
-                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950'
-                  : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'
-              )}
-              title="Connection settings"
-            >
-              <Settings2 className="h-4 w-4" />
-            </button>
+            {PROVIDERS_WITH_SETTINGS.has(connection.provider_id) && (
+              <button
+                onClick={() => setMode(mode === 'settings' ? 'closed' : 'settings')}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200',
+                  mode === 'settings'
+                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950'
+                    : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'
+                )}
+                title="Connection settings"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+            )}
 
             <button
               onClick={handleToggleEnabled}
