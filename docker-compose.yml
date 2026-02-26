@@ -2,6 +2,7 @@ services:
   gatelet:
     build: .
     ports:
+      - "127.0.0.1:4000:4000"  # MCP — localhost only (for host-based agents like Claude Code)
       - "127.0.0.1:4001:4001"  # Admin — localhost only
     volumes:
       - gatelet-data:/data
