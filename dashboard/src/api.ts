@@ -111,6 +111,9 @@ export const api = {
 
   getProviderReference: (id: string) => request<ProviderReference>(`/api/providers/${id}/reference`),
 
+  testConnection: (id: string) =>
+    request<{ ok: boolean; preview?: string; error?: string }>(`/api/connections/${id}/test`, { method: 'POST' }),
+
   getProviderPreset: async (providerId: string, preset: string): Promise<string> => {
     const res = await fetch(`/api/providers/${providerId}/presets/${preset}`);
     if (res.status === 401) throw new AuthError();

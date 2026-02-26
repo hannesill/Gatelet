@@ -15,20 +15,21 @@ interface ConnectionWithMeta {
   enabledTools: number;
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
+  tokenExpiresAt?: number;
   enabled: boolean;
   created_at: string;
   updated_at: string;
 }
 
-function getTokenStatus(connectionId: string): 'valid' | 'expired' | 'unknown' {
+function getTokenInfo(connectionId: string): { status: 'valid' | 'expired' | 'unknown'; expiresAt?: number } {
   try {
     const conn = getConnectionWithCredentials(connectionId);
-    if (!conn?.credentials) return 'unknown';
+    if (!conn?.credentials) return { status: 'unknown' };
     const expiry = conn.credentials.expiry_date;
-    if (typeof expiry !== 'number') return 'unknown';
-    return expiry > Date.now() ? 'valid' : 'expired';
+    if (typeof expiry !== 'number') return { status: 'unknown' };
+    return { status: expiry > Date.now() ? 'valid' : 'expired', expiresAt: expiry };
   } catch {
-    return 'unknown';
+    return { status: 'unknown' };
   }
 }
 
@@ -50,6 +51,8 @@ app.get('/status', (c) => {
       // Invalid policy — 0 enabled tools
     }
 
+    const tokenInfo = getTokenInfo(conn.id);
+
     return {
       id: conn.id,
       provider_id: conn.provider_id,
@@ -57,7 +60,8 @@ app.get('/status', (c) => {
       displayName: provider?.displayName ?? conn.provider_id,
       enabledTools,
       totalTools,
-      tokenStatus: getTokenStatus(conn.id),
+      tokenStatus: tokenInfo.status,
+      tokenExpiresAt: tokenInfo.expiresAt,
       enabled: conn.enabled !== 0,
       created_at: conn.created_at,
       updated_at: conn.updated_at,

@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from './ProviderLogos';
+import { TestConnectionButton } from './TestConnectionButton';
 import type { ConnectionWithMeta } from '../types';
 
 const PROVIDER_ICONS: Record<string, any> = {
@@ -34,12 +35,19 @@ const PROVIDER_COLORS: Record<string, { bg: string; text: string; icon: string }
   google_gmail: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
 };
 
-function TokenStatus({ status }: { status: 'valid' | 'expired' | 'unknown' }) {
+function TokenStatus({ status, expiresAt }: { status: 'valid' | 'expired' | 'unknown'; expiresAt?: number }) {
   if (status === 'valid') {
+    let label = 'Active';
+    if (typeof expiresAt === 'number') {
+      const minutesLeft = Math.round((expiresAt - Date.now()) / 60_000);
+      if (minutesLeft > 0 && minutesLeft <= 60) {
+        label = `Active (${minutesLeft}m)`;
+      }
+    }
     return (
       <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
         <CheckCircle2 className="h-3 w-3" />
-        Active
+        {label}
       </div>
     );
   }
@@ -207,7 +215,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
                     Paused
                   </div>
                 )}
-                <TokenStatus status={connection.tokenStatus} />
+                <TokenStatus status={connection.tokenStatus} expiresAt={connection.tokenExpiresAt} />
               </div>
             </div>
 
@@ -250,6 +258,8 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
                 Edit Policy
               </button>
             )}
+
+            <TestConnectionButton connectionId={connection.id} />
           </div>
 
           <div className="flex items-center gap-1.5">

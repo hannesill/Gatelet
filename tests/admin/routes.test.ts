@@ -260,6 +260,45 @@ describe('Admin API Routes', () => {
     });
   });
 
+  // ── Test Connection ─────────────────────────────────────────────────
+
+  describe('Test Connection', () => {
+    it('POST /api/connections/:id/test returns 404 for invalid id', async () => {
+      const res = await req('/api/connections/conn_nonexistent/test', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(404);
+    });
+
+    it('POST /api/connections/:id/test returns ok:false with an error for fake credentials', async () => {
+      // Create a connection with fake credentials
+      const createRes = await req('/api/connections', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider_id: 'google_calendar',
+          account_name: 'test-conn@gmail.com',
+          credentials: { access_token: 'fake_token', refresh_token: 'fake_refresh' },
+          policy_yaml: MOCK_POLICY,
+        }),
+      });
+      const { id } = await createRes.json();
+
+      const res = await req(`/api/connections/${id}/test`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error).toBeTruthy();
+
+      // Cleanup
+      await req(`/api/connections/${id}`, { method: 'DELETE', headers: authHeaders() });
+    });
+  });
+
   // ── Connection Settings ─────────────────────────────────────────────
 
   describe('Connection Settings', () => {

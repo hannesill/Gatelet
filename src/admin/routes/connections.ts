@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   listConnections,
   getConnection,
+  getConnectionWithCredentials,
   createConnection,
   deleteConnection,
   findConnectionByProviderAccount,
@@ -16,6 +17,44 @@ import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
 import { config } from '../../config.js';
 import { refreshToolRegistry } from '../../mcp/server.js';
 import crypto from 'node:crypto';
+
+/** Maps provider ID to the safe read-only tool name and params used for testing. */
+const TEST_OPERATIONS: Record<string, { tool: string; params: Record<string, unknown> }> = {
+  google_gmail: { tool: 'gmail_search', params: { maxResults: 1 } },
+  google_calendar: { tool: 'calendar_list_calendars', params: {} },
+  outlook_calendar: { tool: 'outlook_list_calendars', params: {} },
+};
+
+/** Generate a human-readable preview from a test result. */
+function testPreview(providerId: string, result: unknown): string {
+  try {
+    if (providerId === 'google_gmail') {
+      const messages = (result as any)?.messages;
+      if (Array.isArray(messages)) {
+        const count = messages.length;
+        return count > 0 ? `Found ${count} recent message${count === 1 ? '' : 's'}` : 'Inbox accessible (no messages matched)';
+      }
+      return 'Gmail connected successfully';
+    }
+    if (providerId === 'google_calendar') {
+      const items = (result as any)?.items;
+      if (Array.isArray(items)) {
+        return `Found ${items.length} calendar${items.length === 1 ? '' : 's'}`;
+      }
+      return 'Google Calendar connected successfully';
+    }
+    if (providerId === 'outlook_calendar') {
+      const value = (result as any)?.value;
+      if (Array.isArray(value)) {
+        return `Found ${value.length} calendar${value.length === 1 ? '' : 's'}`;
+      }
+      return 'Outlook Calendar connected successfully';
+    }
+    return 'Connection verified';
+  } catch {
+    return 'Connection verified';
+  }
+}
 
 // OAuth CSRF nonce store — maps nonce -> admin token, auto-expires after 10 minutes
 const oauthNonces = new Map<string, { token: string; expires: number }>();
@@ -261,6 +300,72 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   refreshToolRegistry();
 
   return c.redirect(`/?oauth=success&provider=${providerId}`);
+});
+
+app.post('/connections/:id/test', async (c) => {
+  const id = c.req.param('id');
+  const conn = getConnectionWithCredentials(id);
+  if (!conn) {
+    return c.json({ error: 'Connection not found' }, 404);
+  }
+
+  const provider = getProvider(conn.provider_id);
+  if (!provider) {
+    return c.json({ ok: false, error: `Unknown provider: ${conn.provider_id}` });
+  }
+
+  const testOp = TEST_OPERATIONS[conn.provider_id];
+  if (!testOp) {
+    return c.json({ ok: false, error: `No test operation defined for ${provider.displayName}` });
+  }
+
+  let credentials = conn.credentials;
+  const settings = JSON.parse(conn.settings_json || '{}');
+
+  try {
+    // If token is expired, try refreshing first
+    const expiry = credentials.expiry_date;
+    if (typeof expiry === 'number' && expiry < Date.now() && provider.refreshCredentials) {
+      const clientId = getOAuthClientId(provider);
+      const clientSecret = getOAuthClientSecret(provider);
+      credentials = await provider.refreshCredentials(credentials, {
+        clientId: clientId ?? '',
+        clientSecret: clientSecret ?? '',
+      });
+      updateConnectionCredentials(conn.id, credentials);
+    }
+
+    const result = await provider.execute(testOp.tool, testOp.params, credentials, undefined, settings);
+    return c.json({ ok: true, preview: testPreview(conn.provider_id, result) });
+  } catch (err: unknown) {
+    // Try refresh on auth errors
+    if (
+      provider.refreshCredentials &&
+      err instanceof Error &&
+      (err.message.includes('invalid_grant') ||
+        err.message.includes('Token has been expired') ||
+        err.message.includes('401'))
+    ) {
+      try {
+        const clientId = getOAuthClientId(provider);
+        const clientSecret = getOAuthClientSecret(provider);
+        credentials = await provider.refreshCredentials(credentials, {
+          clientId: clientId ?? '',
+          clientSecret: clientSecret ?? '',
+        });
+        updateConnectionCredentials(conn.id, credentials);
+
+        const result = await provider.execute(testOp.tool, testOp.params, credentials, undefined, settings);
+        return c.json({ ok: true, preview: testPreview(conn.provider_id, result) });
+      } catch (refreshErr: unknown) {
+        const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
+        return c.json({ ok: false, error: msg });
+      }
+    }
+
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ ok: false, error: msg });
+  }
 });
 
 export default app;

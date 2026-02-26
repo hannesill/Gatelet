@@ -3,6 +3,7 @@ import { AgentConfig } from '../components/AgentConfig';
 import { OAuthButton } from '../components/OAuthButton';
 import { TotpSetup } from '../components/TotpSetup';
 import { PresetSelector } from '../components/PresetSelector';
+import { TestConnectionButton } from '../components/TestConnectionButton';
 import { detectPreset } from '../lib/preset-detection';
 import { Logo } from '../components/Logo';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   Copy,
   Fingerprint,
+  MessageSquare,
 } from 'lucide-react';
 
 import type { OAuthProvider, ConnectionWithMeta } from '../types';
@@ -75,6 +77,57 @@ function StepIndicator({ current }: { current: number }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TryItCard({ connections }: { connections: ConnectionWithMeta[] }) {
+  const [copied, setCopied] = useState(false);
+
+  const providerIds = new Set(connections.map(c => c.provider_id));
+  const hasCalendar = providerIds.has('google_calendar') || providerIds.has('outlook_calendar');
+  const hasGmail = providerIds.has('google_gmail');
+
+  // Calendar prompt is shorter / quicker feedback loop, so prioritize it
+  let prompt: string;
+  if (hasCalendar) {
+    prompt = "What's on my calendar for today?";
+  } else if (hasGmail) {
+    prompt = 'Check my inbox and summarize the 3 most recent unread emails.';
+  } else {
+    return null;
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-200 dark:bg-indigo-950/20 dark:ring-indigo-500/30">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 shadow-lg shadow-indigo-500/20">
+          <MessageSquare className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Try it out</h4>
+          <p className="mt-1 text-xs text-indigo-700/80 dark:text-indigo-400/80">
+            Paste this into your agent to verify everything works end-to-end.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <code className="min-w-0 flex-1 rounded-xl bg-white/50 px-3 py-2.5 text-xs font-medium text-indigo-900 ring-1 ring-indigo-200 dark:bg-black/20 dark:text-indigo-100 dark:ring-indigo-500/20">
+              {prompt}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -197,6 +250,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{conn.displayName}</p>
                             <p className="text-xs text-zinc-500 truncate">{conn.account_name}</p>
                           </div>
+                          <TestConnectionButton connectionId={conn.id} compact />
                           <div className="text-xs text-zinc-400">{conn.enabledTools}/{conn.totalTools} tools</div>
                         </div>
                         {presetState && (
@@ -340,6 +394,8 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
               </div>
 
               <TotpSetup />
+
+              {connections.length > 0 && <TryItCard connections={connections} />}
 
               <div className="flex flex-col gap-3 pt-4 border-t border-zinc-100 dark:border-white/5">
                 <button

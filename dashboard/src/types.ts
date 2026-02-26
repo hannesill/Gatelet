@@ -6,6 +6,7 @@ export interface ConnectionWithMeta {
   enabledTools: number;
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
+  tokenExpiresAt?: number;
   enabled: boolean;
   created_at: string;
   updated_at: string;
