@@ -184,14 +184,13 @@ export class GmailProvider implements Provider {
           }
         }
 
-        const headers: string[] = [
-          `To: ${to}`,
-          `Subject: ${subject}`,
-          'Content-Type: text/plain; charset="UTF-8"',
-        ];
-        if (from) headers.unshift(`From: ${from}`);
-        if (cc) headers.splice(headers.indexOf(`Subject: ${subject}`), 0, `Cc: ${cc}`);
-        if (bcc) headers.splice(headers.indexOf(`Subject: ${subject}`), 0, `Bcc: ${bcc}`);
+        const headers: string[] = [];
+        if (from) headers.push(`From: ${from}`);
+        headers.push(`To: ${to}`);
+        if (cc) headers.push(`Cc: ${cc}`);
+        if (bcc) headers.push(`Bcc: ${bcc}`);
+        headers.push(`Subject: ${subject}`);
+        headers.push('Content-Type: text/plain; charset="UTF-8"');
 
         const rawMessage = Buffer.from(
           headers.join('\r\n') + '\r\n\r\n' + body,
@@ -271,10 +270,11 @@ export class GmailProvider implements Provider {
         }
 
         if (origMessageId) {
-          headers.push(`In-Reply-To: ${origMessageId}`);
+          const safeMessageId = sanitizeHeader(origMessageId);
+          headers.push(`In-Reply-To: ${safeMessageId}`);
           const references = origReferences
-            ? `${origReferences} ${origMessageId}`
-            : origMessageId;
+            ? `${sanitizeHeader(origReferences)} ${safeMessageId}`
+            : safeMessageId;
           headers.push(`References: ${references}`);
         }
 

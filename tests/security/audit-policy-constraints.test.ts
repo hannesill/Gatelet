@@ -11,27 +11,40 @@ import { parsePolicy } from '../../src/policy/parser.js';
 import type { Constraint } from '../../src/policy/types.js';
 
 describe('Policy Engine: must_match regex bypass vectors', () => {
-  // FINDING-NEW-01: must_match regex is not anchored
-  it('FINDING-NEW-01: unanchored must_match allows partial match bypass', () => {
+  // FINDING-NEW-01: must_match is now auto-anchored — partial matches are blocked
+  it('FINDING-NEW-01: auto-anchored must_match blocks partial match bypass', () => {
     const constraint: Constraint = {
       field: 'from',
       rule: 'must_match',
       value: '\\+agent@',
     };
+    // Substring-only match: auto-anchoring wraps as ^(?:\+agent@)$ so this fails
     const params = { from: 'evil@attacker.com, user+agent@domain.com' };
+    const result = evaluateConstraint(constraint, params);
+    expect(result.ok).toBe(false);
+  });
+
+  it('FINDING-NEW-01: full-field regex still works with auto-anchoring', () => {
+    const constraint: Constraint = {
+      field: 'from',
+      rule: 'must_match',
+      value: '[^@]+\\+agent@[^@]+',
+    };
+    // Full match: user+agent@domain.com matches ^(?:[^@]+\+agent@[^@]+)$
+    const params = { from: 'user+agent@domain.com' };
     const result = evaluateConstraint(constraint, params);
     expect(result.ok).toBe(true);
   });
 
-  it('FINDING-NEW-01: anchored regex properly blocks injection', () => {
+  it('FINDING-NEW-01: users can opt into substring matching with .* wrapper', () => {
     const constraint: Constraint = {
       field: 'from',
       rule: 'must_match',
-      value: '^[^@]+\\+agent@[^@]+$',
+      value: '.*\\+agent@.*',
     };
     const params = { from: 'evil@attacker.com, user+agent@domain.com' };
     const result = evaluateConstraint(constraint, params);
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
   });
 
   // FINDING-NEW-02: must_match on non-string types
@@ -66,11 +79,24 @@ describe('Policy Engine: must_match regex bypass vectors', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('FINDING-NEW-02: must_match on object could leak prototype info', () => {
+  it('FINDING-NEW-02: must_match on object with auto-anchored single-char pattern', () => {
     const constraint: Constraint = {
       field: 'data',
       rule: 'must_match',
+      // With auto-anchoring, "." becomes ^(?:.)$ — matches only a single character
       value: '.',
+    };
+    const params = { data: { key: 'value' } };
+    const result = evaluateConstraint(constraint, params);
+    // JSON.stringify produces '{"key":"value"}' which is >1 char, so ^(?:.)$ fails
+    expect(result.ok).toBe(false);
+  });
+
+  it('FINDING-NEW-02: must_match on object with .+ matches any non-empty JSON', () => {
+    const constraint: Constraint = {
+      field: 'data',
+      rule: 'must_match',
+      value: '.+',
     };
     const params = { data: { key: 'value' } };
     const result = evaluateConstraint(constraint, params);

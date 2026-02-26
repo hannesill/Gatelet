@@ -61,9 +61,12 @@ export function evaluateConstraint(
       if (!isSafeRegex(pattern)) {
         return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has unsafe regex (potential ReDoS): ${JSON.stringify(pattern)}` };
       }
+      // Auto-anchor so must_match is a full-field match (safe default for a security tool).
+      // Users who need substring matching can write .*pattern.* explicitly.
+      const anchored = `^(?:${pattern})$`;
       let regex: RegExp;
       try {
-        regex = new RegExp(pattern);
+        regex = new RegExp(anchored);
       } catch {
         return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has invalid regex: ${JSON.stringify(pattern)}` };
       }

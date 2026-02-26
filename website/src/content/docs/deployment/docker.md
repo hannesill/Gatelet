@@ -48,7 +48,7 @@ The admin port (`4001`) is bound to `127.0.0.1` only — it's accessible from th
 
 ## Docker Compose
 
-The install script generates a `docker-compose.yml` in `~/.gatelet/`:
+The install script generates a `docker-compose.yml` in `~/.gatelet/`. It uses `GATELET_ADMIN_TOKEN_FILE` with a secrets volume so the token is never exposed as an environment variable:
 
 ```yaml
 services:
@@ -58,9 +58,10 @@ services:
       - "127.0.0.1:4001:4001"  # Admin — localhost only
     volumes:
       - gatelet-data:/data
+      - gatelet-secrets:/run/secrets/gatelet:ro
     environment:
       - GATELET_DATA_DIR=/data
-      - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
+      - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -74,7 +75,21 @@ networks:
 
 volumes:
   gatelet-data:
+  gatelet-secrets:
+    external: true
 ```
+
+:::note[Simplified dev config]
+For local development without Docker secrets, you can pass the token directly as an environment variable instead:
+
+```yaml
+environment:
+  - GATELET_DATA_DIR=/data
+  - GATELET_ADMIN_TOKEN=your-dev-token
+```
+
+This is less secure — the token is visible in `docker inspect` and process listings. Use `GATELET_ADMIN_TOKEN_FILE` for production.
+:::
 
 ## Data volume
 

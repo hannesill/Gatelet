@@ -14,6 +14,7 @@ Gatelet is configured through environment variables and the admin dashboard.
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + encryption keys location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard authentication token |
 | `GATELET_ADMIN_TOKEN_FILE` | — | Path to file containing admin token (Docker secrets) |
+| `GATELET_TRUST_PROXY` | — | Trust `X-Forwarded-For` for client IP extraction |
 
 ### `GATELET_MCP_PORT`
 
@@ -47,6 +48,17 @@ environment:
 ```
 
 Reading the token on the host requires `sudo` — regular users and agent processes cannot access it.
+
+### `GATELET_TRUST_PROXY`
+
+When Gatelet runs behind a reverse proxy (e.g., nginx, Caddy, Cloudflare Tunnel), set this to any value to trust the `X-Forwarded-For` header for client IP extraction. Without it, rate limiting sees the proxy's IP for all requests, which means a single attacker can lock out all users — or a single proxy IP hits the limit for everyone.
+
+```yaml
+environment:
+  - GATELET_TRUST_PROXY=1
+```
+
+Only enable this when Gatelet is actually behind a trusted reverse proxy. If enabled without a proxy, clients can spoof their IP via the `X-Forwarded-For` header to bypass rate limiting.
 
 ## OAuth credentials
 

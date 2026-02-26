@@ -155,6 +155,13 @@ function parseMutationValue(action: string, valueStr: string): unknown {
 }
 
 export function formStateToConfig(state: PolicyFormState): PolicyConfig {
+  // Reject save if any operation has invalid guards JSON
+  const badGuards = state.operations.filter(op => op.guardsParseError);
+  if (badGuards.length > 0) {
+    const names = badGuards.map(op => op.name).join(', ');
+    throw new Error(`Invalid guards JSON in: ${names}. Fix the errors before saving.`);
+  }
+
   const operations: Record<string, OperationPolicy> = {};
 
   for (const op of state.operations) {
@@ -179,11 +186,7 @@ export function formStateToConfig(state: PolicyFormState): PolicyConfig {
     }
 
     if (op.guards.trim()) {
-      try {
-        entry.guards = JSON.parse(op.guards);
-      } catch {
-        // leave guards undefined if parse fails
-      }
+      entry.guards = JSON.parse(op.guards);
     }
 
     if (op.fieldFilterMode === 'allowed' && op.allowed_fields.length > 0) {

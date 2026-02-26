@@ -1,8 +1,8 @@
 import { Logo } from './Logo';
 
 export function DynamicBackground() {
-  const rows = 18;
-  const logosPerRow = 25;
+  const rows = 8;
+  const logosPerRow = 12;
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none opacity-[0.02] dark:opacity-[0.03]">

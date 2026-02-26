@@ -57,11 +57,11 @@ function testPreview(providerId: string, result: unknown): string {
 }
 
 // OAuth state store — maps nonce -> session data, auto-expires after 10 minutes
-const oauthStates = new Map<string, { token: string; codeVerifier?: string; expires: number }>();
+const oauthStates = new Map<string, { token: string; providerId: string; codeVerifier?: string; expires: number }>();
 
-function createOAuthState(adminToken: string, codeVerifier?: string): string {
+function createOAuthState(adminToken: string, providerId: string, codeVerifier?: string): string {
   const nonce = crypto.randomBytes(32).toString('hex');
-  oauthStates.set(nonce, { token: adminToken, codeVerifier, expires: Date.now() + 10 * 60 * 1000 });
+  oauthStates.set(nonce, { token: adminToken, providerId, codeVerifier, expires: Date.now() + 10 * 60 * 1000 });
   // Clean up expired entries
   for (const [key, value] of oauthStates) {
     if (value.expires < Date.now()) oauthStates.delete(key);
@@ -69,9 +69,9 @@ function createOAuthState(adminToken: string, codeVerifier?: string): string {
   return nonce;
 }
 
-function redeemOAuthState(nonce: string): { token: string; codeVerifier?: string } | null {
+function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string } | null {
   const entry = oauthStates.get(nonce);
-  if (!entry || entry.expires < Date.now()) {
+  if (!entry || entry.expires < Date.now() || entry.providerId !== expectedProviderId) {
     oauthStates.delete(nonce);
     return null;
   }
@@ -209,7 +209,7 @@ app.get('/connections/oauth/:providerId/start', (c) => {
     extraParams.code_challenge_method = 'S256';
   }
 
-  const state = createOAuthState('session', codeVerifier);
+  const state = createOAuthState('session', providerId, codeVerifier);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -235,7 +235,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   // Validate CSRF nonce and retrieve PKCE verifier before any state changes
   const stateParam = c.req.query('state');
-  const oauthState = stateParam ? redeemOAuthState(stateParam) : null;
+  const oauthState = stateParam ? redeemOAuthState(stateParam, providerId) : null;
   if (!oauthState) {
     return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
   }

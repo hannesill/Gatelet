@@ -19,10 +19,13 @@ import { createSession, validateSession, deleteSession } from './session.js';
 
 const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 
-/** Constant-time string comparison to prevent timing attacks on token verification. */
+/** Constant-time string comparison to prevent timing attacks on token verification.
+ *  SHA-256 both inputs first so the comparison is always fixed-length,
+ *  eliminating the length-leak from early-return on mismatched sizes. */
 function safeTokenCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const ha = crypto.createHash('sha256').update(a).digest();
+  const hb = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
 }
 
 function getClientIp(c: { env?: Record<string, unknown>; req: { header: (name: string) => string | undefined } }): string {

@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import http from 'node:http';
 import { buildToolRegistry, type RegisteredTool } from './tool-registry.js';
-import { authenticateBearer } from './auth.js';
+import { authenticateBearer, isMcpRateLimited } from './auth.js';
 import { getConnectionWithCredentials, updateConnectionCredentials } from '../db/connections.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluate } from '../policy/engine.js';
@@ -85,6 +85,11 @@ export function startMcpServer(): http.Server {
       }
 
       const clientIp = req.socket.remoteAddress || 'unknown';
+      if (isMcpRateLimited(clientIp)) {
+        res.writeHead(429, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Too many failed attempts. Try again later.' }));
+        return;
+      }
       const apiKey = authenticateBearer(req.headers.authorization, clientIp);
       if (!apiKey) {
         res.writeHead(401, { 'Content-Type': 'application/json' });

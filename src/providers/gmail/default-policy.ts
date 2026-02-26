@@ -71,7 +71,7 @@ operations:
     # constraints:
     #   - field: from
     #     rule: must_match
-    #     value: "\\\\+agent@"
+    #     value: ".*\\\\+agent@.*"
     constraints:
       - field: to
         rule: must_not_be_empty

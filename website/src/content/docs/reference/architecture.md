@@ -107,7 +107,7 @@ Raw HTTP server using the MCP SDK's `StreamableHTTPServerTransport`. Handles:
 
 ### Admin API (`src/admin/`)
 
-Hono framework with 9 route modules:
+Hono framework with 8 route modules:
 
 - Connections (OAuth flow, CRUD)
 - Policies (YAML management)
@@ -117,7 +117,6 @@ Hono framework with 9 route modules:
 - Status (health + metrics)
 - Providers (list all available tools)
 - Doctor (health checks)
-- Agent Config (auto-install into agent config files)
 
 ### Database (`src/db/`)
 

@@ -3,6 +3,11 @@ import { createRateLimiter } from '../rate-limit.js';
 
 const limiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 
+/** Check if a client IP is currently rate-limited. */
+export function isMcpRateLimited(clientIp: string): boolean {
+  return limiter.isLimited(clientIp);
+}
+
 export function authenticateBearer(
   authHeader: string | undefined,
   clientIp?: string,
@@ -13,8 +18,9 @@ export function authenticateBearer(
     return null;
   }
 
+  // Missing auth header entirely — not an attack, just unauthenticated.
+  // Don't count against rate limiter (health probes, misconfigured clients).
   if (!authHeader) {
-    limiter.recordFailure(key);
     return null;
   }
 

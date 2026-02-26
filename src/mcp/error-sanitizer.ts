@@ -79,5 +79,5 @@ function isPermissionError(msg: string): boolean {
 }
 
 function isValidationError(msg: string): boolean {
-  return /invalid|400|bad request|required field|missing/i.test(msg);
+  return /400|bad request|required.*field|missing.*param|invalid.*argument/i.test(msg);
 }

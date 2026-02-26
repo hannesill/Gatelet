@@ -144,7 +144,7 @@ Validate input fields before the call is made. If a constraint is violated, the 
 | `must_equal` | Field must exactly match the given value |
 | `must_be_one_of` | Field must be one of the values in the given array |
 | `must_not_be_empty` | Field must not be null, empty, or whitespace |
-| `must_match` | Field must match a regex pattern (JavaScript syntax, case-insensitive) |
+| `must_match` | Field must fully match a regex pattern (JavaScript syntax, case-sensitive) |
 
 ### Mutations
 
@@ -265,6 +265,7 @@ Many MCPs are thin API wrappers that would be better as CLIs invoked by agent sk
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + master key location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard token |
+| `GATELET_TRUST_PROXY` | — | Set to any value to trust `X-Forwarded-For` for client IP extraction (required behind a reverse proxy) |
 
 OAuth credentials can be configured through the admin dashboard under Settings > Integrations.
 
