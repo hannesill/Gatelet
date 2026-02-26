@@ -38,7 +38,6 @@ export function MutationRow({ mutation, fields, mutationActions, onChange, onRem
           value={mutation.action}
           onChange={e => onChange({ ...mutation, action: e.target.value })}
         >
-          <option value="">action...</option>
           {mutationActions.map(m => (
             <option key={m.action} value={m.action}>{m.action}</option>
           ))}

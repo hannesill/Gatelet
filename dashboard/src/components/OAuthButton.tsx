@@ -9,17 +9,23 @@ const LOGOS: Record<string, any> = {
   google_gmail: GmailLogo,
 };
 
-export function OAuthButton({ provider }: { provider: OAuthProvider }) {
+interface Props {
+  provider: OAuthProvider;
+  disabled?: boolean;
+}
+
+export function OAuthButton({ provider, disabled }: Props) {
   const Logo = LOGOS[provider.id];
 
   function connect() {
-    window.location.href = `/api/connections/oauth/${provider.id}/start`;
+    if (disabled) return;
+    window.location.replace(`/api/connections/oauth/${provider.id}/start`);
   }
 
   if (!provider.configured) {
     return (
-      <button 
-        disabled 
+      <button
+        disabled
         className="flex items-center gap-3 rounded-2xl bg-zinc-100 px-5 py-3 text-sm font-bold text-zinc-400 cursor-not-allowed dark:bg-white/5 dark:text-zinc-600"
         title="Configure OAuth credentials in Settings first"
       >
@@ -32,10 +38,12 @@ export function OAuthButton({ provider }: { provider: OAuthProvider }) {
   }
 
   return (
-    <button 
+    <button
       onClick={connect}
+      disabled={disabled}
       className={cn(
-        "group flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold shadow-sm ring-1 ring-zinc-200 transition-all hover:bg-zinc-50 hover:shadow-md hover:ring-zinc-300 active:scale-95 dark:bg-zinc-800 dark:ring-white/10 dark:hover:bg-zinc-700 dark:hover:ring-white/20 dark:text-white"
+        "group flex items-center gap-3 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold shadow-sm ring-1 ring-zinc-200 transition-all hover:bg-zinc-50 hover:shadow-md hover:ring-zinc-300 active:scale-95 dark:bg-zinc-800 dark:ring-white/10 dark:hover:bg-zinc-700 dark:hover:ring-white/20 dark:text-white",
+        disabled && "opacity-50 cursor-not-allowed"
       )}
     >
       <div className="flex h-5 w-5 items-center justify-center">

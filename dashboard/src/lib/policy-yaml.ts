@@ -66,13 +66,13 @@ export function stringifyPolicyYaml(config: PolicyConfig): string {
   };
 
   for (const [name, op] of Object.entries(config.operations)) {
-    const cleanOp: Record<string, unknown> = { allow: op.allow };
+    const cleanOp: OperationPolicy = { allow: op.allow };
     if (op.constraints && op.constraints.length > 0) cleanOp.constraints = op.constraints;
     if (op.mutations && op.mutations.length > 0) cleanOp.mutations = op.mutations;
     if (op.guards && Object.keys(op.guards).length > 0) cleanOp.guards = op.guards;
     if (op.allowed_fields && op.allowed_fields.length > 0) cleanOp.allowed_fields = op.allowed_fields;
     if (op.denied_fields && op.denied_fields.length > 0) cleanOp.denied_fields = op.denied_fields;
-    cleaned.operations[name] = cleanOp as OperationPolicy;
+    cleaned.operations[name] = cleanOp;
   }
 
   return stringify(cleaned, { indent: 2, lineWidth: 0 });

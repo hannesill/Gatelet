@@ -67,7 +67,7 @@ export function PolicyFormEditor({ connectionId, providerId, accountName, onClos
 
   // Track last validated YAML to avoid redundant validation calls
   const lastValidatedRef = useRef('');
-  const validateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Fetch preset YAMLs when provider reference loads
   useEffect(() => {

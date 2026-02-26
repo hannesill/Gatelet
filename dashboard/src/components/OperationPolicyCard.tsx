@@ -52,7 +52,7 @@ export function OperationPolicyCard({ operation, providerRef, operationFields, o
       ...operation,
       mutations: [
         ...operation.mutations,
-        { id: crypto.randomUUID(), field: '', action: '', value: '' },
+        { id: crypto.randomUUID(), field: '', action: 'delete', value: '' },
       ],
     });
   }

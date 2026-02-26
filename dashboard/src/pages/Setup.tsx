@@ -136,11 +136,19 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   const [keyGenerated, setKeyGenerated] = useState(false);
   const [creating, setCreating] = useState(false);
   const [connectionPresets, setConnectionPresets] = useState<Record<string, ConnectionPresetState>>({});
+  const [setupReady, setSetupReady] = useState(false);
   const { toast } = useToast();
 
   // Mark setup as in-progress so OAuth redirects preserve the wizard
   useEffect(() => {
-    api.startSetup();
+    let cancelled = false;
+    api.startSetup().then(() => {
+      if (!cancelled) setSetupReady(true);
+    }).catch(() => {
+      // Even on failure, unblock the UI so the user isn't stuck
+      if (!cancelled) setSetupReady(true);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // Fetch presets for each connection
@@ -217,7 +225,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   }
 
   return (
-    <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4">
+    <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
       <DynamicBackground />
       {/* Background blobs for atmosphere */}
       <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
@@ -285,7 +293,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {oauthProviders.map(p => (
-                  <OAuthButton key={p.id} provider={p} />
+                  <OAuthButton key={p.id} provider={p} disabled={!setupReady} />
                 ))}
               </div>
 
