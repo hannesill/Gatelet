@@ -15,10 +15,13 @@ import {
 } from '../lib/policy-yaml';
 import type { PolicyFormState, OperationFormState } from '../lib/policy-yaml';
 import type { PolicyValidation } from '../types';
+import { PresetSelector } from './PresetSelector';
+import { detectPreset } from '../lib/preset-detection';
 
 interface Props {
   connectionId: string;
   providerId: string;
+  accountName: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -47,7 +50,7 @@ function WarningIcon({ className }: { className?: string }) {
   );
 }
 
-export function PolicyFormEditor({ connectionId, providerId, onClose, onSaved }: Props) {
+export function PolicyFormEditor({ connectionId, providerId, accountName, onClose, onSaved }: Props) {
   const { data: initialYaml } = useApi(() => api.getPolicy(connectionId), [connectionId]);
   const { data: providerRef } = useApi(() => api.getProviderReference(providerId), [providerId]);
   const { toast } = useToast();
@@ -59,10 +62,28 @@ export function PolicyFormEditor({ connectionId, providerId, onClose, onSaved }:
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
+  const [presetYamls, setPresetYamls] = useState<Record<string, string> | null>(null);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   // Track last validated YAML to avoid redundant validation calls
   const lastValidatedRef = useRef('');
   const validateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Fetch preset YAMLs when provider reference loads
+  useEffect(() => {
+    if (!providerRef?.presets?.length) return;
+    let cancelled = false;
+    Promise.all(
+      providerRef.presets.map(async (name) => {
+        const yaml = await api.getProviderPreset(providerId, name);
+        return [name, yaml] as const;
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setPresetYamls(Object.fromEntries(entries));
+    }).catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, [providerRef, providerId]);
 
   // Initialize from loaded YAML
   useEffect(() => {
@@ -107,6 +128,14 @@ export function PolicyFormEditor({ connectionId, providerId, onClose, onSaved }:
     return () => clearTimeout(validateTimerRef.current);
   }, [currentYaml, connectionId]);
 
+  // Detect active preset when YAML or presets change
+  useEffect(() => {
+    if (!presetYamls) return;
+    const yaml = currentYaml();
+    if (!yaml) { setActivePreset(null); return; }
+    setActivePreset(detectPreset(yaml, presetYamls));
+  }, [currentYaml, presetYamls]);
+
   function handleSwitchToYaml() {
     if (!formState) return;
     try {
@@ -128,6 +157,22 @@ export function PolicyFormEditor({ connectionId, providerId, onClose, onSaved }:
     } catch (e: any) {
       setModeError(`Cannot switch to form: ${e.message}`);
     }
+  }
+
+  function handlePresetSelect(preset: string) {
+    if (!presetYamls?.[preset]) return;
+    const resolved = presetYamls[preset].replace('{account}', accountName);
+    setYamlText(resolved);
+    try {
+      const config = parsePolicyYaml(resolved);
+      setFormState(configToFormState(config));
+    } catch {
+      // fall back to YAML mode
+      setMode('yaml');
+      setFormState(null);
+    }
+    setDirty(true);
+    setActivePreset(preset);
   }
 
   function updateOperation(index: number, updated: OperationFormState) {
@@ -210,6 +255,17 @@ export function PolicyFormEditor({ connectionId, providerId, onClose, onSaved }:
 
   return (
     <div>
+      {/* Preset selector */}
+      {providerRef.presets && providerRef.presets.length > 0 && presetYamls && (
+        <div className="mb-4">
+          <PresetSelector
+            presets={providerRef.presets}
+            active={activePreset}
+            onSelect={handlePresetSelect}
+          />
+        </div>
+      )}
+
       {/* Mode toggle tabs */}
       <div className="mb-4 flex items-center gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-white/5">
         <button

@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import type { Provider, OAuthConfig } from '../types.js';
 import { gmailTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
+import { presets as gmailPresets } from './presets.js';
 import { parseMessage } from './message-parser.js';
 import { applyContentFilters } from '../email/content-filter.js';
 
@@ -15,6 +16,7 @@ export class GmailProvider implements Provider {
   displayName = 'Gmail';
   tools = gmailTools;
   defaultPolicyYaml = defaultPolicyYaml;
+  presets = gmailPresets;
 
   oauth: OAuthConfig = {
     authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',

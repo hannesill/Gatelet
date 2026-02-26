@@ -1,6 +1,7 @@
 import type { Provider, OAuthConfig } from '../types.js';
 import { outlookCalendarTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
+import { presets as outlookPresets } from './presets.js';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -30,6 +31,7 @@ export class OutlookCalendarProvider implements Provider {
   displayName = 'Outlook Calendar';
   tools = outlookCalendarTools;
   defaultPolicyYaml = defaultPolicyYaml;
+  presets = outlookPresets;
 
   oauth: OAuthConfig = {
     authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',

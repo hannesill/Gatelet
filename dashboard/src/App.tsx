@@ -98,11 +98,13 @@ function AppContent() {
     return (
       <Setup
         oauthProviders={status.oauthProviders}
+        connections={status.connections}
         runtime={status.runtime}
         onComplete={() => {
           setShowSetup(false);
           fetchStatus();
         }}
+        onRefresh={fetchStatus}
       />
     );
   }

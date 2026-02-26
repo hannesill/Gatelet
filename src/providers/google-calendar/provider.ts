@@ -2,12 +2,14 @@ import { google } from 'googleapis';
 import type { Provider, OAuthConfig } from '../types.js';
 import { googleCalendarTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
+import { presets as calendarPresets } from './presets.js';
 
 export class GoogleCalendarProvider implements Provider {
   id = 'google_calendar';
   displayName = 'Google Calendar';
   tools = googleCalendarTools;
   defaultPolicyYaml = defaultPolicyYaml;
+  presets = calendarPresets;
 
   oauth: OAuthConfig = {
     authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',

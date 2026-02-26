@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AgentConfig } from '../components/AgentConfig';
 import { OAuthButton } from '../components/OAuthButton';
 import { TotpSetup } from '../components/TotpSetup';
+import { PresetSelector } from '../components/PresetSelector';
+import { detectPreset } from '../lib/preset-detection';
 import { Logo } from '../components/Logo';
+import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
@@ -19,12 +22,26 @@ import {
   Fingerprint,
 } from 'lucide-react';
 
-import type { OAuthProvider } from '../types';
+import type { OAuthProvider, ConnectionWithMeta } from '../types';
+
+const SETUP_PROVIDER_ICONS: Record<string, any> = {
+  google_gmail: GmailLogo,
+  google_calendar: GoogleCalendarLogo,
+  outlook_calendar: OutlookCalendarLogo,
+};
+
+interface ConnectionPresetState {
+  presets: string[];
+  yamls: Record<string, string>;
+  active: string | null;
+}
 
 interface Props {
   oauthProviders: OAuthProvider[];
+  connections: ConnectionWithMeta[];
   runtime?: { docker: boolean };
   onComplete: () => void;
+  onRefresh: () => void;
 }
 
 function StepIndicator({ current }: { current: number }) {
@@ -62,13 +79,62 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-export function Setup({ oauthProviders, runtime, onComplete }: Props) {
+export function Setup({ oauthProviders, connections, runtime, onComplete, onRefresh }: Props) {
   const [step, setStep] = useState(1);
   const [keyName, setKeyName] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [keyGenerated, setKeyGenerated] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [connectionPresets, setConnectionPresets] = useState<Record<string, ConnectionPresetState>>({});
   const { toast } = useToast();
+
+  // Fetch presets for each connection
+  useEffect(() => {
+    if (connections.length === 0) return;
+    let cancelled = false;
+
+    async function load() {
+      const result: Record<string, ConnectionPresetState> = {};
+      for (const conn of connections) {
+        try {
+          const ref = await api.getProviderReference(conn.provider_id);
+          if (!ref.presets?.length) continue;
+          const entries = await Promise.all(
+            ref.presets.map(async (name) => {
+              const yaml = await api.getProviderPreset(conn.provider_id, name);
+              return [name, yaml] as const;
+            }),
+          );
+          const yamls = Object.fromEntries(entries);
+          const active = detectPreset(conn.policy_yaml, yamls);
+          result[conn.id] = { presets: ref.presets, yamls, active };
+        } catch { /* ignore */ }
+      }
+      if (!cancelled) setConnectionPresets(result);
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [connections]);
+
+  async function handleSetupPresetChange(connectionId: string, preset: string) {
+    const state = connectionPresets[connectionId];
+    if (!state?.yamls[preset]) return;
+    const conn = connections.find(c => c.id === connectionId);
+    if (!conn) return;
+    const resolvedYaml = state.yamls[preset].replace('{account}', conn.account_name);
+    try {
+      await api.savePolicy(connectionId, resolvedYaml);
+      setConnectionPresets(prev => ({
+        ...prev,
+        [connectionId]: { ...prev[connectionId], active: preset },
+      }));
+      toast(`Policy updated to ${preset.replace('-', ' ')}`);
+      onRefresh();
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  }
 
   async function createKey() {
     if (!keyName.trim()) return;
@@ -116,6 +182,36 @@ export function Setup({ oauthProviders, runtime, onComplete }: Props) {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect Services</h2>
                 <p className="mt-1 text-sm text-zinc-500">Grant your agent access to your accounts.</p>
               </div>
+
+              {/* Connected services with preset selectors */}
+              {connections.length > 0 && (
+                <div className="space-y-3">
+                  {connections.map((conn) => {
+                    const Icon = SETUP_PROVIDER_ICONS[conn.provider_id] ?? Link2;
+                    const presetState = connectionPresets[conn.id];
+                    return (
+                      <div key={conn.id} className="rounded-xl bg-zinc-50 p-4 ring-1 ring-zinc-200 dark:bg-white/5 dark:ring-white/10">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Icon className="h-5 w-5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{conn.displayName}</p>
+                            <p className="text-xs text-zinc-500 truncate">{conn.account_name}</p>
+                          </div>
+                          <div className="text-xs text-zinc-400">{conn.enabledTools}/{conn.totalTools} tools</div>
+                        </div>
+                        {presetState && (
+                          <PresetSelector
+                            presets={presetState.presets}
+                            active={presetState.active}
+                            onSelect={(preset) => handleSetupPresetChange(conn.id, preset)}
+                            compact
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {oauthProviders.map(p => (

@@ -322,6 +322,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
               <PolicyFormEditor
                 connectionId={connection.id}
                 providerId={connection.provider_id}
+                accountName={connection.account_name}
                 onClose={() => setMode('viewer')}
                 onSaved={onDisconnect}
               />

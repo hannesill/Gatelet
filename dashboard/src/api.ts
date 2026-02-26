@@ -111,6 +111,13 @@ export const api = {
 
   getProviderReference: (id: string) => request<ProviderReference>(`/api/providers/${id}/reference`),
 
+  getProviderPreset: async (providerId: string, preset: string): Promise<string> => {
+    const res = await fetch(`/api/providers/${providerId}/presets/${preset}`);
+    if (res.status === 401) throw new AuthError();
+    if (!res.ok) throw new Error(`Failed to load preset (HTTP ${res.status})`);
+    return res.text();
+  },
+
   getOAuthSettings: (providerId: string) => request<{ configured: boolean; client_id?: string }>(`/api/settings/oauth/${providerId}`),
 
   saveOAuthSettings: (providerId: string, clientId: string, clientSecret: string) =>

@@ -37,7 +37,25 @@ app.get('/providers/:id/reference', (c) => {
     constraints: CONSTRAINT_REFERENCE,
     mutations: MUTATION_REFERENCE,
     example,
+    presets: provider.presets ? Object.keys(provider.presets) : [],
   });
+});
+
+app.get('/providers/:id/presets/:preset', (c) => {
+  const id = c.req.param('id');
+  const preset = c.req.param('preset');
+  const provider = getProvider(id);
+
+  if (!provider) {
+    return c.json({ error: 'Provider not found' }, 404);
+  }
+
+  const yaml = provider.presets?.[preset];
+  if (!yaml) {
+    return c.json({ error: 'Preset not found' }, 404);
+  }
+
+  return c.text(yaml, 200, { 'Content-Type': 'text/yaml' });
 });
 
 export default app;

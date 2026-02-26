@@ -25,6 +25,7 @@ export interface Provider {
   displayName: string;
   tools: ToolDefinition[];
   defaultPolicyYaml: string;
+  presets?: Record<string, string>;
   oauth?: OAuthConfig;
 
   execute(

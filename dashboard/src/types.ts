@@ -89,4 +89,5 @@ export interface ProviderReference {
   constraints: Array<{ rule: string; requiresValue: boolean }>;
   mutations: Array<{ action: string; requiresValue: boolean }>;
   example: string;
+  presets?: string[];
 }
