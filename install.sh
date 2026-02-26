@@ -9,6 +9,7 @@
 #   GATELET_ADMIN_TOKEN  Pre-set admin token (default: auto-generated)
 #   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
 #   GATELET_SECRETS_DIR  Secrets directory   (default: /usr/local/etc/gatelet/secrets)
+#   GATELET_LOCAL        Set to 1 to skip pull and use a locally built image
 
 set -e
 
@@ -99,16 +100,27 @@ if [ -z "$GATELET_PASSPHRASE" ]; then
     printf "\n"
     info "Set an encryption passphrase for your data (8+ characters)."
     info "You'll need this if you ever move or restore your installation."
-    printf "  Passphrase: "
-    # Read from /dev/tty so this works when piped: curl ... | sh
-    # Hide input since it's a passphrase
-    stty -echo < /dev/tty
-    read -r GATELET_PASSPHRASE < /dev/tty
-    stty echo < /dev/tty
-    printf "\n"
-    if [ -z "$GATELET_PASSPHRASE" ] || [ ${#GATELET_PASSPHRASE} -lt 8 ]; then
-      error "Passphrase must be at least 8 characters."
-    fi
+    while true; do
+      printf "  Passphrase: "
+      stty -echo < /dev/tty
+      read -r GATELET_PASSPHRASE < /dev/tty
+      stty echo < /dev/tty
+      printf "\n"
+      if [ -z "$GATELET_PASSPHRASE" ] || [ ${#GATELET_PASSPHRASE} -lt 8 ]; then
+        warn "Passphrase must be at least 8 characters. Try again."
+        continue
+      fi
+      printf "  Confirm:    "
+      stty -echo < /dev/tty
+      read -r passphrase_confirm < /dev/tty
+      stty echo < /dev/tty
+      printf "\n"
+      if [ "$GATELET_PASSPHRASE" != "$passphrase_confirm" ]; then
+        warn "Passphrases do not match. Try again."
+        continue
+      fi
+      break
+    done
   fi
 fi
 
@@ -173,8 +185,12 @@ volumes:
 COMPOSE
 
 # -- Pull & start -------------------------------------------------------------
-info "Pulling $GATELET_IMAGE..."
-(cd "$GATELET_DIR" && $COMPOSE pull)
+if [ "$GATELET_LOCAL" = "1" ]; then
+  info "Local mode — skipping pull, using local image $GATELET_IMAGE"
+else
+  info "Pulling $GATELET_IMAGE..."
+  (cd "$GATELET_DIR" && $COMPOSE pull)
+fi
 
 # Seed secrets into a Docker volume (avoids bind-mount issues on macOS where
 # Docker can only mount paths under /Users, not root-owned system dirs).
@@ -191,7 +207,8 @@ info "Starting Gatelet..."
 printf "\n"
 success "Gatelet is running!"
 printf "\n"
-printf "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001/?token=%s\n" "$GATELET_ADMIN_TOKEN"
+URL_TOKEN=$(printf '%s' "$GATELET_ADMIN_TOKEN" | sed -e 's/+/%2B/g' -e 's|/|%2F|g' -e 's/=/%3D/g')
+printf "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001/?token=%s\n" "$URL_TOKEN"
 printf "  ${Cyan}Install dir${Color_Off}  %s\n" "$GATELET_DIR"
 printf "  ${Cyan}Secrets dir${Color_Off}  %s ${Dim}(root-only)${Color_Off}\n" "$GATELET_SECRETS_DIR"
 printf "\n"

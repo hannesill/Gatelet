@@ -91,12 +91,24 @@ if (-not $Passphrase) {
     Write-Host ""
     Write-Info "Set an encryption passphrase for your data (8+ characters)."
     Write-Info "You'll need this if you ever move or restore your installation."
-    $secure = Read-Host "  Passphrase" -AsSecureString
-    $Passphrase = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-    )
-    if (-not $Passphrase -or $Passphrase.Length -lt 8) {
-        Write-Fail "Passphrase must be at least 8 characters."
+    while ($true) {
+        $secure = Read-Host "  Passphrase" -AsSecureString
+        $Passphrase = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        )
+        if (-not $Passphrase -or $Passphrase.Length -lt 8) {
+            Write-Warn "Passphrase must be at least 8 characters. Try again."
+            continue
+        }
+        $secureConfirm = Read-Host "  Confirm" -AsSecureString
+        $confirm = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureConfirm)
+        )
+        if ($Passphrase -ne $confirm) {
+            Write-Warn "Passphrases do not match. Try again."
+            continue
+        }
+        break
     }
 }
 
@@ -200,7 +212,8 @@ try {
 Write-Host ""
 Write-Ok "Gatelet is running!"
 Write-Host ""
-Write-Host "  Dashboard    http://localhost:4001/?token=$AdminToken" -ForegroundColor Cyan
+$UrlToken = [Uri]::EscapeDataString($AdminToken)
+Write-Host "  Dashboard    http://localhost:4001/?token=$UrlToken" -ForegroundColor Cyan
 Write-Host "  Install dir  $GateletDir" -ForegroundColor Cyan
 Write-Host "  Secrets dir  $SecretsDir (current user only)" -ForegroundColor DarkGray
 Write-Host ""

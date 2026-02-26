@@ -24,7 +24,8 @@
     "test:watch": "vitest",
     "doctor": "tsx src/cli.ts doctor",
     "doctor:fix": "tsx src/cli.ts doctor --fix",
-    "docker:build": "npm run build && docker build -t gatelet ."
+    "docker:build": "npm run build && docker build -t gatelet .",
+    "docker:dev": "npm run docker:build && docker tag gatelet ghcr.io/hannesill/gatelet:latest && GATELET_LOCAL=1 bash install.sh"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
