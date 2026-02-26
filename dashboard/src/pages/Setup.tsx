@@ -159,7 +159,17 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
             }),
           );
           const yamls = Object.fromEntries(entries);
-          const active = detectPreset(conn.policy_yaml, yamls);
+          let active = detectPreset(conn.policy_yaml, yamls);
+
+          // Default new connections to read-only (conservative for new users)
+          if (active === 'standard' && yamls['read-only']) {
+            const resolvedYaml = yamls['read-only'].replace('{account}', conn.account_name);
+            try {
+              await api.savePolicy(conn.id, resolvedYaml);
+              active = 'read-only';
+            } catch { /* keep standard if save fails */ }
+          }
+
           result[conn.id] = { presets: ref.presets, yamls, active };
         } catch { /* ignore */ }
       }

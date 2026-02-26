@@ -50,6 +50,14 @@ export function PresetSelector({ presets, active, onSelect, compact }: Props) {
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{meta.label}</span>
+            {!compact && (
+              <span className={cn(
+                'text-xs font-normal truncate',
+                isActive ? 'text-white/70' : 'text-zinc-400 dark:text-zinc-500',
+              )}>
+                {meta.description}
+              </span>
+            )}
           </button>
         );
       })}
