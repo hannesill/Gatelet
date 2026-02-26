@@ -591,6 +591,45 @@ operations:
       expect(Array.isArray(body.oauthProviders)).toBe(true);
     });
 
+    it('GET /api/status includes setupCompleted field', async () => {
+      const res = await req('/api/status', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(typeof body.setupCompleted).toBe('boolean');
+    });
+
+    it('POST /api/setup-status sets setup_completed flag', async () => {
+      // Mark setup as not completed
+      const startRes = await req('/api/setup-status', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ completed: false }),
+      });
+      expect(startRes.status).toBe(200);
+      const startBody = await startRes.json();
+      expect(startBody.ok).toBe(true);
+
+      // Verify status reflects it
+      const statusRes1 = await req('/api/status', { headers: authHeaders() });
+      const status1 = await statusRes1.json();
+      expect(status1.setupCompleted).toBe(false);
+
+      // Mark setup as completed
+      const completeRes = await req('/api/setup-status', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ completed: true }),
+      });
+      expect(completeRes.status).toBe(200);
+
+      // Verify status reflects it
+      const statusRes2 = await req('/api/status', { headers: authHeaders() });
+      const status2 = await statusRes2.json();
+      expect(status2.setupCompleted).toBe(true);
+    });
+
     it('GET /api/status connections include meta fields', async () => {
       // Create a connection first
       await req('/api/connections', {

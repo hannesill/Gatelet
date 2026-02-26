@@ -32,7 +32,7 @@ function AppContent() {
       setStatus(data);
       setAuthed(true);
       // Show setup wizard for first-time users
-      if (data.connections.length === 0 && data.apiKeys.active === 0) {
+      if (!data.setupCompleted) {
         setShowSetup(true);
       }
     } else {
@@ -100,7 +100,8 @@ function AppContent() {
         oauthProviders={status.oauthProviders}
         connections={status.connections}
         runtime={status.runtime}
-        onComplete={() => {
+        onComplete={async () => {
+          await api.completeSetup();
           setShowSetup(false);
           fetchStatus();
         }}

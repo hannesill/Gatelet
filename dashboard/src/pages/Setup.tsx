@@ -14,7 +14,6 @@ import {
   Key,
   ArrowRight,
   Check,
-  Settings,
   Sparkles,
   Link2,
   Shield,
@@ -49,8 +48,7 @@ interface Props {
 function StepIndicator({ current }: { current: number }) {
   const steps = [
     { label: 'Connect', icon: Link2 },
-    { label: 'Identity', icon: Key },
-    { label: 'Integrate', icon: Settings },
+    { label: 'Agent', icon: Key },
     { label: 'Secure', icon: Shield },
   ];
 
@@ -140,6 +138,11 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   const [creating, setCreating] = useState(false);
   const [connectionPresets, setConnectionPresets] = useState<Record<string, ConnectionPresetState>>({});
   const { toast } = useToast();
+
+  // Mark setup as in-progress so OAuth redirects preserve the wizard
+  useEffect(() => {
+    api.startSetup();
+  }, []);
 
   // Fetch presets for each connection
   useEffect(() => {
@@ -296,12 +299,12 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
             </div>
           )}
 
-          {/* Step 2: Name Agent + API Key */}
+          {/* Step 2: Create & Connect Agent (name + key + config snippets) */}
           {step === 2 && !keyGenerated && (
             <div key="step2" className="animate-in space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Name your Agent</h2>
-                <p className="mt-1 text-sm text-zinc-500">Choose a name to identify this connection.</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Create your Agent</h2>
+                <p className="mt-1 text-sm text-zinc-500">Name your agent and generate an API key to connect it.</p>
               </div>
 
               <div className="space-y-4">
@@ -330,8 +333,11 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
           {step === 2 && keyGenerated && createdKey && (
             <div key="step2-key" className="animate-in space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Your API Key</h2>
-                <p className="mt-1 text-sm text-zinc-500">This is the bearer token your agent will use to connect.</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect your Agent</h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Add this MCP server config to your agent so it can reach Gatelet.
+                  Pick your agent below, then click <strong>Add to Config</strong> to write it automatically — or copy the snippet and paste it into the config file yourself.
+                </p>
               </div>
 
               <div className="rounded-2xl bg-amber-50 p-5 ring-1 ring-amber-200 dark:bg-amber-950/20 dark:ring-amber-500/30">
@@ -359,33 +365,12 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
                 </div>
               </div>
 
-              <button
-                onClick={() => setStep(3)}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
-              >
-                Continue
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Step 3: Agent Config */}
-          {step === 3 && createdKey && (
-            <div key="step3" className="animate-in space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect your Agent</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Add this MCP server config to your agent so it can reach Gatelet.
-                  Pick your agent below, then click <strong>Add to Config</strong> to write it automatically — or copy the snippet and paste it into the config file yourself.
-                </p>
-              </div>
-
               <AgentConfig apiKey={createdKey} runtime={runtime} />
 
               <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/5">
                 <p className="text-xs text-zinc-400">You can configure this later.</p>
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(3)}
                   className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
                 >
                   Continue
@@ -395,9 +380,9 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
             </div>
           )}
 
-          {/* Step 4: 2FA (optional) — Launch Dashboard is primary CTA */}
-          {step === 4 && (
-            <div key="step4" className="animate-in space-y-6">
+          {/* Step 3: 2FA (optional) — Launch Dashboard is primary CTA */}
+          {step === 3 && (
+            <div key="step3" className="animate-in space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Secure your Dashboard</h2>
                 <p className="mt-1 text-sm text-zinc-500">Protect your admin panel with two-factor authentication.</p>

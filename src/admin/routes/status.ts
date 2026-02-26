@@ -4,7 +4,7 @@ import { listConnections, getConnectionWithCredentials } from '../../db/connecti
 import { listApiKeys } from '../../db/api-keys.js';
 import { getProvider, getAllProviders } from '../../providers/registry.js';
 import { parsePolicy } from '../../policy/parser.js';
-import { getOAuthClientId, getOAuthClientSecret, getOAuthCredentialSource } from '../../db/settings.js';
+import { getSetting, setSetting, getOAuthClientId, getOAuthClientSecret, getOAuthCredentialSource } from '../../db/settings.js';
 import { startTime } from '../../start-time.js';
 
 interface ConnectionWithMeta {
@@ -97,16 +97,32 @@ app.get('/status', (c) => {
       credentialSource: getOAuthCredentialSource(p),
     }));
 
+  // setup_completed: explicit setting > fallback for upgrades (has connections or keys)
+  const setupSetting = getSetting('setup_completed');
+  const setupCompleted = setupSetting !== null
+    ? setupSetting === 'true'
+    : connections.length > 0 || activeKeys > 0;
+
   return c.json({
     uptime: Date.now() - startTime,
     connections: connectionsWithMeta,
     tools,
     apiKeys: { total: totalKeys, active: activeKeys },
     oauthProviders,
+    setupCompleted,
     runtime: {
       docker: fs.existsSync('/.dockerenv') || process.env.GATELET_DATA_DIR === '/data',
     },
   });
+});
+
+app.post('/setup-status', async (c) => {
+  const body = await c.req.json<{ completed: boolean }>();
+  if (typeof body.completed !== 'boolean') {
+    return c.json({ error: 'completed must be a boolean' }, 400);
+  }
+  setSetting('setup_completed', String(body.completed));
+  return c.json({ ok: true });
 });
 
 export default app;

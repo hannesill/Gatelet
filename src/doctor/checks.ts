@@ -170,6 +170,11 @@ const ADMIN_TOKEN_CHECK: DoctorCheck = {
 };
 
 function checkAdminToken(ctx: CheckContext, fix: boolean): DoctorResult {
+  // Check config first — covers env var, _FILE convention, and runtime-generated tokens
+  if (config.ADMIN_TOKEN) {
+    return result(ADMIN_TOKEN_CHECK, 'pass', 'Admin token is configured');
+  }
+
   if (process.env.GATELET_ADMIN_TOKEN) {
     return result(ADMIN_TOKEN_CHECK, 'pass', 'Admin token set via GATELET_ADMIN_TOKEN env var');
   }

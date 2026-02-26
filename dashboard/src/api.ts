@@ -150,4 +150,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ tool, url, apiKey }),
     }),
+
+  startSetup: () =>
+    request<{ ok: boolean }>('/api/setup-status', {
+      method: 'POST',
+      body: JSON.stringify({ completed: false }),
+    }),
+
+  completeSetup: () =>
+    request<{ ok: boolean }>('/api/setup-status', {
+      method: 'POST',
+      body: JSON.stringify({ completed: true }),
+    }),
 };

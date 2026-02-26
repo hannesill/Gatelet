@@ -12,7 +12,7 @@ process.env.GATELET_MCP_PORT = String(freePort1);
 process.env.GATELET_ADMIN_PORT = String(freePort2);
 
 import { runDoctor } from '../../src/doctor/index.js';
-import { saveAdminToken } from '../../src/config.js';
+import { config, saveAdminToken } from '../../src/config.js';
 import { createConnection } from '../../src/db/connections.js';
 import sodium from 'sodium-native';
 
@@ -98,6 +98,26 @@ describe('Doctor checks', () => {
         expect(check!.message).toContain('env var');
       } finally {
         delete process.env.GATELET_ADMIN_TOKEN;
+      }
+    });
+
+    it('passes when config.ADMIN_TOKEN is set (e.g. via _FILE convention)', async () => {
+      const origToken = process.env.GATELET_ADMIN_TOKEN;
+      const origConfig = config.ADMIN_TOKEN;
+      delete process.env.GATELET_ADMIN_TOKEN;
+      const tokenPath = path.join(env.dataDir, 'admin.token');
+      if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
+
+      // Simulate token loaded via _FILE convention into config
+      config.ADMIN_TOKEN = 'token-from-file-convention';
+      try {
+        const results = await runDoctor();
+        const check = results.find(r => r.check.id === 'admin_token');
+        expect(check!.status).toBe('pass');
+        expect(check!.message).toContain('configured');
+      } finally {
+        config.ADMIN_TOKEN = origConfig;
+        if (origToken) process.env.GATELET_ADMIN_TOKEN = origToken;
       }
     });
   });

@@ -35,6 +35,7 @@ export interface Status {
   tools: Tool[];
   apiKeys: { total: number; active: number };
   oauthProviders: OAuthProvider[];
+  setupCompleted: boolean;
   runtime?: { docker: boolean };
 }
 

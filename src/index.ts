@@ -177,9 +177,7 @@ async function main(): Promise<void> {
   console.log('');
   console.log('Gatelet v0.2.0');
   console.log('');
-  const token = config.ADMIN_TOKEN!;
-  const maskedToken = token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : '****';
-  console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${maskedToken}`);
+  console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${config.ADMIN_TOKEN}`);
   console.log(`  MCP:    http://localhost:${config.MCP_PORT}/mcp`);
   console.log('');
   console.log(`  Connections:  ${connections.length}${connSummary ? ` (${connSummary})` : ''}`);
