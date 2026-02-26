@@ -22,7 +22,7 @@ Dim='\033[2m'
 
 info()    { printf "${Cyan}[info]${Color_Off} %s\n" "$1"; }
 warn()    { printf "${Yellow}[warn]${Color_Off} %s\n" "$1"; }
-error()   { printf "${Red}[error]${Color_Off} %s\n" "$1"; exit 1; }
+error()   { stty echo < /dev/tty 2>/dev/null || true; printf "${Red}[error]${Color_Off} %s\n" "$1"; exit 1; }
 success() { printf "${Green}  ✓${Color_Off} %s\n" "$1"; }
 
 # -- Defaults -----------------------------------------------------------------
@@ -59,7 +59,7 @@ success "Docker daemon is running"
 if [ -f "$GATELET_DIR/docker-compose.yml" ]; then
   warn "Existing installation found at $GATELET_DIR"
   printf "  Overwrite config? Existing data volume will be preserved. [y/N] "
-  read -r reply
+  read -r reply < /dev/tty
   case "$reply" in
     [yY]*) ;;
     *)
@@ -99,7 +99,12 @@ if [ -z "$GATELET_PASSPHRASE" ]; then
     info "Set an encryption passphrase for your data (8+ characters)."
     info "You'll need this if you ever move or restore your installation."
     printf "  Passphrase: "
-    read -r GATELET_PASSPHRASE
+    # Read from /dev/tty so this works when piped: curl ... | sh
+    # Hide input since it's a passphrase
+    stty -echo < /dev/tty
+    read -r GATELET_PASSPHRASE < /dev/tty
+    stty echo < /dev/tty
+    printf "\n"
     if [ -z "$GATELET_PASSPHRASE" ] || [ ${#GATELET_PASSPHRASE} -lt 8 ]; then
       error "Passphrase must be at least 8 characters."
     fi

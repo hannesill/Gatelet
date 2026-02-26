@@ -6,6 +6,7 @@
 #   GATELET_IMAGE        Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token   (default: auto-generated)
 #   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
+#   GATELET_SECRETS_DIR  Secrets directory     (default: ~/.gatelet/secrets)
 
 $ErrorActionPreference = 'Stop'
 
@@ -17,6 +18,7 @@ function Write-Fail($Message)    { Write-Host "[error] $Message" -ForegroundColo
 # -- Defaults -----------------------------------------------------------------
 $GateletDir   = if ($env:GATELET_DIR)   { $env:GATELET_DIR }   else { Join-Path $HOME ".gatelet" }
 $GateletImage = if ($env:GATELET_IMAGE) { $env:GATELET_IMAGE } else { "ghcr.io/hannesill/gatelet:latest" }
+$SecretsDir   = if ($env:GATELET_SECRETS_DIR) { $env:GATELET_SECRETS_DIR } else { Join-Path $GateletDir "secrets" }
 
 # -- Preflight checks ---------------------------------------------------------
 Write-Info "Checking prerequisites..."
@@ -55,10 +57,13 @@ New-Item -ItemType Directory -Path $GateletDir -Force | Out-Null
 # -- Admin token --------------------------------------------------------------
 $AdminToken = $env:GATELET_ADMIN_TOKEN
 $EnvFile = Join-Path $GateletDir ".env"
+$AdminTokenFile = Join-Path $SecretsDir "admin-token"
 
 if (-not $AdminToken) {
-    # Preserve existing token on reinstall
-    if (Test-Path $EnvFile) {
+    # Check existing secrets file first, then legacy .env
+    if (Test-Path $AdminTokenFile) {
+        $AdminToken = (Get-Content $AdminTokenFile -Raw -ErrorAction SilentlyContinue).Trim()
+    } elseif (Test-Path $EnvFile) {
         $existing = Select-String -Path $EnvFile -Pattern '^GATELET_ADMIN_TOKEN=(.+)$' -ErrorAction SilentlyContinue
         if ($existing) { $AdminToken = $existing.Matches[0].Groups[1].Value }
     }
@@ -71,9 +76,13 @@ if (-not $AdminToken) {
 
 # -- Encryption passphrase ----------------------------------------------------
 $Passphrase = $env:GATELET_PASSPHRASE
+$PassphraseFile = Join-Path $SecretsDir "passphrase"
 
 if (-not $Passphrase) {
-    if (Test-Path $EnvFile) {
+    # Check existing secrets file first, then legacy .env
+    if (Test-Path $PassphraseFile) {
+        $Passphrase = (Get-Content $PassphraseFile -Raw -ErrorAction SilentlyContinue).Trim()
+    } elseif (Test-Path $EnvFile) {
         $existingPass = Select-String -Path $EnvFile -Pattern '^GATELET_PASSPHRASE=(.+)$' -ErrorAction SilentlyContinue
         if ($existingPass) { $Passphrase = $existingPass.Matches[0].Groups[1].Value }
     }
@@ -82,21 +91,44 @@ if (-not $Passphrase) {
     Write-Host ""
     Write-Info "Set an encryption passphrase for your data (8+ characters)."
     Write-Info "You'll need this if you ever move or restore your installation."
-    $Passphrase = Read-Host "  Passphrase"
+    $secure = Read-Host "  Passphrase" -AsSecureString
+    $Passphrase = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    )
     if (-not $Passphrase -or $Passphrase.Length -lt 8) {
         Write-Fail "Passphrase must be at least 8 characters."
     }
 }
 
-# -- Write .env ---------------------------------------------------------------
+# -- Write secrets to protected directory -------------------------------------
+Write-Info "Storing secrets in $SecretsDir..."
+New-Item -ItemType Directory -Path $SecretsDir -Force | Out-Null
+
+# Restrict directory to current user only BEFORE writing secrets,
+# so files inherit the restrictive ACL at creation time
+$acl = New-Object System.Security.AccessControl.DirectorySecurity
+$acl.SetAccessRuleProtection($true, $false)
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
+    "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.AddAccessRule($rule)
+Set-Acl -Path $SecretsDir -AclObject $acl
+
+[System.IO.File]::WriteAllText($AdminTokenFile, $AdminToken)
+[System.IO.File]::WriteAllText($PassphraseFile, $Passphrase)
+Write-Ok "Secrets stored (current user only)"
+
+# -- Write .env (non-sensitive config only) -----------------------------------
 @"
-GATELET_ADMIN_TOKEN=$AdminToken
-GATELET_PASSPHRASE=$Passphrase
 GATELET_IMAGE=$GateletImage
 "@ | Set-Content -Path $EnvFile -Encoding UTF8
 
 # -- Write docker-compose.yml ------------------------------------------------
-@'
+# Use forward slashes for the secrets path in compose
+$SecretsMount = $SecretsDir -replace '\\', '/'
+
+(@'
 services:
   gatelet:
     image: ${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}
@@ -104,10 +136,11 @@ services:
       - "127.0.0.1:4001:4001"  # Admin dashboard — localhost only
     volumes:
       - gatelet-data:/data
+      - __SECRETS_DIR__:/run/secrets/gatelet:ro
     environment:
       - GATELET_DATA_DIR=/data
-      - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
-      - GATELET_PASSPHRASE=${GATELET_PASSPHRASE}
+      - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
+      - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -134,7 +167,7 @@ networks:
 
 volumes:
   gatelet-data:
-'@ | Set-Content -Path $ComposeFile -Encoding UTF8
+'@ -replace '__SECRETS_DIR__', $SecretsMount) | Set-Content -Path $ComposeFile -Encoding UTF8
 
 # -- Pull & start -------------------------------------------------------------
 Write-Info "Pulling $GateletImage..."
@@ -163,6 +196,7 @@ Write-Host ""
 Write-Host "  Dashboard    http://localhost:4001" -ForegroundColor Cyan
 Write-Host "  Admin token  $AdminToken" -ForegroundColor Cyan
 Write-Host "  Install dir  $GateletDir" -ForegroundColor Cyan
+Write-Host "  Secrets dir  $SecretsDir (current user only)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  MCP endpoint (for agents on the Docker network):" -ForegroundColor DarkGray
 Write-Host "  http://gatelet:4000/mcp" -ForegroundColor DarkGray
