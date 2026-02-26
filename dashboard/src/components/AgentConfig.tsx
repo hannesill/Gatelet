@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../hooks/useToast';
-import { api } from '../api';
-import { Copy, Terminal, CheckCircle2, Pencil, Download, Loader2, AlertCircle } from 'lucide-react';
+import { Copy, Terminal, Pencil } from 'lucide-react';
 
 type Tool = 'openclaw' | 'claude-code' | 'gemini-cli' | 'codex';
 
@@ -12,6 +11,9 @@ const TOOLS: { id: Tool; label: string; filePath: string }[] = [
   { id: 'codex', label: 'Codex', filePath: '~/.codex/config.toml' },
 ];
 
+// Tools that run inside Docker containers on the same network as Gatelet
+const DOCKER_NATIVE_TOOLS: ReadonlySet<Tool> = new Set<Tool>(['openclaw']);
+
 const STORAGE_KEY = 'gatelet-agent-tab';
 
 function getStoredTab(): Tool {
@@ -20,6 +22,13 @@ function getStoredTab(): Tool {
     if (v && TOOLS.some(t => t.id === v)) return v as Tool;
   } catch {}
   return 'openclaw';
+}
+
+function getDefaultUrl(tool: Tool, docker: boolean): string {
+  if (docker && DOCKER_NATIVE_TOOLS.has(tool)) {
+    return 'http://gatelet:4000/mcp';
+  }
+  return `http://${window.location.hostname}:4000/mcp`;
 }
 
 function buildConfig(tool: Tool, url: string, key: string): string {
@@ -64,18 +73,16 @@ function buildConfig(tool: Tool, url: string, key: string): string {
 
 export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { docker: boolean } }) {
   const { toast } = useToast();
-  const [mcpUrl, setMcpUrl] = useState(() =>
-    runtime?.docker
-      ? 'http://gatelet:4000/mcp'
-      : `http://${window.location.hostname}:4000/mcp`,
-  );
+  const docker = runtime?.docker ?? false;
+  const [mcpUrl, setMcpUrl] = useState(() => getDefaultUrl(getStoredTab(), docker));
   const [activeTool, setActiveTool] = useState<Tool>(getStoredTab);
-  const [installing, setInstalling] = useState(false);
-  const [installResult, setInstallResult] = useState<{ ok: boolean; message: string } | null>(null);
-
   function selectTab(tool: Tool) {
     setActiveTool(tool);
-    setInstallResult(null);
+    // Auto-switch URL when the current value matches a known default
+    setMcpUrl(prev => {
+      const oldDefault = getDefaultUrl(activeTool, docker);
+      return prev === oldDefault ? getDefaultUrl(tool, docker) : prev;
+    });
     try { localStorage.setItem(STORAGE_KEY, tool); } catch {}
   }
 
@@ -85,21 +92,6 @@ export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { d
 
   function copyConfig() {
     navigator.clipboard.writeText(config).then(() => toast('Config copied!'));
-  }
-
-  async function install() {
-    setInstalling(true);
-    setInstallResult(null);
-    try {
-      const res = await api.installAgentConfig(activeTool, mcpUrl, apiKey);
-      setInstallResult({ ok: true, message: `Written to ${res.configPath}` });
-      toast('Config installed!');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setInstallResult({ ok: false, message: msg });
-    } finally {
-      setInstalling(false);
-    }
   }
 
   return (
@@ -113,20 +105,10 @@ export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { d
         <div className="flex items-center gap-2">
           <button
             onClick={copyConfig}
-            className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-[11px] font-bold text-zinc-300 ring-1 ring-white/10 transition-all hover:bg-white/10 active:scale-95"
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:bg-indigo-500 active:scale-95"
           >
             <Copy className="h-3 w-3" />
             Copy {isToml ? 'TOML' : 'JSON'}
-          </button>
-          <button
-            onClick={install}
-            disabled={installing}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:bg-indigo-500 active:scale-95 disabled:opacity-60"
-          >
-            {installing
-              ? <Loader2 className="h-3 w-3 animate-spin" />
-              : <Download className="h-3 w-3" />}
-            Add to Config
           </button>
         </div>
       </div>
@@ -174,31 +156,9 @@ export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { d
       </div>
 
       {/* Config snippet */}
-      <div className="relative">
-        <pre className="overflow-x-auto p-6 font-mono text-xs leading-relaxed text-zinc-300 scrollbar-hide">
-          {config}
-        </pre>
-        {!installResult && (
-          <div className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 ring-1 ring-emerald-500/20">
-            <CheckCircle2 className="h-3 w-3" />
-            Ready to use
-          </div>
-        )}
-      </div>
-
-      {/* Install result feedback */}
-      {installResult && (
-        <div className={`flex items-center gap-2 border-t border-white/5 px-5 py-2.5 text-[11px] font-medium ${
-          installResult.ok
-            ? 'bg-emerald-500/5 text-emerald-400'
-            : 'bg-red-500/5 text-red-400'
-        }`}>
-          {installResult.ok
-            ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-            : <AlertCircle className="h-3.5 w-3.5 shrink-0" />}
-          {installResult.message}
-        </div>
-      )}
+      <pre className="overflow-x-auto p-6 font-mono text-xs leading-relaxed text-zinc-300 scrollbar-hide">
+        {config}
+      </pre>
     </div>
   );
 }

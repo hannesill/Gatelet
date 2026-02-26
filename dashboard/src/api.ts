@@ -145,12 +145,6 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
 
-  installAgentConfig: (tool: string, url: string, apiKey: string) =>
-    request<{ installed: boolean; configPath: string }>('/api/agent-config/install', {
-      method: 'POST',
-      body: JSON.stringify({ tool, url, apiKey }),
-    }),
-
   startSetup: () =>
     request<{ ok: boolean }>('/api/setup-status', {
       method: 'POST',
