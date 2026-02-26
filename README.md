@@ -67,12 +67,6 @@ The dashboard walks you through setup: generate an API key, connect your account
 
 Docker is the recommended deployment method — it provides the filesystem and network isolation the security model depends on.
 
-### Encryption Passphrase
-
-On first run, Gatelet prompts for an encryption passphrase (8+ characters). This passphrase derives the master key used to encrypt all OAuth credentials and secrets at rest. You'll need it every time the server starts.
-
-For automated/Docker deployments, set the `GATELET_PASSPHRASE` environment variable to skip the interactive prompt.
-
 ## Updating
 
 The install script includes [Watchtower](https://containrrr.dev/watchtower/), which automatically pulls new images and restarts the container. Updates are checked every 5 minutes.
@@ -248,9 +242,8 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 | **Deny by default** | Operations not listed in a policy are denied |
 | **Hidden denied tools** | Agents never see tools they can't use — they don't know they exist |
 | **Defense in depth** | Dangerous operations (calendar delete) are not implemented as code |
-| **Passphrase encryption** | Master key derived from passphrase via Argon2id; credentials encrypted with XSalsa20-Poly1305 (libsodium) |
+| **Encryption at rest** | Master key derived from admin token via HKDF-SHA256; credentials encrypted with XSalsa20-Poly1305 (libsodium) |
 | **HTTP transport only** | Gatelet is never a child process of the agent — no shared memory, no stdio |
-| **Two-factor auth** | Admin dashboard supports TOTP 2FA with backup codes |
 | **Audit everything** | Every tool call logged with original params, mutated params, result, and timing |
 | **Payload mutation** | Even when an operation is allowed, mutations can strip or override fields before the upstream call |
 | **Rate limiting** | Failed auth attempts (admin and API key) are rate-limited per IP (10 per minute) |
@@ -272,7 +265,6 @@ Many MCPs are thin API wrappers that would be better as CLIs invoked by agent sk
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + master key location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard token |
-| `GATELET_PASSPHRASE` | prompted | Encryption passphrase — set this for automated/Docker deployments |
 
 OAuth credentials can be configured through the admin dashboard under Settings > Integrations.
 

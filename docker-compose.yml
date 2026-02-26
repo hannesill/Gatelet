@@ -9,7 +9,6 @@ services:
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN=${GATELET_ADMIN_TOKEN}
-      - GATELET_PASSPHRASE=${GATELET_PASSPHRASE}
     networks:
       - gatelet-internal
       - gatelet-egress

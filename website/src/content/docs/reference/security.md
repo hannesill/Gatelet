@@ -12,7 +12,7 @@ Gatelet runs two separate HTTP servers on separate ports:
 | Domain | Port | Audience | Access |
 |---|---|---|---|
 | **Agent-facing** | `:4000` | AI agents | Bearer token auth, Docker internal network |
-| **Admin-facing** | `:4001` | Human operators | Admin token + optional TOTP 2FA, localhost only |
+| **Admin-facing** | `:4001` | Human operators | Admin token, localhost only |
 
 The admin port is published to `127.0.0.1` only in Docker Compose — it's not accessible from the network.
 
@@ -43,20 +43,20 @@ Dangerous operations are protected by multiple independent mechanisms:
 
 All credentials are encrypted at rest using libsodium:
 
-- **Key derivation:** Argon2id (memory-hard, side-channel resistant) derives a 32-byte master key from the user's passphrase
+- **Key derivation:** HKDF-SHA256 derives a 32-byte master key from the admin token
 - **Encryption:** XSalsa20-Poly1305 (authenticated encryption) with random nonces
-- **Salt:** Generated per installation and stored at `$DATA_DIR/master.salt`
-- **Verification:** An encrypted verifier at `$DATA_DIR/master.key.verifier` confirms the correct passphrase on startup
 
-OAuth tokens, API secrets, TOTP secrets, and backup codes are all encrypted with this master key. The passphrase itself is never stored by Gatelet.
+OAuth tokens and API secrets are all encrypted with this master key.
 
-### Secret file storage
+### Admin token storage
 
-The install script stores the passphrase and admin token in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) with `0600` permissions. These files are bind-mounted read-only into the container. This means:
+The install script stores the admin token in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) with `0600` permissions. The token file is bind-mounted read-only into the container. This means:
 
-- Reading the secrets requires `sudo` — regular users and compromised non-root processes cannot access them
-- The secrets are never written to `.env` or other user-readable files
-- The `_FILE` environment variable convention (`GATELET_PASSPHRASE_FILE`, `GATELET_ADMIN_TOKEN_FILE`) tells Gatelet to read secrets from file paths instead of env vars
+- Reading the token requires `sudo` — regular users and compromised non-root processes cannot access it
+- The token is never written to `.env` or other user-readable files
+- The `GATELET_ADMIN_TOKEN_FILE` environment variable tells Gatelet to read the token from a file path instead of an env var
+
+The admin token serves double duty: it authenticates admin dashboard access and derives the master encryption key via HKDF-SHA256.
 
 **Note:** Users in the `docker` group can bypass file permissions by mounting any host file into a container. This is a known Docker limitation (docker group membership is effectively root-equivalent), not specific to Gatelet.
 
@@ -65,7 +65,6 @@ The install script stores the passphrase and admin token in a root-owned directo
 ### Admin dashboard
 
 - Token-based authentication (generated during installation)
-- Optional TOTP two-factor authentication
 - Session management with 24-hour TTL
 - Rate limiting: 10 failed attempts per minute per IP
 

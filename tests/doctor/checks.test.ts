@@ -6,6 +6,7 @@ import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
 const env = createTestEnvironment('doctor');
 process.env.GATELET_DATA_DIR = env.dataDir;
+process.env.GATELET_ADMIN_TOKEN = 'doctor-test-token';
 
 const [freePort1, freePort2] = await Promise.all([findFreePort(), findFreePort()]);
 process.env.GATELET_MCP_PORT = String(freePort1);
@@ -14,17 +15,11 @@ process.env.GATELET_ADMIN_PORT = String(freePort2);
 import { runDoctor } from '../../src/doctor/index.js';
 import { config, saveAdminToken } from '../../src/config.js';
 import { createConnection } from '../../src/db/connections.js';
-import sodium from 'sodium-native';
 
 describe('Doctor checks', () => {
   beforeAll(() => {
     env.setup();
-
-    // Create a dummy master.salt for doctor checks (simulates passphrase mode)
-    const saltPath = path.join(env.dataDir, 'master.salt');
-    const salt = Buffer.alloc(sodium.crypto_pwhash_SALTBYTES);
-    sodium.randombytes_buf(salt);
-    fs.writeFileSync(saltPath, salt, { mode: 0o600 });
+    config.ADMIN_TOKEN = 'doctor-test-token';
   });
 
   afterAll(() => {
@@ -58,7 +53,9 @@ describe('Doctor checks', () => {
 
   describe('admin_token check', () => {
     it('warns when no admin token configured', async () => {
+      const origConfig = config.ADMIN_TOKEN;
       const origToken = process.env.GATELET_ADMIN_TOKEN;
+      config.ADMIN_TOKEN = undefined;
       delete process.env.GATELET_ADMIN_TOKEN;
       const tokenPath = path.join(env.dataDir, 'admin.token');
       if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
@@ -68,12 +65,15 @@ describe('Doctor checks', () => {
         const check = results.find(r => r.check.id === 'admin_token');
         expect(check!.status).toBe('warn');
       } finally {
+        config.ADMIN_TOKEN = origConfig;
         if (origToken) process.env.GATELET_ADMIN_TOKEN = origToken;
       }
     });
 
     it('fixes admin token with --fix', async () => {
+      const origConfig = config.ADMIN_TOKEN;
       const origToken = process.env.GATELET_ADMIN_TOKEN;
+      config.ADMIN_TOKEN = undefined;
       delete process.env.GATELET_ADMIN_TOKEN;
       const tokenPath = path.join(env.dataDir, 'admin.token');
       if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
@@ -85,11 +85,14 @@ describe('Doctor checks', () => {
         expect(check!.fixed).toBe(true);
         expect(fs.existsSync(tokenPath)).toBe(true);
       } finally {
+        config.ADMIN_TOKEN = origConfig;
         if (origToken) process.env.GATELET_ADMIN_TOKEN = origToken;
       }
     });
 
     it('passes when GATELET_ADMIN_TOKEN env var is set', async () => {
+      const origConfig = config.ADMIN_TOKEN;
+      config.ADMIN_TOKEN = undefined;
       process.env.GATELET_ADMIN_TOKEN = 'test-doctor-token';
       try {
         const results = await runDoctor();
@@ -97,6 +100,7 @@ describe('Doctor checks', () => {
         expect(check!.status).toBe('pass');
         expect(check!.message).toContain('env var');
       } finally {
+        config.ADMIN_TOKEN = origConfig;
         delete process.env.GATELET_ADMIN_TOKEN;
       }
     });

@@ -14,8 +14,6 @@ Gatelet is configured through environment variables and the admin dashboard.
 | `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + encryption keys location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard authentication token |
 | `GATELET_ADMIN_TOKEN_FILE` | — | Path to file containing admin token (Docker secrets) |
-| `GATELET_PASSPHRASE` | prompted | Encryption passphrase for credential storage |
-| `GATELET_PASSPHRASE_FILE` | — | Path to file containing passphrase (Docker secrets) |
 
 ### `GATELET_MCP_PORT`
 
@@ -31,29 +29,24 @@ The directory where Gatelet stores its SQLite database and encryption keys. In D
 
 ### `GATELET_ADMIN_TOKEN`
 
-The token used to authenticate with the admin dashboard. If not set, Gatelet checks for a saved token at `$DATA_DIR/admin.token`. If neither exists, a random token is generated and saved.
+The token used to authenticate with the admin dashboard and to derive the master encryption key via HKDF-SHA256. All OAuth credentials and secrets are encrypted at rest using this derived key.
 
-### `GATELET_PASSPHRASE`
-
-The passphrase used to derive the master encryption key via Argon2id. All OAuth credentials and secrets are encrypted at rest using this key.
-
-If not set, Gatelet prompts interactively on startup. Set this for automated/Docker deployments.
+If not set, Gatelet checks for a saved token at `$DATA_DIR/admin.token`. If neither exists, a random token is generated and saved.
 
 ### Secret file convention (`_FILE`)
 
-Both `GATELET_ADMIN_TOKEN` and `GATELET_PASSPHRASE` support the `_FILE` suffix convention used by Docker secrets. When `GATELET_PASSPHRASE_FILE` is set, Gatelet reads the passphrase from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
+`GATELET_ADMIN_TOKEN` supports the `_FILE` suffix convention used by Docker secrets. When `GATELET_ADMIN_TOKEN_FILE` is set, Gatelet reads the token from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
 
-This lets you store secrets in root-owned files and mount them read-only into the container:
+This lets you store the token in a root-owned file and mount it read-only into the container:
 
 ```yaml
 volumes:
   - /usr/local/etc/gatelet/secrets:/run/secrets/gatelet:ro
 environment:
-  - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
   - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
 ```
 
-The default install script uses this approach automatically — secrets are stored in `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), so they cannot be read without `sudo`.
+The default install script uses this approach automatically — the admin token is stored in `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), so it cannot be read without `sudo`.
 
 ## OAuth credentials
 
@@ -83,8 +76,6 @@ Dashboard-configured credentials take precedence over environment variables.
 ```
 ~/.gatelet/data/
 ├── gatelet.db              # SQLite database
-├── master.salt             # Argon2id salt for key derivation
-├── master.key.verifier     # Encrypted verifier for passphrase check
 └── admin.token             # Persisted admin token
 ```
 
@@ -95,7 +86,7 @@ Dashboard-configured credentials take precedence over environment variables.
 | `connections` | OAuth connections with encrypted credentials, policy YAML |
 | `api_keys` | Hashed API keys (bcrypt) |
 | `audit_log` | Tool call audit trail |
-| `settings` | Encrypted global settings (OAuth credentials, TOTP secrets) |
+| `settings` | Encrypted global settings (OAuth credentials) |
 
 ## Health check endpoint
 

@@ -54,69 +54,38 @@ function checkDataDir(ctx: CheckContext, fix: boolean): DoctorResult {
 const MASTER_KEY_CHECK: DoctorCheck = {
   id: 'master_key',
   name: 'Master key',
-  description: 'Check master key configuration (passphrase-derived or legacy)',
-  fixable: true,
+  description: 'Check master key derivation (admin-token-derived via HKDF)',
+  fixable: false,
 };
 
-function checkMasterKey(ctx: CheckContext, fix: boolean): DoctorResult {
+function checkMasterKey(ctx: CheckContext): DoctorResult {
   const saltPath = path.join(ctx.dataDir, 'master.salt');
   const keyPath = path.join(ctx.dataDir, 'master.key');
   const backupPath = path.join(ctx.dataDir, 'master.key.backup');
-  const verifierPath = path.join(ctx.dataDir, 'master.verifier');
 
-  // Passphrase mode: master.salt exists
+  // Legacy files that need migration
   if (fs.existsSync(saltPath)) {
-    const salt = fs.readFileSync(saltPath);
-    if (salt.length !== 16) {
-      return result(MASTER_KEY_CHECK, 'fail', `Salt file has wrong length (${salt.length} bytes, expected 16)`);
-    }
-
-    const stat = fs.statSync(saltPath);
-    const mode = stat.mode & 0o777;
-    if (mode !== 0o600) {
-      if (fix) {
-        fs.chmodSync(saltPath, 0o600);
-        ctx.hasMasterKey = true;
-        let msg = `Fixed permissions on master.salt (was 0o${mode.toString(8)})`;
-        if (fs.existsSync(backupPath)) {
-          msg += '. Old master.key.backup found — delete after verifying passphrase works.';
-        }
-        return result(MASTER_KEY_CHECK, 'pass', msg, true);
-      }
-      return result(MASTER_KEY_CHECK, 'warn', `Salt file permissions are 0o${mode.toString(8)} (should be 0o600)`);
-    }
-
-    ctx.hasMasterKey = true;
-    let msg = 'Passphrase mode active, salt file OK';
-    if (fs.existsSync(backupPath)) {
-      msg += '. Old master.key.backup found — delete after verifying passphrase works.';
-    }
-    return result(MASTER_KEY_CHECK, 'pass', msg);
+    ctx.hasMasterKey = false;
+    return result(MASTER_KEY_CHECK, 'warn', 'Legacy master.salt found — start the server to migrate to admin-token-derived encryption.');
   }
 
-  // Legacy mode: master.key exists but no master.salt
   if (fs.existsSync(keyPath)) {
-    const content = fs.readFileSync(keyPath);
-    if (content.length !== 32) {
-      return result(MASTER_KEY_CHECK, 'fail', `Master key has wrong length (${content.length} bytes, expected 32)`);
-    }
-
-    const stat = fs.statSync(keyPath);
-    const mode = stat.mode & 0o777;
-    if (mode !== 0o600) {
-      if (fix) {
-        fs.chmodSync(keyPath, 0o600);
-        ctx.hasMasterKey = true;
-        return result(MASTER_KEY_CHECK, 'warn', `Fixed permissions on master key (was 0o${mode.toString(8)}). Legacy mode: run server to migrate to passphrase-based encryption.`, true);
-      }
-      return result(MASTER_KEY_CHECK, 'warn', `Master key permissions are 0o${mode.toString(8)} (should be 0o600)`);
-    }
-
-    ctx.hasMasterKey = true;
-    return result(MASTER_KEY_CHECK, 'warn', 'Legacy mode: master.key on disk. Start the server to migrate to passphrase-based encryption.');
+    ctx.hasMasterKey = false;
+    return result(MASTER_KEY_CHECK, 'warn', 'Legacy master.key found — start the server to migrate to admin-token-derived encryption.');
   }
 
-  return result(MASTER_KEY_CHECK, 'fail', 'No master key or salt found. Start the server to set up passphrase-based encryption.');
+  // Admin token is the key material — check it exists
+  if (!config.ADMIN_TOKEN && !process.env.GATELET_ADMIN_TOKEN && !loadAdminToken()) {
+    ctx.hasMasterKey = false;
+    return result(MASTER_KEY_CHECK, 'fail', 'No admin token configured. The master key is derived from the admin token.');
+  }
+
+  ctx.hasMasterKey = true;
+  let msg = 'Master key derived from admin token (HKDF)';
+  if (fs.existsSync(backupPath)) {
+    msg += '. Old master.key.backup found — safe to delete.';
+  }
+  return result(MASTER_KEY_CHECK, 'pass', msg);
 }
 
 // ── Check 3: Database ───────────────────────────────────────────────
@@ -409,54 +378,6 @@ async function checkPolicies(ctx: CheckContext): Promise<DoctorResult> {
   }
 }
 
-// ── Check 12: TOTP 2FA ──────────────────────────────────────────────
-
-const TOTP_CHECK: DoctorCheck = {
-  id: 'totp',
-  name: 'TOTP 2FA',
-  description: 'Check TOTP 2FA configuration',
-  fixable: false,
-};
-
-async function checkTotp(ctx: CheckContext): Promise<DoctorResult> {
-  if (!ctx.hasDatabase || !ctx.hasMasterKey) {
-    return result(TOTP_CHECK, 'skip', 'Skipped (database or master key check failed)');
-  }
-
-  try {
-    const { getSetting } = await import('../db/settings.js');
-    const enabled = getSetting('totp_enabled') === 'true';
-
-    if (!enabled) {
-      return result(TOTP_CHECK, 'warn', '2FA is not enabled. Consider enabling it for additional security.');
-    }
-
-    const secret = getSetting('totp_secret');
-    if (!secret) {
-      return result(TOTP_CHECK, 'fail', '2FA is enabled but TOTP secret is missing');
-    }
-
-    const backupCodes = getSetting('totp_backup_codes');
-    let backupCount = 0;
-    if (backupCodes) {
-      try {
-        const hashes = JSON.parse(backupCodes);
-        backupCount = hashes.length;
-      } catch {
-        return result(TOTP_CHECK, 'warn', '2FA is enabled but backup codes are corrupted');
-      }
-    }
-
-    if (backupCount === 0) {
-      return result(TOTP_CHECK, 'warn', '2FA is enabled but no backup codes remain. Consider regenerating them.');
-    }
-
-    return result(TOTP_CHECK, 'pass', `2FA enabled, ${backupCount} backup codes remaining`);
-  } catch (e) {
-    return result(TOTP_CHECK, 'fail', `Cannot check TOTP: ${(e as Error).message}`);
-  }
-}
-
 // ── Orchestrator ────────────────────────────────────────────────────
 
 export async function runChecks(options: { fix?: boolean; running?: boolean } = {}): Promise<DoctorResult[]> {
@@ -472,7 +393,7 @@ export async function runChecks(options: { fix?: boolean; running?: boolean } = 
 
   // Sequential checks with shared context
   results.push(checkDataDir(ctx, fix));
-  results.push(checkMasterKey(ctx, fix));
+  results.push(checkMasterKey(ctx));
   results.push(await checkDatabase(ctx));
   results.push(checkAdminToken(ctx, fix));
   // Skip port checks when called from the running server — ports are obviously in use by us
@@ -485,7 +406,6 @@ export async function runChecks(options: { fix?: boolean; running?: boolean } = 
   results.push(await checkEncryption(ctx));
   results.push(await checkProviders());
   results.push(await checkPolicies(ctx));
-  results.push(await checkTotp(ctx));
 
   return results;
 }

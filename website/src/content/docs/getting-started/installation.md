@@ -22,22 +22,9 @@ powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://g
 The install script:
 - Checks for Docker and Docker Compose
 - Creates `~/.gatelet/` with a `docker-compose.yml`
-- Prompts for an encryption passphrase (8+ characters)
-- Generates an admin token
+- Generates an admin token (stored at a root-only-readable path)
 - Starts the Gatelet container
 - Sets up [Watchtower](https://containrrr.dev/watchtower/) for automatic updates
-
-## Encryption passphrase
-
-On first run, Gatelet prompts for an encryption passphrase (minimum 8 characters). This passphrase derives the master key used to encrypt all OAuth credentials and secrets at rest via Argon2id key derivation.
-
-You'll need this passphrase every time the server starts. If you lose it, stored credentials cannot be recovered.
-
-For automated/Docker deployments, set the `GATELET_PASSPHRASE` environment variable to skip the interactive prompt:
-
-```bash
-curl -fsSL https://gatelet.dev/install.sh | GATELET_PASSPHRASE=your-passphrase sh
-```
 
 ## Verify installation
 

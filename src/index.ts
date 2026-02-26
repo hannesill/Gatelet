@@ -3,12 +3,10 @@ import crypto from 'node:crypto';
 import { config, loadAdminToken, saveAdminToken, resolveEnvSecret } from './config.js';
 import { getDb } from './db/database.js';
 import {
-  deriveKeyFromPassphrase,
-  verifyMasterKey,
+  deriveKeyFromToken,
+  migrateFromPassphrase,
   migrateFromKeyFile,
   needsMigration,
-  isFreshInstall,
-  isPassphraseMode,
 } from './db/crypto.js';
 import { listConnections } from './db/connections.js';
 import { listApiKeys } from './db/api-keys.js';
@@ -16,125 +14,66 @@ import { getProvider } from './providers/registry.js';
 import { startAdminServer } from './admin/server.js';
 import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 import { closeDb } from './db/database.js';
-import { promptPassphrase } from './cli-prompt.js';
+import path from 'node:path';
 
 // Re-export so any existing imports from index.ts still work
 export { startTime } from './start-time.js';
 
-const isDocker = process.env.GATELET_DATA_DIR === '/data';
-
-function resolvePassphraseOrDie(): string {
-  const passphrase = resolveEnvSecret('GATELET_PASSPHRASE');
-  if (passphrase) return passphrase;
-
-  if (isDocker) {
-    console.error('Error: Cannot read passphrase from secrets volume.');
-    console.error('');
-    console.error('  Expected file: ' + (process.env.GATELET_PASSPHRASE_FILE || '(GATELET_PASSPHRASE_FILE not set)'));
-    console.error('  Re-run the install script to reseed the secrets volume.');
-    console.error('');
-    process.exit(1);
-  }
-
-  return ''; // Caller will fall through to interactive prompt
-}
-
-async function initMasterKey(): Promise<void> {
+function initMasterKey(adminToken: string): void {
   fs.mkdirSync(config.DATA_DIR, { recursive: true });
 
-  // Case 1: Migration from legacy master.key to passphrase
+  // Migration from legacy schemes
   if (needsMigration()) {
-    console.log('');
-    console.log('Gatelet is migrating to passphrase-based encryption.');
-    console.log('Your existing master.key will be replaced with a passphrase-derived key.');
-    console.log('');
-
-    let passphrase: string;
-    const envPassphrase = resolvePassphraseOrDie();
-    if (envPassphrase) {
-      passphrase = envPassphrase;
-    } else {
-      passphrase = await promptPassphrase('Enter a new passphrase: ');
-      const confirm = await promptPassphrase('Confirm passphrase: ');
-      if (passphrase !== confirm) {
-        console.error('Error: Passphrases do not match.');
-        process.exit(1);
-      }
-    }
-
-    if (passphrase.length < 8) {
-      console.error('Error: Passphrase must be at least 8 characters.');
-      process.exit(1);
-    }
+    const saltPath = path.join(config.DATA_DIR, 'master.salt');
+    const keyPath = path.join(config.DATA_DIR, 'master.key');
 
     // Database needs to be initialized before migration (to re-encrypt rows)
     const db = getDb();
-    migrateFromKeyFile(passphrase, db);
 
-    console.log('');
-    console.log('Migration complete. The old master.key has been backed up to master.key.backup.');
-    console.log('You can delete it after verifying everything works.');
-    console.log('');
-    return;
-  }
-
-  // Case 2: Existing passphrase installation
-  if (isPassphraseMode()) {
-    let passphrase: string;
-    const envPassphrase = resolvePassphraseOrDie();
-    if (envPassphrase) {
-      passphrase = envPassphrase;
-    } else {
-      passphrase = await promptPassphrase('Enter Gatelet passphrase: ');
-    }
-
-    deriveKeyFromPassphrase(passphrase);
-
-    if (!verifyMasterKey()) {
-      console.error('Error: Incorrect passphrase. Cannot decrypt existing data.');
-      process.exit(1);
-    }
-    return;
-  }
-
-  // Case 3: Fresh install — prompt for passphrase
-  if (isFreshInstall()) {
-    let passphrase: string;
-    const envPassphrase = resolvePassphraseOrDie();
-    if (envPassphrase) {
-      passphrase = envPassphrase;
-    } else {
-      console.log('');
-      console.log('Welcome to Gatelet! Set a passphrase to encrypt your data.');
-      console.log('You will need this passphrase every time the server starts.');
-      console.log('');
-      passphrase = await promptPassphrase('Enter a new passphrase: ');
-      const confirm = await promptPassphrase('Confirm passphrase: ');
-      if (passphrase !== confirm) {
-        console.error('Error: Passphrases do not match.');
+    if (fs.existsSync(saltPath)) {
+      // Passphrase mode → admin-token-derived key
+      const passphrase = resolveEnvSecret('GATELET_PASSPHRASE');
+      if (!passphrase) {
+        console.error('Error: Migration required but no passphrase available.');
+        console.error('');
+        console.error('  Your installation uses passphrase-based encryption and needs to');
+        console.error('  migrate to admin-token-derived encryption. Provide the passphrase');
+        console.error('  one last time so Gatelet can re-encrypt your data.');
+        console.error('');
+        console.error('  Set GATELET_PASSPHRASE env var or GATELET_PASSPHRASE_FILE and restart.');
+        console.error('');
         process.exit(1);
       }
+
+      console.log('');
+      console.log('Migrating from passphrase-based encryption to admin-token-derived key...');
+      migrateFromPassphrase(passphrase, adminToken, db);
+      console.log('Migration complete. Passphrase is no longer needed.');
+      console.log('');
+      return;
     }
 
-    if (passphrase.length < 8) {
-      console.error('Error: Passphrase must be at least 8 characters.');
-      process.exit(1);
+    if (fs.existsSync(keyPath)) {
+      // Legacy master.key → admin-token-derived key
+      console.log('');
+      console.log('Migrating from legacy master.key to admin-token-derived key...');
+      migrateFromKeyFile(adminToken, db);
+      console.log('Migration complete. Old master.key backed up to master.key.backup.');
+      console.log('');
+      return;
     }
 
-    deriveKeyFromPassphrase(passphrase);
-    verifyMasterKey(); // Creates verifier file
-    return;
+    // needsMigration() flagged legacy files but they disappeared before we
+    // could read them (TOCTOU race). Fall through to normal derivation.
   }
+
+  // Derive key from admin token (deterministic, no files needed).
+  // Also reached as a fallback if the migration block falls through.
+  deriveKeyFromToken(adminToken);
 }
 
 async function main(): Promise<void> {
-  // Initialize master key (passphrase-derived)
-  await initMasterKey();
-
-  // Initialize database (runs migrations)
-  getDb();
-
-  // Resolve admin token: env var > file > generate + save
+  // Resolve admin token first — it's now the key material for encryption
   if (!config.ADMIN_TOKEN) {
     const fileToken = loadAdminToken();
     if (fileToken) {
@@ -145,6 +84,12 @@ async function main(): Promise<void> {
       saveAdminToken(generated);
     }
   }
+
+  // Initialize master key (derived from admin token)
+  initMasterKey(config.ADMIN_TOKEN!);
+
+  // Initialize database (runs migrations)
+  getDb();
 
   // Start servers
   const adminServer = startAdminServer();

@@ -80,10 +80,6 @@ Ask your agent to list your calendars or search your email. If everything is con
 
 Check the **Audit Log** page in the dashboard to verify tool calls are flowing through Gatelet.
 
-## Optional: Enable 2FA
-
-For additional security, enable TOTP two-factor authentication in **Settings > Security**. You'll scan a QR code with an authenticator app and receive backup codes.
-
 ## Next steps
 
 - [Policies](/concepts/policies/) — learn the YAML policy format

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AgentConfig } from '../components/AgentConfig';
 import { OAuthButton } from '../components/OAuthButton';
-import { TotpSetup } from '../components/TotpSetup';
 import { PresetSelector } from '../components/PresetSelector';
 import { TestConnectionButton } from '../components/TestConnectionButton';
 import { DynamicBackground } from '../components/DynamicBackground';
@@ -18,7 +17,6 @@ import {
   Check,
   Sparkles,
   Link2,
-  Shield,
   ChevronRight,
   Copy,
   Fingerprint,
@@ -51,7 +49,6 @@ function StepIndicator({ current }: { current: number }) {
   const steps = [
     { label: 'Connect', icon: Link2 },
     { label: 'Agent', icon: Key },
-    { label: 'Secure', icon: Shield },
   ];
 
   return (
@@ -373,29 +370,6 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
 
               <AgentConfig apiKey={createdKey} runtime={runtime} />
 
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/5">
-                <p className="text-xs text-zinc-400">You can configure this later.</p>
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition-colors hover:text-indigo-500 dark:text-indigo-400"
-                >
-                  Continue
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: 2FA (optional) — Launch Dashboard is primary CTA */}
-          {step === 3 && (
-            <div key="step3" className="animate-in space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Secure your Dashboard</h2>
-                <p className="mt-1 text-sm text-zinc-500">Protect your admin panel with two-factor authentication.</p>
-              </div>
-
-              <TotpSetup />
-
               {connections.length > 0 && <TryItCard connections={connections} />}
 
               <div className="flex flex-col gap-3 pt-4 border-t border-zinc-100 dark:border-white/5">
@@ -406,7 +380,6 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
                   <Sparkles className="h-4 w-4" />
                   Launch Dashboard
                 </button>
-                <p className="text-center text-xs text-zinc-400">You can set up 2FA later in Settings.</p>
               </div>
             </div>
           )}

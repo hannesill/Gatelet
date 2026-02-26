@@ -33,10 +33,6 @@ export function deleteSession(sessionId: string): void {
   sessions.delete(sessionId);
 }
 
-export function clearAllSessions(): void {
-  sessions.clear();
-}
-
 // Clean up expired sessions periodically
 const cleanupInterval = setInterval(() => {
   const now = Date.now();

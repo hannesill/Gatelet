@@ -1,31 +1,39 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   createSession,
   validateSession,
   deleteSession,
-  clearAllSessions,
 } from '../../src/admin/session.js';
 
 describe('Session management', () => {
-  beforeEach(() => {
-    clearAllSessions();
+  // Track sessions created in each test so we can clean up
+  const sessions: string[] = [];
+  afterEach(() => {
+    for (const id of sessions) deleteSession(id);
+    sessions.length = 0;
   });
 
+  function tracked() {
+    const id = createSession();
+    sessions.push(id);
+    return id;
+  }
+
   it('createSession returns a 64-character hex string', () => {
-    const sessionId = createSession();
+    const sessionId = tracked();
     expect(sessionId).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('each session has a unique ID', () => {
-    const sessions = new Set<string>();
+    const ids = new Set<string>();
     for (let i = 0; i < 100; i++) {
-      sessions.add(createSession());
+      ids.add(tracked());
     }
-    expect(sessions.size).toBe(100);
+    expect(ids.size).toBe(100);
   });
 
   it('validateSession returns true for a valid session', () => {
-    const sessionId = createSession();
+    const sessionId = tracked();
     expect(validateSession(sessionId)).toBe(true);
   });
 
@@ -38,7 +46,7 @@ describe('Session management', () => {
   });
 
   it('deleteSession invalidates the session', () => {
-    const sessionId = createSession();
+    const sessionId = tracked();
     expect(validateSession(sessionId)).toBe(true);
 
     deleteSession(sessionId);
@@ -49,26 +57,10 @@ describe('Session management', () => {
     expect(() => deleteSession('nonexistent')).not.toThrow();
   });
 
-  it('clearAllSessions invalidates all sessions', () => {
-    const id1 = createSession();
-    const id2 = createSession();
-    const id3 = createSession();
-
-    expect(validateSession(id1)).toBe(true);
-    expect(validateSession(id2)).toBe(true);
-    expect(validateSession(id3)).toBe(true);
-
-    clearAllSessions();
-
-    expect(validateSession(id1)).toBe(false);
-    expect(validateSession(id2)).toBe(false);
-    expect(validateSession(id3)).toBe(false);
-  });
-
   it('expired sessions are rejected by validateSession', () => {
     vi.useFakeTimers();
     try {
-      const sessionId = createSession();
+      const sessionId = tracked();
       expect(validateSession(sessionId)).toBe(true);
 
       // Advance past 24-hour TTL
@@ -82,7 +74,7 @@ describe('Session management', () => {
   it('session created just before expiry is still valid', () => {
     vi.useFakeTimers();
     try {
-      const sessionId = createSession();
+      const sessionId = tracked();
 
       // Advance to 1 second before expiry
       vi.advanceTimersByTime(24 * 60 * 60 * 1000 - 1000);

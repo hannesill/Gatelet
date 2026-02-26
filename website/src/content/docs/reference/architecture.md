@@ -106,17 +106,16 @@ Raw HTTP server using the MCP SDK's `StreamableHTTPServerTransport`. Handles:
 
 ### Admin API (`src/admin/`)
 
-Hono framework with 10 route modules:
+Hono framework with 9 route modules:
 
 - Connections (OAuth flow, CRUD)
 - Policies (YAML management)
 - API keys (generate, list, revoke)
 - Audit log (query with filters)
-- Settings (OAuth credentials, TOTP)
+- Settings (OAuth credentials)
 - Status (health + metrics)
 - Providers (list all available tools)
 - Doctor (health checks)
-- TOTP (2FA setup)
 - Agent Config (auto-install into agent config files)
 
 ### Database (`src/db/`)

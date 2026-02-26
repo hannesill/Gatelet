@@ -3,11 +3,10 @@
  *
  * Tests for missing fields, invalid YAML, header injection.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 import { config } from '../../src/config.js';
 import { createAdminApp } from '../../src/admin/server.js';
-import { deleteSetting } from '../../src/db/settings.js';
 import type { Hono } from 'hono';
 
 const TEST_ADMIN_TOKEN = 'audit-admin-input-token';
@@ -36,14 +35,6 @@ afterAll(() => {
 });
 
 describe('Admin API input validation', () => {
-  beforeEach(() => {
-    try {
-      deleteSetting('totp_secret');
-      deleteSetting('totp_enabled');
-      deleteSetting('totp_backup_codes');
-    } catch { /* ignore */ }
-  });
-
   it('connection creation rejects missing fields', async () => {
     const res = await req('/api/connections', {
       method: 'POST',

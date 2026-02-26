@@ -1,4 +1,5 @@
 import sodium from 'sodium-native';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
@@ -11,74 +12,38 @@ const SALT_BYTES = sodium.crypto_pwhash_SALTBYTES;
 let masterKey: Buffer | null = null;
 
 /**
- * Legacy: load or generate a master key from disk.
- * Only used during migration detection. After V0.5, getMasterKey() requires
- * the key to be initialized via deriveKeyFromPassphrase() first.
+ * Derive the master key from the admin token using HKDF.
+ * The admin token is already 32 bytes of randomness (hex-encoded),
+ * so HKDF is the appropriate KDF (no password stretching needed).
  */
-function loadLegacyKey(): Buffer {
-  const keyPath = path.join(config.DATA_DIR, 'master.key');
-
-  if (fs.existsSync(keyPath)) {
-    const key = fs.readFileSync(keyPath);
-    if (key.length !== sodium.crypto_secretbox_KEYBYTES) {
-      throw new Error('Invalid master key length');
-    }
-    return key;
-  }
-
-  // First run — generate key file (legacy mode, pre-V0.5)
-  const key = Buffer.alloc(sodium.crypto_secretbox_KEYBYTES);
-  sodium.randombytes_buf(key);
-  fs.mkdirSync(path.dirname(keyPath), { recursive: true });
-  fs.writeFileSync(keyPath, key, { mode: 0o600 });
-  return key;
+export function deriveKeyFromToken(token: string): void {
+  const derived = crypto.hkdfSync(
+    'sha256',
+    token,
+    'gatelet',
+    'master-key',
+    sodium.crypto_secretbox_KEYBYTES,
+  );
+  masterKey = Buffer.from(derived);
 }
 
 /**
- * Check if this installation needs migration (has master.key but no master.salt).
+ * Check if this installation needs migration from a previous key scheme.
+ * Returns true if master.salt exists (passphrase mode) or master.key exists (legacy mode).
  */
 export function needsMigration(): boolean {
   const keyPath = path.join(config.DATA_DIR, 'master.key');
   const saltPath = path.join(config.DATA_DIR, 'master.salt');
-  return fs.existsSync(keyPath) && !fs.existsSync(saltPath);
+  return fs.existsSync(saltPath) || fs.existsSync(keyPath);
 }
 
 /**
- * Check if this is a fresh installation (no master.key and no master.salt).
+ * Derive the old master key from a passphrase using Argon2id (migration only).
  */
-export function isFreshInstall(): boolean {
-  const keyPath = path.join(config.DATA_DIR, 'master.key');
-  const saltPath = path.join(config.DATA_DIR, 'master.salt');
-  return !fs.existsSync(keyPath) && !fs.existsSync(saltPath);
-}
-
-/**
- * Check if passphrase mode is active (master.salt exists).
- */
-export function isPassphraseMode(): boolean {
-  const saltPath = path.join(config.DATA_DIR, 'master.salt');
-  return fs.existsSync(saltPath);
-}
-
-/**
- * Derive the master key from a passphrase using Argon2id.
- * Call once at startup before any encrypt/decrypt operations.
- */
-export function deriveKeyFromPassphrase(passphrase: string): void {
-  const saltPath = path.join(config.DATA_DIR, 'master.salt');
-
-  let salt: Buffer;
-  if (fs.existsSync(saltPath)) {
-    salt = fs.readFileSync(saltPath);
-    if (salt.length !== SALT_BYTES) {
-      throw new Error(`Invalid salt file: expected ${SALT_BYTES} bytes, got ${salt.length}`);
-    }
-  } else {
-    // First run with passphrase — generate salt
-    salt = Buffer.alloc(SALT_BYTES);
-    sodium.randombytes_buf(salt);
-    fs.mkdirSync(path.dirname(saltPath), { recursive: true });
-    fs.writeFileSync(saltPath, salt, { mode: 0o600 });
+function deriveKeyFromPassphrase(passphrase: string, saltPath: string): Buffer {
+  const salt = fs.readFileSync(saltPath);
+  if (salt.length !== SALT_BYTES) {
+    throw new Error(`Invalid salt file: expected ${SALT_BYTES} bytes, got ${salt.length}`);
   }
 
   const key = Buffer.alloc(sodium.crypto_secretbox_KEYBYTES);
@@ -90,51 +55,13 @@ export function deriveKeyFromPassphrase(passphrase: string): void {
     ARGON2_MEMLIMIT,
     ARGON2_ALG,
   );
-
-  masterKey = key;
+  return key;
 }
 
 /**
- * Verify the derived key can decrypt existing data.
- * Call after deriveKeyFromPassphrase() on existing installations.
- * Returns true if the key is correct, false if decryption fails.
+ * Re-encrypt all rows from oldKey to newKey within a transaction.
  */
-export function verifyMasterKey(): boolean {
-  const verifierPath = path.join(config.DATA_DIR, 'master.verifier');
-
-  if (!fs.existsSync(verifierPath)) {
-    // First run — create verifier
-    const verifier = encryptString('gatelet-key-verifier');
-    fs.writeFileSync(verifierPath, verifier, { mode: 0o600 });
-    return true;
-  }
-
-  try {
-    const encrypted = fs.readFileSync(verifierPath);
-    const decrypted = decryptString(encrypted);
-    return decrypted === 'gatelet-key-verifier';
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Migrate from file-based master key to passphrase-derived key.
- * Re-encrypts all credentials and settings with the new key.
- */
-export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite3').Database): void {
-  const keyPath = path.join(config.DATA_DIR, 'master.key');
-  const oldKey = fs.readFileSync(keyPath);
-
-  if (oldKey.length !== sodium.crypto_secretbox_KEYBYTES) {
-    throw new Error('Invalid master.key file');
-  }
-
-  // Derive new key from passphrase
-  deriveKeyFromPassphrase(passphrase);
-  const newKey = getMasterKey();
-
-  // Wrap all re-encryption in a transaction to prevent data corruption on crash
+function reEncryptAll(oldKey: Buffer, newKey: Buffer, db: import('better-sqlite3').Database): void {
   const migrate = db.transaction(() => {
     const connections = db.prepare('SELECT id, credentials_encrypted FROM connections').all() as Array<{
       id: string;
@@ -142,7 +69,6 @@ export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite
     }>;
 
     for (const conn of connections) {
-      // Decrypt with old key
       const nonce = conn.credentials_encrypted.subarray(0, sodium.crypto_secretbox_NONCEBYTES);
       const ciphertext = conn.credentials_encrypted.subarray(sodium.crypto_secretbox_NONCEBYTES);
       const plaintext = Buffer.alloc(ciphertext.length - sodium.crypto_secretbox_MACBYTES);
@@ -150,7 +76,6 @@ export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite
         throw new Error(`Failed to decrypt credentials for connection ${conn.id} with old key`);
       }
 
-      // Re-encrypt with new key
       const newNonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
       sodium.randombytes_buf(newNonce);
       const newCiphertext = Buffer.alloc(plaintext.length + sodium.crypto_secretbox_MACBYTES);
@@ -161,7 +86,6 @@ export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite
         .run(newEncrypted, conn.id);
     }
 
-    // Re-encrypt settings
     const settings = db.prepare('SELECT key, value_encrypted FROM settings').all() as Array<{
       key: string;
       value_encrypted: Buffer;
@@ -186,18 +110,60 @@ export function migrateFromKeyFile(passphrase: string, db: import('better-sqlite
     }
   });
   migrate();
+}
 
-  // Create verifier with new key
-  verifyMasterKey();
+/**
+ * Migrate from passphrase-based encryption to admin-token-derived key.
+ * Reads old passphrase, derives old key via Argon2id, derives new key via HKDF,
+ * re-encrypts all rows, then cleans up legacy files.
+ */
+export function migrateFromPassphrase(passphrase: string, adminToken: string, db: import('better-sqlite3').Database): void {
+  const saltPath = path.join(config.DATA_DIR, 'master.salt');
+  const oldKey = deriveKeyFromPassphrase(passphrase, saltPath);
+
+  // Derive new key from admin token
+  deriveKeyFromToken(adminToken);
+  const newKey = getMasterKey();
+
+  reEncryptAll(oldKey, newKey, db);
+
+  // Clean up legacy files
+  fs.unlinkSync(saltPath);
+  const verifierPath = path.join(config.DATA_DIR, 'master.verifier');
+  if (fs.existsSync(verifierPath)) fs.unlinkSync(verifierPath);
+}
+
+/**
+ * Migrate from legacy master.key file to admin-token-derived key.
+ * Reads old key from disk, derives new key via HKDF, re-encrypts all rows,
+ * then backs up the old key file.
+ */
+export function migrateFromKeyFile(adminToken: string, db: import('better-sqlite3').Database): void {
+  const keyPath = path.join(config.DATA_DIR, 'master.key');
+  const oldKey = fs.readFileSync(keyPath);
+
+  if (oldKey.length !== sodium.crypto_secretbox_KEYBYTES) {
+    throw new Error('Invalid master.key file');
+  }
+
+  // Derive new key from admin token
+  deriveKeyFromToken(adminToken);
+  const newKey = getMasterKey();
+
+  reEncryptAll(oldKey, newKey, db);
 
   // Backup old key file
   fs.renameSync(keyPath, keyPath + '.backup');
+
+  // Clean up verifier if it exists
+  const verifierPath = path.join(config.DATA_DIR, 'master.verifier');
+  if (fs.existsSync(verifierPath)) fs.unlinkSync(verifierPath);
 }
 
 export function getMasterKey(): Buffer {
   if (!masterKey) {
     throw new Error(
-      'Master key not initialized. Call deriveKeyFromPassphrase() or setMasterKeyForTesting() at startup.',
+      'Master key not initialized. Call deriveKeyFromToken() or setMasterKeyForTesting() at startup.',
     );
   }
   return masterKey;
@@ -233,7 +199,7 @@ export function decryptString(encrypted: Buffer): string {
 
 /**
  * Set the master key directly (for testing only).
- * This bypasses passphrase derivation.
+ * This bypasses token derivation.
  */
 export function setMasterKeyForTesting(key: Buffer): void {
   masterKey = key;

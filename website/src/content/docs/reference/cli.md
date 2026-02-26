@@ -16,7 +16,7 @@ gatelet
 ```
 
 On startup, Gatelet:
-1. Prompts for the encryption passphrase (unless `GATELET_PASSPHRASE` is set)
+1. Loads the admin token and derives the master encryption key via HKDF-SHA256
 2. Initializes the SQLite database
 3. Starts the MCP server on port 4000
 4. Starts the admin server on port 4001

@@ -33,11 +33,11 @@ export function dispatchAuthExpired(): void {
 }
 
 export const api = {
-  login: (token: string, totpCode?: string) =>
+  login: (token: string) =>
     fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, totpCode: totpCode || undefined }),
+      body: JSON.stringify({ token }),
     }),
 
   logout: () => fetch('/api/logout', { method: 'POST' }),
@@ -127,22 +127,6 @@ export const api = {
     request<{ saved: boolean }>(`/api/settings/oauth/${providerId}`, {
       method: 'PUT',
       body: JSON.stringify({ client_id: clientId, client_secret: clientSecret }),
-    }),
-
-  totpStatus: () => request<{ enabled: boolean; backupCodesRemaining: number }>('/api/totp/status'),
-
-  totpSetup: () => request<{ secret: string; uri: string }>('/api/totp/setup', { method: 'POST' }),
-
-  totpVerifySetup: (code: string) =>
-    request<{ enabled: boolean; backupCodes: string[] }>('/api/totp/verify-setup', {
-      method: 'POST',
-      body: JSON.stringify({ code }),
-    }),
-
-  totpDisable: (code: string) =>
-    request<{ disabled: boolean }>('/api/totp/disable', {
-      method: 'POST',
-      body: JSON.stringify({ code }),
     }),
 
   startSetup: () =>

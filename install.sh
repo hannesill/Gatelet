@@ -7,7 +7,6 @@
 #   GATELET_DIR       Install directory     (default: ~/.gatelet)
 #   GATELET_IMAGE     Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token (default: auto-generated)
-#   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
 #   GATELET_SECRETS_DIR  Secrets directory   (default: /usr/local/etc/gatelet/secrets)
 #   GATELET_LOCAL        Set to 1 to skip pull and use a locally built image
 
@@ -87,51 +86,13 @@ if [ -z "$GATELET_ADMIN_TOKEN" ]; then
   fi
 fi
 
-# -- Encryption passphrase ----------------------------------------------------
-if [ -z "$GATELET_PASSPHRASE" ]; then
-  # Check existing secrets file first, then legacy .env
-  if [ -f "$GATELET_SECRETS_DIR/passphrase" ]; then
-    GATELET_PASSPHRASE=$(sudo cat "$GATELET_SECRETS_DIR/passphrase" 2>/dev/null || true)
-  elif [ -f "$GATELET_DIR/.env" ]; then
-    EXISTING_PASSPHRASE=$(grep '^GATELET_PASSPHRASE=' "$GATELET_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
-    GATELET_PASSPHRASE="$EXISTING_PASSPHRASE"
-  fi
-  if [ -z "$GATELET_PASSPHRASE" ]; then
-    printf "\n"
-    info "Set an encryption passphrase for your data (8+ characters)."
-    info "You'll need this if you ever move or restore your installation."
-    while true; do
-      printf "  Passphrase: "
-      stty -echo < /dev/tty
-      read -r GATELET_PASSPHRASE < /dev/tty
-      stty echo < /dev/tty
-      printf "\n"
-      if [ -z "$GATELET_PASSPHRASE" ] || [ ${#GATELET_PASSPHRASE} -lt 8 ]; then
-        warn "Passphrase must be at least 8 characters. Try again."
-        continue
-      fi
-      printf "  Confirm:    "
-      stty -echo < /dev/tty
-      read -r passphrase_confirm < /dev/tty
-      stty echo < /dev/tty
-      printf "\n"
-      if [ "$GATELET_PASSPHRASE" != "$passphrase_confirm" ]; then
-        warn "Passphrases do not match. Try again."
-        continue
-      fi
-      break
-    done
-  fi
-fi
-
 # -- Write secrets to root-owned directory (backup, not used by Docker) --------
 info "Storing secrets in $GATELET_SECRETS_DIR (requires sudo)..."
 sudo mkdir -p "$GATELET_SECRETS_DIR"
 printf '%s' "$GATELET_ADMIN_TOKEN" | sudo tee "$GATELET_SECRETS_DIR/admin-token" > /dev/null
-printf '%s' "$GATELET_PASSPHRASE"  | sudo tee "$GATELET_SECRETS_DIR/passphrase"  > /dev/null
 sudo chown -R root "$GATELET_SECRETS_DIR"
 sudo chmod 700 "$GATELET_SECRETS_DIR"
-sudo chmod 600 "$GATELET_SECRETS_DIR/admin-token" "$GATELET_SECRETS_DIR/passphrase"
+sudo chmod 600 "$GATELET_SECRETS_DIR/admin-token"
 success "Secrets stored (root-only access)"
 
 # -- Write .env (non-sensitive config only) -----------------------------------
@@ -153,7 +114,6 @@ services:
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
-      - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -197,7 +157,6 @@ fi
 info "Loading secrets into Docker..."
 docker volume create gatelet-secrets >/dev/null 2>&1 || true
 printf '%s' "$GATELET_ADMIN_TOKEN" | docker run --rm -i -v gatelet-secrets:/secrets "$GATELET_IMAGE" sh -c 'cat > /secrets/admin-token && chmod 600 /secrets/admin-token'
-printf '%s' "$GATELET_PASSPHRASE"  | docker run --rm -i -v gatelet-secrets:/secrets "$GATELET_IMAGE" sh -c 'cat > /secrets/passphrase && chmod 600 /secrets/passphrase'
 success "Secrets loaded"
 
 info "Starting Gatelet..."

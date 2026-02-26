@@ -5,7 +5,6 @@
 #   GATELET_DIR          Install directory     (default: ~/.gatelet)
 #   GATELET_IMAGE        Docker image          (default: ghcr.io/hannesill/gatelet:latest)
 #   GATELET_ADMIN_TOKEN  Pre-set admin token   (default: auto-generated)
-#   GATELET_PASSPHRASE   Encryption passphrase (default: prompted)
 #   GATELET_SECRETS_DIR  Secrets directory     (default: ~/.gatelet/secrets)
 
 $ErrorActionPreference = 'Stop'
@@ -74,44 +73,6 @@ if (-not $AdminToken) {
     $AdminToken = [Convert]::ToBase64String($bytes)
 }
 
-# -- Encryption passphrase ----------------------------------------------------
-$Passphrase = $env:GATELET_PASSPHRASE
-$PassphraseFile = Join-Path $SecretsDir "passphrase"
-
-if (-not $Passphrase) {
-    # Check existing secrets file first, then legacy .env
-    if (Test-Path $PassphraseFile) {
-        $Passphrase = (Get-Content $PassphraseFile -Raw -ErrorAction SilentlyContinue).Trim()
-    } elseif (Test-Path $EnvFile) {
-        $existingPass = Select-String -Path $EnvFile -Pattern '^GATELET_PASSPHRASE=(.+)$' -ErrorAction SilentlyContinue
-        if ($existingPass) { $Passphrase = $existingPass.Matches[0].Groups[1].Value }
-    }
-}
-if (-not $Passphrase) {
-    Write-Host ""
-    Write-Info "Set an encryption passphrase for your data (8+ characters)."
-    Write-Info "You'll need this if you ever move or restore your installation."
-    while ($true) {
-        $secure = Read-Host "  Passphrase" -AsSecureString
-        $Passphrase = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-        )
-        if (-not $Passphrase -or $Passphrase.Length -lt 8) {
-            Write-Warn "Passphrase must be at least 8 characters. Try again."
-            continue
-        }
-        $secureConfirm = Read-Host "  Confirm" -AsSecureString
-        $confirm = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureConfirm)
-        )
-        if ($Passphrase -ne $confirm) {
-            Write-Warn "Passphrases do not match. Try again."
-            continue
-        }
-        break
-    }
-}
-
 # -- Write secrets to protected directory -------------------------------------
 Write-Info "Storing secrets in $SecretsDir..."
 New-Item -ItemType Directory -Path $SecretsDir -Force | Out-Null
@@ -125,11 +86,16 @@ $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
     "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
 )
 $acl.AddAccessRule($rule)
+# Grant SYSTEM access so Windows services (e.g. Docker) can read the token
+$systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    "NT AUTHORITY\SYSTEM",
+    "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.AddAccessRule($systemRule)
 Set-Acl -Path $SecretsDir -AclObject $acl
 
 [System.IO.File]::WriteAllText($AdminTokenFile, $AdminToken)
-[System.IO.File]::WriteAllText($PassphraseFile, $Passphrase)
-Write-Ok "Secrets stored (current user only)"
+Write-Ok "Secrets stored (current user + SYSTEM only)"
 
 # -- Write .env (non-sensitive config only) -----------------------------------
 @"
@@ -149,7 +115,6 @@ services:
     environment:
       - GATELET_DATA_DIR=/data
       - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
-      - GATELET_PASSPHRASE_FILE=/run/secrets/gatelet/passphrase
     networks:
       - gatelet-internal
       - gatelet-egress
@@ -195,7 +160,6 @@ try {
     Write-Info "Loading secrets into Docker..."
     docker volume create gatelet-secrets 2>$null | Out-Null
     $AdminToken | docker run --rm -i -v gatelet-secrets:/secrets $GateletImage sh -c 'cat > /secrets/admin-token && chmod 600 /secrets/admin-token'
-    $Passphrase | docker run --rm -i -v gatelet-secrets:/secrets $GateletImage sh -c 'cat > /secrets/passphrase && chmod 600 /secrets/passphrase'
     Write-Ok "Secrets loaded"
 
     Write-Info "Starting Gatelet..."
@@ -215,7 +179,7 @@ Write-Host ""
 $UrlToken = [Uri]::EscapeDataString($AdminToken)
 Write-Host "  Dashboard    http://localhost:4001/?token=$UrlToken" -ForegroundColor Cyan
 Write-Host "  Install dir  $GateletDir" -ForegroundColor Cyan
-Write-Host "  Secrets dir  $SecretsDir (current user only)" -ForegroundColor DarkGray
+Write-Host "  Secrets dir  $SecretsDir (current user + SYSTEM only)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  MCP endpoint (for agents on the Docker network):" -ForegroundColor DarkGray
 Write-Host "  http://gatelet:4000/mcp" -ForegroundColor DarkGray

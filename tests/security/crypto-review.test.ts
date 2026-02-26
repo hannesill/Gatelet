@@ -3,7 +3,7 @@
  *
  * Tests for FINDING-16 (key and encrypted data co-located in same directory),
  * and verifies the crypto implementation correctness.
- * Updated for V0.5 passphrase-derived key.
+ * Updated for admin-token-derived key (HKDF-SHA256).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
@@ -46,7 +46,7 @@ describe('Encryption Implementation Review', () => {
     it('FINDING-04: master key is NO LONGER stored on disk (V0.5)', () => {
       const keyPath = path.join(TEST_DATA_DIR, 'master.key');
 
-      // With passphrase-derived key, there should be no master.key file
+      // With admin-token-derived key, there should be no master.key file
       expect(fs.existsSync(keyPath)).toBe(false);
     });
 

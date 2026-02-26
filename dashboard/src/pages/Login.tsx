@@ -1,16 +1,13 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Logo } from '../components/Logo';
 import { DynamicBackground } from '../components/DynamicBackground';
-import { Key, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react';
+import { Key, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../utils';
 
 export function Login({ onLogin }: { onLogin: () => void }) {
   const [token, setToken] = useState('');
-  const [totpCode, setTotpCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [requires2FA, setRequires2FA] = useState(false);
-  const totpInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-login from ?token= query param (e.g. clickable URL from install script)
   useEffect(() => {
@@ -33,9 +30,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
     })
       .then(res => res.json().catch(() => null))
       .then(data => {
-        if (data?.requires2FA) {
-          setRequires2FA(true);
-        } else if (data?.ok) {
+        if (data?.ok) {
           onLogin();
         } else {
           setError(data?.error || 'Invalid token');
@@ -45,12 +40,6 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       .finally(() => setLoading(false));
   }, [onLogin]);
 
-  useEffect(() => {
-    if (requires2FA && totpInputRef.current) {
-      totpInputRef.current.focus();
-    }
-  }, [requires2FA]);
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -59,19 +48,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          totpCode: totpCode || undefined,
-        }),
+        body: JSON.stringify({ token }),
       });
 
       const data = await res.json().catch(() => null);
-
-      if (data?.requires2FA) {
-        setRequires2FA(true);
-        setLoading(false);
-        return;
-      }
 
       if (data?.ok) {
         onLogin();
@@ -123,43 +103,11 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   value={token}
                   onChange={e => setToken(e.target.value)}
                   placeholder="Paste token..."
-                  autoFocus={!requires2FA}
-                  disabled={requires2FA}
-                  className={cn(
-                    "w-full bg-zinc-50 border-none rounded-2xl py-3.5 pl-11 pr-4 text-sm ring-1 ring-zinc-200 focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-black/20 dark:ring-white/10 dark:text-white",
-                    requires2FA && "opacity-60"
-                  )}
+                  autoFocus
+                  className="w-full bg-zinc-50 border-none rounded-2xl py-3.5 pl-11 pr-4 text-sm ring-1 ring-zinc-200 focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-black/20 dark:ring-white/10 dark:text-white"
                 />
               </div>
             </div>
-
-            {/* TOTP Code Input (shown after token accepted) */}
-            {requires2FA && (
-              <div className="animate-in space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                  2FA Code
-                </label>
-                <div className="group relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Shield className="h-4 w-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                  </div>
-                  <input
-                    ref={totpInputRef}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={8}
-                    value={totpCode}
-                    onChange={e => setTotpCode(e.target.value.replace(/\s/g, ''))}
-                    placeholder="6-digit code or backup code"
-                    className="w-full bg-zinc-50 border-none rounded-2xl py-3.5 pl-11 pr-4 text-sm ring-1 ring-zinc-200 focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-black/20 dark:ring-white/10 dark:text-white font-mono tracking-widest"
-                  />
-                </div>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  Enter the code from your authenticator app or a backup code.
-                </p>
-              </div>
-            )}
 
             {error && (
               <div className="animate-in flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-400 dark:ring-red-500/20">
@@ -170,7 +118,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
             <button
               type="submit"
-              disabled={loading || !token || (requires2FA && !totpCode)}
+              disabled={loading || !token}
               className={cn(
                 "group relative w-full overflow-hidden rounded-2xl bg-zinc-900 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200",
                 loading && "pl-12"
@@ -181,7 +129,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    {requires2FA ? 'Verify' : 'Sign in'}
+                    Sign in
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </>
                 )}
@@ -191,12 +139,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <p className="animate-fade stagger-6 mt-8 text-center text-xs text-zinc-400 leading-relaxed dark:text-zinc-500">
-          {requires2FA ? (
-            <>Enter the 6-digit code from your authenticator app.</>
-          ) : (
-            <>Check your terminal for the admin token.<br />
-            It was generated when the server started.</>
-          )}
+          Check your terminal for the admin token.<br />
+          It was generated when the server started.
         </p>
       </div>
     </div>
