@@ -20,7 +20,7 @@ On startup, Gatelet:
 2. Initializes the SQLite database
 3. Starts the MCP server on port 4000
 4. Starts the admin server on port 4001
-5. Prints the admin token and dashboard URL
+5. Prints the dashboard URL (token is masked in Docker to prevent leaking via `docker logs`)
 
 ### `gatelet doctor`
 

@@ -31,9 +31,10 @@ export function buildToolRegistry(): Map<string, RegisteredTool> {
 
       if (registry.has(tool.name)) {
         const existing = registry.get(tool.name)!;
-        console.warn(
-          `Warning: Tool name collision "${tool.name}" — connection "${conn.account_name}" (${conn.provider_id}) overwrites connection "${existing.connectionId}" (${existing.providerId}). Only the last connection's tool will be accessible.`,
+        console.error(
+          `Tool name collision "${tool.name}" — connection "${conn.account_name}" (${conn.provider_id}) conflicts with connection "${existing.connectionId}" (${existing.providerId}). Skipping duplicate. To use multiple accounts of the same provider, disable conflicting operations in one connection's policy.`,
         );
+        continue;
       }
       registry.set(tool.name, {
         tool,

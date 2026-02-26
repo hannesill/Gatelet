@@ -38,10 +38,11 @@ export class OutlookCalendarProvider implements Provider {
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     scopes: ['offline_access', 'User.Read', 'Calendars.ReadWrite'],
     builtinClientId: '1e200574-2d1a-4103-919d-2cbade780983',
-    builtinClientSecret: 'p8O8Q~h9Rah3nGUil6.6aQJAaDyDSG07XcvYPb97',
+    // No builtinClientSecret — registered as a public client, uses PKCE instead.
     envClientId: 'MICROSOFT_CLIENT_ID',
     envClientSecret: 'MICROSOFT_CLIENT_SECRET',
     settingsKeyPrefix: 'microsoft',
+    pkce: true,
     async discoverAccount(accessToken: string): Promise<string> {
       const res = await fetch(`${GRAPH_BASE}/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -168,17 +169,21 @@ export class OutlookCalendarProvider implements Provider {
 
   async refreshCredentials(
     credentials: Record<string, unknown>,
-    oauthClientInfo: { clientId: string; clientSecret: string },
+    oauthClientInfo: { clientId: string; clientSecret?: string },
   ): Promise<Record<string, unknown>> {
+    const params: Record<string, string> = {
+      client_id: oauthClientInfo.clientId,
+      refresh_token: credentials.refresh_token as string,
+      grant_type: 'refresh_token',
+    };
+    // Public client (PKCE) — no client_secret needed for refresh
+    if (oauthClientInfo.clientSecret) {
+      params.client_secret = oauthClientInfo.clientSecret;
+    }
     const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: oauthClientInfo.clientId,
-        client_secret: oauthClientInfo.clientSecret,
-        refresh_token: credentials.refresh_token as string,
-        grant_type: 'refresh_token',
-      }),
+      body: new URLSearchParams(params),
     });
 
     if (!res.ok) {

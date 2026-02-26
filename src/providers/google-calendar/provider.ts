@@ -18,6 +18,9 @@ export class GoogleCalendarProvider implements Provider {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events',
     ],
+    // Google "installed app" (Desktop) OAuth — the client secret is not confidential by design.
+    // Google's security model relies on redirect URI and user consent, not the secret.
+    // See: https://developers.google.com/identity/protocols/oauth2/native-app
     builtinClientId: '1096469986430-ap9lls3vhlu25v87ae3c8i8s3dhgaaiu.apps.googleusercontent.com',
     builtinClientSecret: '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',
     envClientId: 'GOOGLE_CLIENT_ID',

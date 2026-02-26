@@ -12,30 +12,40 @@ import { api } from './api';
 import { Logo } from './components/Logo';
 import type { Status } from './types';
 
-/** Check auth by fetching /api/status — returns data on success, null on 401 */
-async function checkAuth(): Promise<Status | null> {
-  const res = await fetch('/api/status');
-  if (!res.ok) return null;
-  return res.json();
+/** Check auth by fetching /api/status — returns data on success, null on 401, throws on network error */
+async function checkAuth(): Promise<{ status: Status } | { error: 'unauthorized' } | { error: 'network' }> {
+  try {
+    const res = await fetch('/api/status');
+    if (!res.ok) return { error: 'unauthorized' };
+    const status = await res.json() as Status;
+    return { status };
+  } catch {
+    return { error: 'network' };
+  }
 }
 
 function AppContent() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
+  const [networkError, setNetworkError] = useState(false);
   const [activeTab, setActiveTab] = useState<TabName>('Connections');
   const [showSetup, setShowSetup] = useState(false);
   const { toast } = useToast();
 
   const fetchStatus = useCallback(async () => {
-    const data = await checkAuth();
-    if (data) {
-      setStatus(data);
+    const result = await checkAuth();
+    if ('status' in result) {
+      setNetworkError(false);
+      setStatus(result.status);
       setAuthed(true);
       // Show setup wizard for first-time users
-      if (!data.setupCompleted) {
+      if (!result.status.setupCompleted) {
         setShowSetup(true);
       }
+    } else if (result.error === 'network') {
+      setNetworkError(true);
     } else {
+      setNetworkError(false);
       setAuthed(false);
     }
   }, []);
@@ -73,6 +83,22 @@ function AppContent() {
     await api.logout();
     setAuthed(false);
     setStatus(null);
+  }
+
+  // Network error
+  if (networkError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <Logo className="h-10 w-10 text-zinc-400" />
+        <p className="text-sm text-zinc-500">Cannot reach server</p>
+        <button
+          onClick={fetchStatus}
+          className="rounded-md bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   // Loading

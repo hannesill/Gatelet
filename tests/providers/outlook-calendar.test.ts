@@ -266,7 +266,8 @@ describe('OutlookCalendarProvider', () => {
       expect(provider.oauth.scopes).toContain('offline_access');
       expect(provider.oauth.scopes).toContain('Calendars.ReadWrite');
       expect(provider.oauth.builtinClientId).toBeDefined();
-      expect(provider.oauth.builtinClientSecret).toBeDefined();
+      expect(provider.oauth.builtinClientSecret).toBeUndefined();
+      expect(provider.oauth.pkce).toBe(true);
       expect(provider.oauth.settingsKeyPrefix).toBe('microsoft');
     });
   });

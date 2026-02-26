@@ -9,6 +9,8 @@ export interface OAuthConfig {
   envClientId: string;
   envClientSecret: string;
   settingsKeyPrefix: string;
+  /** Use PKCE (S256) instead of client_secret for token exchange. For public clients. */
+  pkce?: boolean;
   extraAuthorizeParams?: Record<string, string>;
   discoverAccount(accessToken: string): Promise<string>;
 }
@@ -38,6 +40,6 @@ export interface Provider {
 
   refreshCredentials?(
     credentials: Record<string, unknown>,
-    oauthClientInfo: { clientId: string; clientSecret: string },
+    oauthClientInfo: { clientId: string; clientSecret?: string },
   ): Promise<Record<string, unknown>>;
 }

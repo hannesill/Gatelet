@@ -26,7 +26,7 @@ export function getRegisteredToolCount(): number {
   return toolRegistry?.size ?? 0;
 }
 
-function createMcpServer(): McpServer {
+function createMcpServer(apiKeyId: string): McpServer {
   const mcpServer = new McpServer({
     name: 'gatelet',
     version: '0.2.0',
@@ -40,7 +40,7 @@ function createMcpServer(): McpServer {
       toolDef.description,
       toolDef.inputSchema,
       async (params: Record<string, unknown>) => {
-        return handleToolCall(name, params, registered);
+        return handleToolCall(name, params, registered, apiKeyId);
       },
     );
   }
@@ -57,13 +57,19 @@ export function startMcpServer(): http.Server {
 
   // Each session gets its own McpServer with the latest tools at time of connection.
   // This ensures new connections/tools are picked up without restarting.
-  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: McpServer; lastActive: number }>();
+  const sessions = new Map<string, {
+    transport: StreamableHTTPServerTransport;
+    server: McpServer;
+    apiKeyId: string;
+    lastActive: number;
+  }>();
 
   // Periodic session cleanup
   const cleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [id, session] of sessions) {
       if (now - session.lastActive > SESSION_TTL_MS) {
+        session.transport.close();
         sessions.delete(id);
       }
     }
@@ -133,6 +139,12 @@ export function startMcpServer(): http.Server {
 
       if (sessionId && sessions.has(sessionId)) {
         const session = sessions.get(sessionId)!;
+        // Verify the same API key that created the session is being used
+        if (session.apiKeyId !== apiKey.id) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'API key does not match session' }));
+          return;
+        }
         session.lastActive = Date.now();
         await session.transport.handleRequest(req, res, body);
         return;
@@ -157,7 +169,7 @@ export function startMcpServer(): http.Server {
         });
 
         // Create a fresh McpServer with current tools for this session
-        const mcpServer = createMcpServer();
+        const mcpServer = createMcpServer(apiKey.id);
 
         transport.onclose = () => {
           if (transport.sessionId) {
@@ -169,7 +181,7 @@ export function startMcpServer(): http.Server {
         await transport.handleRequest(req, res, body);
 
         if (transport.sessionId) {
-          sessions.set(transport.sessionId, { transport, server: mcpServer, lastActive: Date.now() });
+          sessions.set(transport.sessionId, { transport, server: mcpServer, apiKeyId: apiKey.id, lastActive: Date.now() });
         }
       } else {
         // Non-init request without valid session
@@ -203,6 +215,7 @@ export async function handleToolCall(
   toolName: string,
   params: Record<string, unknown>,
   registered: RegisteredTool,
+  apiKeyId?: string,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const startTime = Date.now();
   const originalParams = structuredClone(params);
@@ -216,6 +229,7 @@ export async function handleToolCall(
   }
   if (!conn) {
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
@@ -232,6 +246,7 @@ export async function handleToolCall(
     policy = parsePolicy(conn.policy_yaml).policy;
   } catch {
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
@@ -247,6 +262,7 @@ export async function handleToolCall(
 
   if (policyResult.action === 'deny') {
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
@@ -262,6 +278,7 @@ export async function handleToolCall(
   const provider = getProvider(registered.providerId);
   if (!provider) {
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
@@ -332,6 +349,7 @@ export async function handleToolCall(
     const responseText = JSON.stringify(result, null, 2);
 
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,
@@ -352,6 +370,7 @@ export async function handleToolCall(
     console.error(sanitized.logMessage);
 
     insertAuditEntry({
+      api_key_id: apiKeyId,
       connection_id: registered.connectionId,
       tool_name: toolName,
       original_params: originalParams,

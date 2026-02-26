@@ -54,7 +54,7 @@ OAuth client credentials can be configured in two ways:
 
 ### Built-in credentials
 
-Gatelet ships with built-in OAuth client IDs for Google and Microsoft. These work out of the box but show an "unverified app" warning during sign-in.
+Gatelet ships with built-in OAuth client IDs for Google and Microsoft. These work out of the box but show an "unverified app" warning during sign-in. Google uses an "installed app" OAuth flow where the client secret is non-confidential by design. Microsoft uses PKCE (no client secret required).
 
 ### Custom credentials
 
@@ -67,7 +67,7 @@ You can also set them via environment variables:
 | `GOOGLE_CLIENT_ID` | Google (Calendar + Gmail) |
 | `GOOGLE_CLIENT_SECRET` | Google (Calendar + Gmail) |
 | `MICROSOFT_CLIENT_ID` | Microsoft (Outlook Calendar) |
-| `MICROSOFT_CLIENT_SECRET` | Microsoft (Outlook Calendar) |
+| `MICROSOFT_CLIENT_SECRET` | Microsoft (Outlook Calendar) — optional, only needed for confidential client registrations |
 
 Dashboard-configured credentials take precedence over environment variables.
 

@@ -46,10 +46,12 @@ export function getOAuthClientSecret(provider: Provider): string | undefined {
 
 export function getOAuthCredentialSource(provider: Provider): 'user' | 'env' | 'builtin' | 'none' {
   if (!provider.oauth) return 'none';
-  const { settingsKeyPrefix, envClientId, envClientSecret, builtinClientId, builtinClientSecret } = provider.oauth;
-  if (getSetting(`${settingsKeyPrefix}_client_id`) && getSetting(`${settingsKeyPrefix}_client_secret`)) return 'user';
-  if (process.env[envClientId] && process.env[envClientSecret]) return 'env';
-  if (builtinClientId && builtinClientSecret) return 'builtin';
+  const { settingsKeyPrefix, envClientId, envClientSecret, builtinClientId, builtinClientSecret, pkce } = provider.oauth;
+  // PKCE providers don't require a client secret
+  const secretOptional = pkce === true;
+  if (getSetting(`${settingsKeyPrefix}_client_id`) && (secretOptional || getSetting(`${settingsKeyPrefix}_client_secret`))) return 'user';
+  if (process.env[envClientId] && (secretOptional || process.env[envClientSecret])) return 'env';
+  if (builtinClientId && (secretOptional || builtinClientSecret)) return 'builtin';
   return 'none';
 }
 

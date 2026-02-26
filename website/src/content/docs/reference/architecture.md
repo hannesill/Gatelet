@@ -45,7 +45,7 @@ When the agent calls a tool:
 6. Field policy  ─▸  Apply allowed_fields / denied_fields
 7. Execute       ─▸  Call provider (upstream API)
 8. Filter        ─▸  Apply content filters (Gmail only)
-9. Audit         ─▸  Log original params, mutated params, result, timing
+9. Audit         ─▸  Log API key, original params, mutated params, result, timing
 10. Respond      ─▸  Return sanitized result to agent
 ```
 
@@ -55,7 +55,8 @@ If any step fails (auth, constraints, provider error), the pipeline short-circui
 
 The MCP server creates a new `McpServer` instance per session. Sessions have:
 
-- **30-minute TTL** — inactive sessions are cleaned up
+- **API key binding** — each session is bound to the API key that created it; requests with a different key are rejected
+- **30-minute TTL** — inactive sessions are cleaned up and transport resources are released
 - **100 session cap** — oldest sessions are evicted when the cap is reached
 - **Fresh tool registry** — each session rebuilds the tool list from current policies
 

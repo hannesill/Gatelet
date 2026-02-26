@@ -95,7 +95,7 @@ If you connect multiple accounts (e.g. both Google Calendar and Gmail), the agen
 - `gmail_search` (Gmail)
 
 :::note
-If you connect two accounts of the same provider type (e.g., two Google Calendar accounts), their tool names will collide since both register tools like `calendar_list_events`. Only the last connection's tools will be accessible. Use one connection per provider type.
+If you connect two accounts of the same provider type (e.g., two Google Calendar accounts), their tool names will collide since both register tools like `calendar_list_events`. The first connection's tools are registered and the duplicate is skipped. To use multiple accounts, disable conflicting operations in one connection's policy so each tool name is unique.
 :::
 
 :::note

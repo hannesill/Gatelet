@@ -14,8 +14,9 @@ app.get('/settings/oauth/:providerId', (c) => {
 
   const clientId = getOAuthClientId(provider);
   const clientSecret = getOAuthClientSecret(provider);
+  const secretOptional = provider.oauth.pkce === true;
   return c.json({
-    configured: !!(clientId && clientSecret),
+    configured: !!(clientId && (secretOptional || clientSecret)),
     client_id: clientId ? clientId.slice(0, 12) + '...' : null,
   });
 });

@@ -56,27 +56,34 @@ function testPreview(providerId: string, result: unknown): string {
   }
 }
 
-// OAuth CSRF nonce store — maps nonce -> admin token, auto-expires after 10 minutes
-const oauthNonces = new Map<string, { token: string; expires: number }>();
+// OAuth state store — maps nonce -> session data, auto-expires after 10 minutes
+const oauthStates = new Map<string, { token: string; codeVerifier?: string; expires: number }>();
 
-function createOAuthNonce(adminToken: string): string {
+function createOAuthState(adminToken: string, codeVerifier?: string): string {
   const nonce = crypto.randomBytes(32).toString('hex');
-  oauthNonces.set(nonce, { token: adminToken, expires: Date.now() + 10 * 60 * 1000 });
-  // Clean up expired nonces
-  for (const [key, value] of oauthNonces) {
-    if (value.expires < Date.now()) oauthNonces.delete(key);
+  oauthStates.set(nonce, { token: adminToken, codeVerifier, expires: Date.now() + 10 * 60 * 1000 });
+  // Clean up expired entries
+  for (const [key, value] of oauthStates) {
+    if (value.expires < Date.now()) oauthStates.delete(key);
   }
   return nonce;
 }
 
-function redeemOAuthNonce(nonce: string): string | null {
-  const entry = oauthNonces.get(nonce);
+function redeemOAuthState(nonce: string): { token: string; codeVerifier?: string } | null {
+  const entry = oauthStates.get(nonce);
   if (!entry || entry.expires < Date.now()) {
-    oauthNonces.delete(nonce);
+    oauthStates.delete(nonce);
     return null;
   }
-  oauthNonces.delete(nonce);
-  return entry.token;
+  oauthStates.delete(nonce);
+  return { token: entry.token, codeVerifier: entry.codeVerifier };
+}
+
+/** Generate PKCE code_verifier and S256 code_challenge */
+function generatePkce(): { codeVerifier: string; codeChallenge: string } {
+  const codeVerifier = crypto.randomBytes(32).toString('base64url');
+  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+  return { codeVerifier, codeChallenge };
 }
 
 const app = new Hono();
@@ -184,21 +191,34 @@ app.get('/connections/oauth/:providerId/start', (c) => {
 
   const clientId = getOAuthClientId(provider);
   const clientSecret = getOAuthClientSecret(provider);
+  const usePkce = provider.oauth.pkce === true;
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || (!usePkce && !clientSecret)) {
     return c.json({ error: `OAuth credentials not configured for ${provider.displayName}. Add them in the dashboard settings.` }, 500);
   }
 
   const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
-  const nonce = createOAuthNonce('session');
+
+  // Generate PKCE challenge for public-client providers
+  let codeVerifier: string | undefined;
+  const extraParams: Record<string, string> = {};
+  if (usePkce) {
+    const pkce = generatePkce();
+    codeVerifier = pkce.codeVerifier;
+    extraParams.code_challenge = pkce.codeChallenge;
+    extraParams.code_challenge_method = 'S256';
+  }
+
+  const state = createOAuthState('session', codeVerifier);
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: provider.oauth.scopes.join(' '),
-    state: nonce,
+    state,
     ...provider.oauth.extraAuthorizeParams,
+    ...extraParams,
   });
 
   const authUrl = `${provider.oauth.authorizeUrl}?${params.toString()}`;
@@ -213,9 +233,10 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     return c.json({ error: 'Unknown provider or provider does not support OAuth' }, 400);
   }
 
-  // Validate CSRF nonce before any state changes
-  const state = c.req.query('state');
-  if (!state || !redeemOAuthNonce(state)) {
+  // Validate CSRF nonce and retrieve PKCE verifier before any state changes
+  const stateParam = c.req.query('state');
+  const oauthState = stateParam ? redeemOAuthState(stateParam) : null;
+  if (!oauthState) {
     return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
   }
 
@@ -226,24 +247,35 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   const clientId = getOAuthClientId(provider);
   const clientSecret = getOAuthClientSecret(provider);
+  const usePkce = provider.oauth.pkce === true;
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || (!usePkce && !clientSecret)) {
     return c.json({ error: `OAuth credentials not configured for ${provider.displayName}` }, 500);
   }
 
   const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
 
-  // Standard OAuth2 token exchange
+  // Build token exchange params — PKCE providers use code_verifier, others use client_secret
+  const tokenParams: Record<string, string> = {
+    code,
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code',
+  };
+  if (usePkce) {
+    if (!oauthState.codeVerifier) {
+      return c.redirect('/?oauth=error&message=' + encodeURIComponent('PKCE verifier missing from OAuth state. Please try again.'));
+    }
+    tokenParams.code_verifier = oauthState.codeVerifier;
+  }
+  if (clientSecret) {
+    tokenParams.client_secret = clientSecret;
+  }
+
   const tokenRes = await fetch(provider.oauth.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-    }),
+    body: new URLSearchParams(tokenParams),
   });
 
   if (!tokenRes.ok) {

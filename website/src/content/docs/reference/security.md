@@ -55,6 +55,7 @@ The install script stores the admin token in a root-owned directory (`/usr/local
 - Reading the token requires `sudo` — regular users and compromised non-root processes cannot access it
 - The token is never written to `.env` or other user-readable files
 - The `GATELET_ADMIN_TOKEN_FILE` environment variable tells Gatelet to read the token from a file path instead of an env var
+- The admin token is masked in Docker startup logs — since any user on macOS can run `docker logs` without sudo, the full token is never printed to stdout in Docker deployments
 
 The admin token serves double duty: it authenticates admin dashboard access and derives the master encryption key via HKDF-SHA256.
 
@@ -85,6 +86,7 @@ An unsandboxed agent running on the host as a regular user can reach `localhost:
 
 - Bearer token authentication per API key
 - API keys are hashed with SHA-256 in the database
+- Sessions are bound to the API key that created them — a different key cannot reuse an existing session
 - Rate limiting: 10 failed attempts per minute per IP
 - Last-used timestamp tracking
 
@@ -101,7 +103,8 @@ Gatelet communicates with agents over HTTP, never stdio. This is a deliberate se
 
 Every tool call is logged with:
 
-- Tool name and API key used
+- API key ID (identifies which agent made the call)
+- Tool name
 - Original parameters (as sent by the agent)
 - Mutated parameters (after policy processing)
 - Result (success or failure)
