@@ -129,7 +129,7 @@ function AppContent() {
       {activeTab === 'Connections' && (
         <Connections status={status} onRefresh={fetchStatus} />
       )}
-      {activeTab === 'API Keys' && <ApiKeys />}
+      {activeTab === 'API Keys' && <ApiKeys runtime={status.runtime} />}
       {activeTab === 'Audit Log' && <AuditLog />}
       {activeTab === 'Settings' && <Settings />}
     </Layout>

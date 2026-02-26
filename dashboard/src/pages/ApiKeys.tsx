@@ -20,7 +20,7 @@ import {
   Info
 } from 'lucide-react';
 
-export function ApiKeys() {
+export function ApiKeys({ runtime }: { runtime?: { docker: boolean } }) {
   const { data: keys, refetch } = useApi(() => api.getApiKeys(), []);
   const [newKeyName, setNewKeyName] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -117,7 +117,7 @@ export function ApiKeys() {
               </div>
             </div>
           </div>
-          <AgentConfig apiKey={createdKey} />
+          <AgentConfig apiKey={createdKey} runtime={runtime} />
         </div>
       )}
 
