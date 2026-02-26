@@ -36,6 +36,10 @@ export const config = {
   set ADMIN_TOKEN(value: string | undefined) { _adminToken = value; },
 };
 
+// Local dev only — Docker deployments use root-owned secrets (see install.sh).
+// This path writes to ~/.gatelet/data/ which is user-readable, so it does NOT
+// protect against host-based agents running as the same user. That's acceptable
+// for development; production relies on the root-owned /usr/local/etc/gatelet/secrets/.
 export function loadAdminToken(): string | null {
   const tokenPath = path.join(config.DATA_DIR, 'admin.token');
   try {

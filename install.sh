@@ -86,7 +86,10 @@ if [ -z "$GATELET_ADMIN_TOKEN" ]; then
   fi
 fi
 
-# -- Write secrets to root-owned directory (backup, not used by Docker) --------
+# -- Write secrets to root-owned directory --------------------------------------
+# Root ownership is the security boundary that prevents host-based agents from
+# reading the admin token. Without sudo, an agent process cannot access this file.
+# See: docs/reference/security.md → "Agent isolation"
 info "Storing secrets in $GATELET_SECRETS_DIR (requires sudo)..."
 sudo mkdir -p "$GATELET_SECRETS_DIR"
 printf '%s' "$GATELET_ADMIN_TOKEN" | sudo tee "$GATELET_SECRETS_DIR/admin-token" > /dev/null

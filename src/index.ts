@@ -73,7 +73,9 @@ function initMasterKey(adminToken: string): void {
 }
 
 async function main(): Promise<void> {
-  // Resolve admin token first — it's now the key material for encryption
+  // The admin token serves double duty: it authenticates admin dashboard access
+  // AND derives the master encryption key (HKDF-SHA256) for all stored credentials.
+  // Compromising this token gives both admin access and decryption capability.
   if (!config.ADMIN_TOKEN) {
     const fileToken = loadAdminToken();
     if (fileToken) {
