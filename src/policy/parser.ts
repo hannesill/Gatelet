@@ -1,5 +1,6 @@
 import YAML from 'yaml';
 import type { PolicyConfig, ParseResult } from './types.js';
+import { isSafeRegex } from './constraints.js';
 
 const VALID_CONSTRAINT_RULES = ['must_equal', 'must_be_one_of', 'must_not_be_empty', 'must_match'] as const;
 const VALID_MUTATION_ACTIONS = ['set', 'delete'] as const;
@@ -158,6 +159,11 @@ function validateConstraint(opName: string, constraint: unknown, index: number):
     } catch {
       throw new Error(
         `Invalid policy: constraint #${index} in "${opName}" with rule "must_match" has invalid regex: ${JSON.stringify(c.value)}`,
+      );
+    }
+    if (!isSafeRegex(c.value)) {
+      throw new Error(
+        `Invalid policy: constraint #${index} in "${opName}" with rule "must_match" has unsafe regex (potential ReDoS): ${JSON.stringify(c.value)}`,
       );
     }
   }

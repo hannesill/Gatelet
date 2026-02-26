@@ -1,57 +1,34 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import net from 'node:net';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-doctor-test-${Date.now()}`);
+const env = createTestEnvironment('doctor');
+process.env.GATELET_DATA_DIR = env.dataDir;
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
-
-// Find two free ports dynamically
-import net from 'node:net';
-
-function findFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.listen(0, '127.0.0.1', () => {
-      const port = (srv.address() as net.AddressInfo).port;
-      srv.close(() => resolve(port));
-    });
-    srv.once('error', reject);
-  });
-}
-
-const freePort1 = await findFreePort();
-const freePort2 = await findFreePort();
+const [freePort1, freePort2] = await Promise.all([findFreePort(), findFreePort()]);
 process.env.GATELET_MCP_PORT = String(freePort1);
 process.env.GATELET_ADMIN_PORT = String(freePort2);
 
 import { runDoctor } from '../../src/doctor/index.js';
 import { saveAdminToken } from '../../src/config.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
 import { createConnection } from '../../src/db/connections.js';
 import sodium from 'sodium-native';
 
 describe('Doctor checks', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
+    env.setup();
 
     // Create a dummy master.salt for doctor checks (simulates passphrase mode)
-    const saltPath = path.join(TEST_DATA_DIR, 'master.salt');
+    const saltPath = path.join(env.dataDir, 'master.salt');
     const salt = Buffer.alloc(sodium.crypto_pwhash_SALTBYTES);
     sodium.randombytes_buf(salt);
     fs.writeFileSync(saltPath, salt, { mode: 0o600 });
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   describe('data_dir check', () => {
@@ -63,7 +40,7 @@ describe('Doctor checks', () => {
     });
 
     it('creates data dir with --fix when missing', async () => {
-      const missingDir = path.join(TEST_DATA_DIR, 'doctor-fix-test');
+      const missingDir = path.join(env.dataDir, 'doctor-fix-test');
       const origDir = process.env.GATELET_DATA_DIR;
       process.env.GATELET_DATA_DIR = missingDir;
       try {
@@ -83,7 +60,7 @@ describe('Doctor checks', () => {
     it('warns when no admin token configured', async () => {
       const origToken = process.env.GATELET_ADMIN_TOKEN;
       delete process.env.GATELET_ADMIN_TOKEN;
-      const tokenPath = path.join(TEST_DATA_DIR, 'admin.token');
+      const tokenPath = path.join(env.dataDir, 'admin.token');
       if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
 
       try {
@@ -98,7 +75,7 @@ describe('Doctor checks', () => {
     it('fixes admin token with --fix', async () => {
       const origToken = process.env.GATELET_ADMIN_TOKEN;
       delete process.env.GATELET_ADMIN_TOKEN;
-      const tokenPath = path.join(TEST_DATA_DIR, 'admin.token');
+      const tokenPath = path.join(env.dataDir, 'admin.token');
       if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
 
       try {

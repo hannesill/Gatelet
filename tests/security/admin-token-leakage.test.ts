@@ -6,23 +6,18 @@
  * and FINDING-05 (session-based auth replaces token-in-URL).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-sec-token-${Date.now()}`);
 const TEST_ADMIN_TOKEN = 'secret-admin-token-do-not-leak';
-const TEST_MCP_PORT = 16000;
-const TEST_ADMIN_PORT = 16001;
+const env = createTestEnvironment('sec-token');
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+const [mcpPort, adminPort] = await Promise.all([findFreePort(), findFreePort()]);
+process.env.GATELET_DATA_DIR = env.dataDir;
 process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
-process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
-process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
+process.env.GATELET_MCP_PORT = String(mcpPort);
+process.env.GATELET_ADMIN_PORT = String(adminPort);
 
 import { config } from '../../src/config.js';
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import type { Hono } from 'hono';
 
@@ -34,18 +29,13 @@ function req(urlPath: string, init?: RequestInit) {
 
 describe('Admin Token Leakage', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
+    env.setup();
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
     app = createAdminApp();
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   // ── FINDING-01: OAuth state parameter leaks admin token to Google ──

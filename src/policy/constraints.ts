@@ -1,6 +1,18 @@
 import type { Constraint } from './types.js';
 import { getByPath } from './field-path.js';
 
+/**
+ * Detect regex patterns that cause catastrophic backtracking (ReDoS).
+ * Checks for nested quantifiers like (a+)+, (a*)+, (a+)*, (a{2,})+ etc.
+ */
+export function isSafeRegex(pattern: string): boolean {
+  // Match nested quantifiers: a quantifier applied to a group that contains a quantifier
+  // Examples: (a+)+, (a*)+, (a+)*, (a{2,})+, ([a-z]+)+
+  // Pattern: open group → content with quantifier → close group → quantifier
+  const nestedQuantifier = /\([^)]*[+*}][^)]*\)[+*?]|\([^)]*[+*}][^)]*\)\{/;
+  return !nestedQuantifier.test(pattern);
+}
+
 export function evaluateConstraint(
   constraint: Constraint,
   params: Record<string, unknown>,
@@ -45,11 +57,15 @@ export function evaluateConstraint(
     }
 
     case 'must_match': {
+      const pattern = constraint.value as string;
+      if (!isSafeRegex(pattern)) {
+        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has unsafe regex (potential ReDoS): ${JSON.stringify(pattern)}` };
+      }
       let regex: RegExp;
       try {
-        regex = new RegExp(constraint.value as string);
+        regex = new RegExp(pattern);
       } catch {
-        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has invalid regex: ${JSON.stringify(constraint.value)}` };
+        return { ok: false, reason: `Constraint failed: ${constraint.field} must_match has invalid regex: ${JSON.stringify(pattern)}` };
       }
       if (actual == null) {
         return {

@@ -196,7 +196,7 @@ export function startMcpServer(): http.Server {
   return server;
 }
 
-async function handleToolCall(
+export async function handleToolCall(
   toolName: string,
   params: Record<string, unknown>,
   registered: RegisteredTool,

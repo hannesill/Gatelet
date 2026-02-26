@@ -1,23 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-// Set up test environment before any imports that use config
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-admin-test-${Date.now()}`);
 const TEST_ADMIN_TOKEN = 'test-admin-token-456';
-const TEST_MCP_PORT = 15000;
-const TEST_ADMIN_PORT = 15001;
+const env = createTestEnvironment('admin-routes');
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+const [mcpPort, adminPort] = await Promise.all([findFreePort(), findFreePort()]);
+process.env.GATELET_DATA_DIR = env.dataDir;
 process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
-process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
-process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
+process.env.GATELET_MCP_PORT = String(mcpPort);
+process.env.GATELET_ADMIN_PORT = String(adminPort);
 
-// Now import modules that use config
 import { config } from '../../src/config.js';
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import { insertAuditEntry } from '../../src/db/audit.js';
 import type { Hono } from 'hono';
@@ -54,19 +47,13 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
 
 describe('Admin API Routes', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
-    // Ensure config has the right token (may have been set by another test's module init)
+    env.setup();
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
     app = createAdminApp();
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   // ── Auth ────────────────────────────────────────────────────────────

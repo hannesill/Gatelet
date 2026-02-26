@@ -1,22 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
 import { TOTP, Secret } from 'otpauth';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-totp-test-${Date.now()}`);
 const TEST_ADMIN_TOKEN = 'totp-test-admin-token';
-const TEST_MCP_PORT = 19000;
-const TEST_ADMIN_PORT = 19001;
+const env = createTestEnvironment('totp');
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+const [mcpPort, adminPort] = await Promise.all([findFreePort(), findFreePort()]);
+process.env.GATELET_DATA_DIR = env.dataDir;
 process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
-process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
-process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
+process.env.GATELET_MCP_PORT = String(mcpPort);
+process.env.GATELET_ADMIN_PORT = String(adminPort);
 
 import { config } from '../../src/config.js';
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import { getSetting, deleteSetting } from '../../src/db/settings.js';
 import { resetPendingSecret } from '../../src/admin/routes/totp.js';
@@ -116,18 +111,13 @@ describe('TOTP Module', () => {
 
 describe('TOTP Routes', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
+    env.setup();
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
     app = createAdminApp();
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   beforeEach(() => {

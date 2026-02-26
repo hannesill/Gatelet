@@ -1,22 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-// Set up test environment before any imports that use config
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-test-${Date.now()}`);
 const TEST_ADMIN_TOKEN = 'test-admin-token-123';
-const TEST_MCP_PORT = 14000;
-const TEST_ADMIN_PORT = 14001;
+const env = createTestEnvironment('mcp-server');
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+const [mcpPort, adminPort] = await Promise.all([findFreePort(), findFreePort()]);
+process.env.GATELET_DATA_DIR = env.dataDir;
 process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
-process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
-process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
-
-// Now import modules that use config
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
+process.env.GATELET_MCP_PORT = String(mcpPort);
+process.env.GATELET_ADMIN_PORT = String(adminPort);
 import { createConnection, getConnectionWithCredentials } from '../../src/db/connections.js';
 import { createApiKey, validateApiKey } from '../../src/db/api-keys.js';
 
@@ -47,16 +39,11 @@ operations:
 
 describe('Data layer integration', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
+    env.setup();
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   describe('API Keys', () => {

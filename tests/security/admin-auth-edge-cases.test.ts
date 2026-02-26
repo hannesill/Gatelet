@@ -5,23 +5,18 @@
  * that could lead to authentication bypass if not handled correctly.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
+import { findFreePort, createTestEnvironment } from '../helpers/test-setup.js';
 
-const TEST_DATA_DIR = path.join(os.tmpdir(), `gatelet-auth-edge-${Date.now()}`);
 const TEST_ADMIN_TOKEN = 'admin-auth-edge-test-token-xyz';
-const TEST_MCP_PORT = 21000;
-const TEST_ADMIN_PORT = 21001;
+const env = createTestEnvironment('auth-edge');
 
-process.env.GATELET_DATA_DIR = TEST_DATA_DIR;
+const [mcpPort, adminPort] = await Promise.all([findFreePort(), findFreePort()]);
+process.env.GATELET_DATA_DIR = env.dataDir;
 process.env.GATELET_ADMIN_TOKEN = TEST_ADMIN_TOKEN;
-process.env.GATELET_MCP_PORT = String(TEST_MCP_PORT);
-process.env.GATELET_ADMIN_PORT = String(TEST_ADMIN_PORT);
+process.env.GATELET_MCP_PORT = String(mcpPort);
+process.env.GATELET_ADMIN_PORT = String(adminPort);
 
 import { config } from '../../src/config.js';
-import { getDb, closeDb, resetDb } from '../../src/db/database.js';
-import { initTestMasterKey, resetMasterKey } from '../helpers/setup-crypto.js';
 import { createAdminApp } from '../../src/admin/server.js';
 import type { Hono } from 'hono';
 
@@ -33,18 +28,13 @@ function req(urlPath: string, init?: RequestInit) {
 
 describe('Admin auth edge cases', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
-    resetMasterKey();
-    resetDb();
-    initTestMasterKey();
-    getDb();
+    env.setup();
     config.ADMIN_TOKEN = TEST_ADMIN_TOKEN;
     app = createAdminApp();
   });
 
   afterAll(() => {
-    closeDb();
-    fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    env.teardown();
   });
 
   describe('Bearer token edge cases', () => {
