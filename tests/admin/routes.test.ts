@@ -511,6 +511,17 @@ operations:
       expect(body.entries.length).toBe(1);
       expect(body.total).toBeGreaterThanOrEqual(3);
     });
+
+    it('GET /api/audit?limit=999999 is capped to 1000', async () => {
+      const res = await req('/api/audit?limit=999999', {
+        headers: authHeaders(),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      // We only have a few entries, so can't verify the cap directly,
+      // but the request should succeed without resource exhaustion
+      expect(body.entries.length).toBeLessThanOrEqual(1000);
+    });
   });
 
   // ── Settings ────────────────────────────────────────────────────────

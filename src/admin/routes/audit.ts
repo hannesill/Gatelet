@@ -5,7 +5,7 @@ const app = new Hono();
 
 app.get('/audit', (c) => {
   const filters = {
-    limit: Number(c.req.query('limit')) || 50,
+    limit: Math.min(Number(c.req.query('limit')) || 50, 1000),
     offset: Number(c.req.query('offset')) || 0,
     tool_name: c.req.query('tool_name'),
     result: c.req.query('result'),

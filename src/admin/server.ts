@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +23,22 @@ import { getSetting, setSetting } from '../db/settings.js';
 
 const adminLimiter = createRateLimiter(10, 60 * 1000); // 10 failures per minute
 
-function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
-  return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+/** Constant-time string comparison to prevent timing attacks on token verification. */
+function safeTokenCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+function getClientIp(c: { env?: Record<string, unknown>; req: { header: (name: string) => string | undefined } }): string {
+  // Only trust X-Forwarded-For when explicitly opted in (e.g., behind a reverse proxy).
+  // Default to the socket address to prevent rate-limiter bypass via header spoofing.
+  if (process.env.GATELET_TRUST_PROXY) {
+    const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+    if (forwarded) return forwarded;
+  }
+  // c.env.incoming is the Node.js IncomingMessage when running under @hono/node-server
+  const incoming = c.env?.incoming as { socket?: { remoteAddress?: string } } | undefined;
+  return incoming?.socket?.remoteAddress || 'unknown';
 }
 
 function parseCookies(header: string | undefined): Record<string, string> {
@@ -53,7 +68,7 @@ export function createAdminApp(): Hono {
     const body = await c.req.json();
     const { token, totpCode } = body;
 
-    if (!token || token !== config.ADMIN_TOKEN) {
+    if (!token || typeof token !== 'string' || !config.ADMIN_TOKEN || !safeTokenCompare(token, config.ADMIN_TOKEN)) {
       adminLimiter.recordFailure(clientIp);
       return c.json({ error: 'Invalid token' }, 401);
     }
@@ -142,7 +157,7 @@ export function createAdminApp(): Hono {
     const authHeader = c.req.header('Authorization');
     if (authHeader) {
       const match = authHeader.match(/^Bearer\s+(.+)$/i);
-      if (match && match[1] === config.ADMIN_TOKEN) {
+      if (match && config.ADMIN_TOKEN && safeTokenCompare(match[1], config.ADMIN_TOKEN)) {
         // If 2FA is enabled, require X-TOTP-Code header for Bearer auth
         let totpEnabled = false;
         try {
@@ -184,7 +199,7 @@ export function createAdminApp(): Hono {
     // Allow OAuth start with token query param for backward compatibility
     if (/^\/api\/connections\/oauth\/[^/]+\/start$/.test(c.req.path)) {
       const token = c.req.query('token');
-      if (token === config.ADMIN_TOKEN) {
+      if (token && config.ADMIN_TOKEN && safeTokenCompare(token, config.ADMIN_TOKEN)) {
         adminLimiter.clear(clientIp);
         return next();
       }

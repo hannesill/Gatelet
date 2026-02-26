@@ -189,8 +189,11 @@ export function startMcpServer(): http.Server {
     }
   });
 
-  server.listen(config.MCP_PORT, () => {
-    console.log(`MCP server listening on :${config.MCP_PORT}`);
+  // In Docker, bind to 0.0.0.0 — Docker port forwarding requires it.
+  // Outside Docker, bind to 127.0.0.1 to avoid exposing the MCP port on the LAN.
+  const hostname = process.env.GATELET_DATA_DIR === '/data' ? '0.0.0.0' : '127.0.0.1';
+  server.listen(config.MCP_PORT, hostname, () => {
+    console.log(`MCP server listening on ${hostname}:${config.MCP_PORT}`);
   });
 
   return server;

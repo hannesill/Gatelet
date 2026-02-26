@@ -76,7 +76,29 @@ export function parsePolicy(yamlString: string): ParseResult {
       }
     }
 
-    // guards are opaque — not validated
+    // Validate redact_patterns in guards for regex safety (ReDoS prevention)
+    if (opObj.guards && typeof opObj.guards === 'object') {
+      const guards = opObj.guards as Record<string, unknown>;
+      if (Array.isArray(guards.redact_patterns)) {
+        for (let i = 0; i < guards.redact_patterns.length; i++) {
+          const rule = guards.redact_patterns[i] as Record<string, unknown> | null;
+          if (rule && typeof rule.pattern === 'string') {
+            try {
+              new RegExp(rule.pattern);
+            } catch {
+              throw new Error(
+                `Invalid policy: operation "${opName}" guards.redact_patterns[${i}] has invalid regex: ${JSON.stringify(rule.pattern)}`,
+              );
+            }
+            if (!isSafeRegex(rule.pattern)) {
+              throw new Error(
+                `Invalid policy: operation "${opName}" guards.redact_patterns[${i}] has unsafe regex (potential ReDoS): ${JSON.stringify(rule.pattern)}`,
+              );
+            }
+          }
+        }
+      }
+    }
 
     // Validate allowed_fields
     if (opObj.allowed_fields !== undefined) {

@@ -66,7 +66,7 @@ operations:
     expect(policy.operations.op.constraints![0].rule).toBe('must_not_be_empty');
   });
 
-  it('accepts operations with guards (opaque, not validated)', () => {
+  it('accepts operations with guards (non-redact guards are opaque)', () => {
     const yaml = `
 provider: test
 account: a
@@ -80,6 +80,53 @@ operations:
     const { policy, warnings } = parsePolicy(yaml);
     expect(warnings).toHaveLength(0);
     expect(policy.operations.op.guards).toBeDefined();
+  });
+
+  it('accepts guards with valid redact_patterns', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    guards:
+      redact_patterns:
+        - pattern: "\\\\b\\\\d{3}-\\\\d{2}-\\\\d{4}\\\\b"
+          replace: "[REDACTED]"
+`;
+    const { policy, warnings } = parsePolicy(yaml);
+    expect(warnings).toHaveLength(0);
+    expect(policy.operations.op.guards).toBeDefined();
+  });
+
+  it('throws on guards with invalid redact_patterns regex', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    guards:
+      redact_patterns:
+        - pattern: "[invalid("
+          replace: "X"
+`;
+    expect(() => parsePolicy(yaml)).toThrow('invalid regex');
+  });
+
+  it('throws on guards with unsafe redact_patterns regex (ReDoS)', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    guards:
+      redact_patterns:
+        - pattern: "(a+)+"
+          replace: "X"
+`;
+    expect(() => parsePolicy(yaml)).toThrow('unsafe regex');
   });
 
   it('accepts allow: false operations', () => {
