@@ -7,16 +7,6 @@ Docker is the recommended deployment method — it provides the filesystem and n
 
 ## Quick start
 
-The fastest way to get started:
-
-```bash
-npx gatelet@latest
-```
-
-This pulls the Docker image, generates an admin token, and starts Gatelet in `~/.gatelet`. The installer prints your admin token and dashboard URL when done.
-
-## Install script
-
 ### macOS / Linux
 
 ```bash
@@ -46,7 +36,7 @@ You'll need this passphrase every time the server starts. If you lose it, stored
 For automated/Docker deployments, set the `GATELET_PASSPHRASE` environment variable to skip the interactive prompt:
 
 ```bash
-GATELET_PASSPHRASE=your-passphrase npx gatelet@latest
+curl -fsSL https://gatelet.dev/install.sh | GATELET_PASSPHRASE=your-passphrase sh
 ```
 
 ## Verify installation
@@ -57,7 +47,11 @@ Once installed, open the admin dashboard:
 open http://localhost:4001
 ```
 
-Paste the admin token that was printed during installation. If you've lost it, check `~/.gatelet/.env` for the `GATELET_ADMIN_TOKEN` value.
+Paste the admin token that was printed during installation. If you've lost it, it's stored in the secrets directory (requires sudo on macOS/Linux):
+
+```bash
+sudo cat /usr/local/etc/gatelet/secrets/admin-token
+```
 
 ## Requirements
 

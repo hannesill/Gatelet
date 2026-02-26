@@ -5,13 +5,13 @@
 <h1 align="center">Gatelet</h1>
 
 <p align="center">
-  <strong>The missing permission layer for your AI agents.</strong><br/>
-  Control exactly what your models can see and do — via MCP.
+  <strong>Fine-grained account access for your agents.</strong><br/>
+  A self-hosted MCP proxy that gives you full control over how your agents can access your mails and calendars (and soon other online accounts).
 </p>
 
 <p align="center">
   <a href="https://github.com/hannesill/Gatelet/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="MIT License" /></a>
-  <a href="https://github.com/hannesill/Gatelet/releases"><img src="https://img.shields.io/github/v/release/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="Release" /></a>
+  <a href="https://github.com/hannesill/Gatelet/pkgs/container/gatelet"><img src="https://img.shields.io/badge/GHCR-gatelet-4f46e5?style=flat-square&logo=docker&logoColor=white" alt="GHCR" /></a>
   <a href="https://github.com/hannesill/Gatelet"><img src="https://img.shields.io/github/stars/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="GitHub Stars" /></a>
 </p>
 
@@ -46,12 +46,6 @@ Your agent connects via a policy-enforced MCP endpoint and can only perform oper
 5. Every call is audit-logged with parameters, result, and timing
 
 ## Quick Start
-
-```bash
-npx gatelet@latest
-```
-
-Or via install script:
 
 ```bash
 # macOS / Linux

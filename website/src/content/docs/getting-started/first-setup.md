@@ -7,7 +7,7 @@ After [installation](/getting-started/installation/), you'll walk through three 
 
 ## 1. Log in to the dashboard
 
-Open `http://localhost:4001` and enter the admin token that was printed during installation. You can find it in `~/.gatelet/.env` if needed.
+Open `http://localhost:4001` and enter the admin token that was printed during installation. You can retrieve it with `sudo cat /usr/local/etc/gatelet/secrets/admin-token` if needed.
 
 ## 2. Generate an API key
 
