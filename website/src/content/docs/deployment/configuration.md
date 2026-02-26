@@ -37,16 +37,16 @@ If not set, Gatelet checks for a saved token at `$DATA_DIR/admin.token`. If neit
 
 `GATELET_ADMIN_TOKEN` supports the `_FILE` suffix convention used by Docker secrets. When `GATELET_ADMIN_TOKEN_FILE` is set, Gatelet reads the token from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
 
-This lets you store the token in a root-owned file and mount it read-only into the container:
+The default install script uses this approach: the admin token is stored on the host at `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), then seeded into a Docker volume (`gatelet-secrets`) mounted read-only into the container:
 
 ```yaml
 volumes:
-  - /usr/local/etc/gatelet/secrets:/run/secrets/gatelet:ro
+  - gatelet-secrets:/run/secrets/gatelet:ro
 environment:
   - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
 ```
 
-The default install script uses this approach automatically — the admin token is stored in `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), so it cannot be read without `sudo`.
+Reading the token on the host requires `sudo` — regular users and agent processes cannot access it.
 
 ## OAuth credentials
 
@@ -73,10 +73,20 @@ Dashboard-configured credentials take precedence over environment variables.
 
 ## Data directory structure
 
+**Docker deployment** (install script):
+```
+gatelet-data volume (/data inside container):
+└── gatelet.db              # SQLite database
+
+gatelet-secrets volume (/run/secrets/gatelet, read-only):
+└── admin-token             # Admin token (seeded from host)
+```
+
+**Local development** (no Docker):
 ```
 ~/.gatelet/data/
 ├── gatelet.db              # SQLite database
-└── admin.token             # Persisted admin token
+└── admin.token             # Auto-generated admin token (0600)
 ```
 
 ### Database tables
@@ -84,7 +94,7 @@ Dashboard-configured credentials take precedence over environment variables.
 | Table | Contents |
 |---|---|
 | `connections` | OAuth connections with encrypted credentials, policy YAML |
-| `api_keys` | Hashed API keys (bcrypt) |
+| `api_keys` | Hashed API keys (SHA-256) |
 | `audit_log` | Tool call audit trail |
 | `settings` | Encrypted global settings (OAuth credentials) |
 

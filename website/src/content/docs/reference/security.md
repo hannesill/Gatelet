@@ -50,7 +50,7 @@ OAuth tokens and API secrets are all encrypted with this master key.
 
 ### Admin token storage
 
-The install script stores the admin token in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) with `0600` permissions. The token file is bind-mounted read-only into the container. This means:
+The install script stores the admin token in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) with `0600` permissions. The token is seeded into a Docker volume (`gatelet-secrets`) mounted read-only into the container. This means:
 
 - Reading the token requires `sudo` — regular users and compromised non-root processes cannot access it
 - The token is never written to `.env` or other user-readable files
@@ -59,6 +59,19 @@ The install script stores the admin token in a root-owned directory (`/usr/local
 The admin token serves double duty: it authenticates admin dashboard access and derives the master encryption key via HKDF-SHA256.
 
 **Note:** Users in the `docker` group can bypass file permissions by mounting any host file into a container. This is a known Docker limitation (docker group membership is effectively root-equivalent), not specific to Gatelet.
+
+### Agent isolation
+
+The admin token's root-only storage provides protection against agents regardless of whether they run in a container or directly on the host:
+
+| Scenario | Can reach admin port? | Can read admin token? | Protected? |
+|---|---|---|---|
+| **Docker-sandboxed agent** | No — port 4001 is not on the internal network | No — token is in a host-only path | Yes |
+| **Host agent (normal user)** | Yes — `localhost:4001` is reachable | No — requires `sudo` to read the token file | Yes |
+| **Host agent with `sudo`** | Yes | Yes | No — `sudo` is root-equivalent |
+| **Host agent with Docker socket** | Yes | Yes — can mount the secrets volume | No — Docker socket is root-equivalent |
+
+An unsandboxed agent running on the host as a regular user can reach `localhost:4001` but cannot authenticate without the admin token. The token is stored in a root-owned directory and cannot be read without `sudo`. The agent can only interact with the MCP endpoint on port 4000, which requires a separate API key and enforces the configured policies.
 
 ## Authentication
 
@@ -71,7 +84,7 @@ The admin token serves double duty: it authenticates admin dashboard access and 
 ### MCP endpoint
 
 - Bearer token authentication per API key
-- API keys are hashed with bcrypt in the database
+- API keys are hashed with SHA-256 in the database
 - Rate limiting: 10 failed attempts per minute per IP
 - Last-used timestamp tracking
 
