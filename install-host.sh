@@ -298,6 +298,8 @@ main() {
   install_service
 
   # -- Summary ----------------------------------------------------------------
+  # NOTE: install.sh (Docker) uses a different summary format — it embeds the
+  # token in the dashboard URL (?token=…) so "Next steps" don't apply there.
   printf "\n"
   success "Gatelet is running!"
   printf "\n"
@@ -306,7 +308,11 @@ main() {
   printf "  ${Cyan}App dir${Color_Off}      %s ${Dim}(root-owned)${Color_Off}\n" "$GATELET_DIR"
   printf "  ${Cyan}Data dir${Color_Off}     %s ${Dim}(%s-owned, mode 700)${Color_Off}\n" "$GATELET_DATA_DIR" "$SERVICE_USER"
   printf "\n"
-  printf "  ${Cyan}Admin token${Color_Off}  sudo cat %s/admin.token\n" "$GATELET_DATA_DIR"
+
+  printf "  ${Cyan}Next steps:${Color_Off}\n"
+  printf "    ${Green}1.${Color_Off} Get your admin token:  sudo cat %s/admin.token\n" "$GATELET_DATA_DIR"
+  printf "    ${Green}2.${Color_Off} Open the dashboard:    http://localhost:4001\n"
+  printf "    ${Dim}   Paste the admin token to sign in.${Color_Off}\n"
   printf "\n"
 
   if [ "$OS" = "macos" ]; then

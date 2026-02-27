@@ -88,7 +88,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
 
         {/* Card */}
         <div className="animate-fade stagger-5 overflow-hidden rounded-3xl bg-white/80 p-8 shadow-2xl shadow-zinc-950/5 ring-1 ring-zinc-200 backdrop-blur-xl dark:bg-zinc-900/80 dark:shadow-black/40 dark:ring-white/10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
             {/* Admin Token Input */}
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
@@ -104,6 +104,10 @@ export function Login({ onLogin }: { onLogin: () => void }) {
                   onChange={e => setToken(e.target.value)}
                   placeholder="Paste token..."
                   autoFocus
+                  autoComplete="off"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
                   className="w-full bg-zinc-50 border-none rounded-2xl py-3.5 pl-11 pr-4 text-sm ring-1 ring-zinc-200 focus:ring-2 focus:ring-indigo-500 transition-all dark:bg-black/20 dark:ring-white/10 dark:text-white"
                 />
               </div>
@@ -139,8 +143,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <p className="animate-fade stagger-6 mt-8 text-center text-xs text-zinc-400 leading-relaxed dark:text-zinc-500">
-          Check your terminal for the admin token.<br />
-          It was generated when the server started.
+          Paste the admin token from your install terminal.
         </p>
       </div>
     </div>
