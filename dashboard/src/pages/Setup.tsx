@@ -231,7 +231,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   }
 
   return (
-    <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12">
+    <div className="login-gradient relative flex min-h-screen flex-col items-center justify-center overflow-x-hidden px-4 py-12">
       <DynamicBackground />
       {/* Background blobs for atmosphere */}
       <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
@@ -257,7 +257,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
         </div>
 
         {/* Card Content */}
-        <div className="overflow-hidden rounded-[32px] bg-white/80 p-8 shadow-2xl shadow-zinc-950/5 ring-1 ring-zinc-200 backdrop-blur-xl dark:bg-zinc-900/80 dark:shadow-black/40 dark:ring-white/10">
+        <div className="rounded-[32px] bg-white/80 p-8 shadow-2xl shadow-zinc-950/5 ring-1 ring-zinc-200 backdrop-blur-xl dark:bg-zinc-900/80 dark:shadow-black/40 dark:ring-white/10">
           {/* Step 1: Connect Services */}
           {step === 1 && (
             <div key="step1" className="animate-in space-y-6">
