@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { cn } from '../utils';
 import { Loader2, CheckCircle2, XCircle, Zap } from 'lucide-react';
@@ -6,13 +6,15 @@ import { Loader2, CheckCircle2, XCircle, Zap } from 'lucide-react';
 interface Props {
   connectionId: string;
   compact?: boolean;
+  autoTest?: boolean;
 }
 
 type TestState = 'idle' | 'loading' | 'success' | 'error';
 
-export function TestConnectionButton({ connectionId, compact }: Props) {
+export function TestConnectionButton({ connectionId, compact, autoTest }: Props) {
   const [state, setState] = useState<TestState>('idle');
   const [message, setMessage] = useState('');
+  const autoTestedRef = useRef(false);
 
   async function handleTest() {
     setState('loading');
@@ -31,6 +33,13 @@ export function TestConnectionButton({ connectionId, compact }: Props) {
       setMessage(e.message || 'Test failed');
     }
   }
+
+  useEffect(() => {
+    if (autoTest && !autoTestedRef.current) {
+      autoTestedRef.current = true;
+      handleTest();
+    }
+  }, [autoTest]);
 
   if (state === 'loading') {
     return (

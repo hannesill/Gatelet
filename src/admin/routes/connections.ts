@@ -14,7 +14,7 @@ import {
   setConnectionNeedsReauth,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
-import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
+import { getOAuthClientId, getOAuthClientSecret, getSetting } from '../../db/settings.js';
 import { isAuthError, refreshConnectionCredentials } from '../../providers/token-refresh.js';
 import { config } from '../../config.js';
 import { refreshToolRegistry } from '../../mcp/server.js';
@@ -348,11 +348,18 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     setConnectionNeedsReauth(existing.id, false);
     conn = existing;
   } else {
+    // During setup, default new connections to the safer read-only preset
+    const setupCompleted = getSetting('setup_completed') === 'true';
+    const readOnlyYaml = provider.presets?.['read-only'];
+    const policyYaml = (!setupCompleted && readOnlyYaml)
+      ? readOnlyYaml.replace('{account}', accountName)
+      : provider.defaultPolicyYaml.replace('{account}', accountName);
+
     conn = createConnection({
       provider_id: providerId,
       account_name: accountName,
       credentials: newCredentials,
-      policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),
+      policy_yaml: policyYaml,
     });
 
     // Set default connection settings for email providers

@@ -140,6 +140,22 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   const [setupReady, setSetupReady] = useState(false);
   const { toast } = useToast();
 
+  // Track known connection IDs to detect newly added ones (e.g. after OAuth redirect)
+  const knownConnectionIdsRef = useRef<Set<string>>(new Set(connections.map(c => c.id)));
+  const [newConnectionIds, setNewConnectionIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const currentIds = new Set(connections.map(c => c.id));
+    const newIds = new Set<string>();
+    for (const id of currentIds) {
+      if (!knownConnectionIdsRef.current.has(id)) {
+        newIds.add(id);
+      }
+    }
+    if (newIds.size > 0) setNewConnectionIds(newIds);
+    knownConnectionIdsRef.current = currentIds;
+  }, [connections]);
+
   // Mark setup as in-progress so OAuth redirects preserve the wizard
   useEffect(() => {
     let cancelled = false;
@@ -151,9 +167,6 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
     });
     return () => { cancelled = true; };
   }, []);
-
-  // Track which connections have already been defaulted to read-only
-  const defaultedRef = useRef<Set<string>>(new Set());
 
   // Fetch presets for each connection
   useEffect(() => {
@@ -173,18 +186,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
             }),
           );
           const yamls = Object.fromEntries(entries);
-          let active = detectPreset(conn.policy_yaml, yamls);
-
-          // Default new connections to read-only once (conservative for new users)
-          if (active === 'standard' && yamls['read-only'] && !defaultedRef.current.has(conn.id)) {
-            defaultedRef.current.add(conn.id);
-            const resolvedYaml = yamls['read-only'].replace('{account}', conn.account_name);
-            try {
-              await api.savePolicy(conn.id, resolvedYaml);
-              active = 'read-only';
-            } catch { /* keep standard if save fails */ }
-          }
-
+          const active = detectPreset(conn.policy_yaml, yamls);
           result[conn.id] = { presets: ref.presets, yamls, active };
         } catch { /* ignore */ }
       }
@@ -278,7 +280,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{conn.displayName}</p>
                             <p className="text-xs text-zinc-500 truncate">{conn.account_name}</p>
                           </div>
-                          <TestConnectionButton connectionId={conn.id} compact />
+                          <TestConnectionButton connectionId={conn.id} compact autoTest={newConnectionIds.has(conn.id)} />
                           <div className="text-xs text-zinc-400">{conn.enabledTools}/{conn.totalTools} tools</div>
                         </div>
                         {presetState && (
