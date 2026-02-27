@@ -42,7 +42,7 @@ You don't need to configure scopes — Gatelet requests them automatically durin
 - `https://www.googleapis.com/auth/gmail.compose`
 - `https://www.googleapis.com/auth/gmail.modify`
 
-## Microsoft (Outlook Calendar)
+## Microsoft (Outlook Calendar + Outlook Mail)
 
 ### 1. Register an application
 
@@ -59,9 +59,9 @@ You don't need to configure scopes — Gatelet requests them automatically durin
 2. Click **Add a platform → Mobile and desktop applications**
 3. Add the following redirect URI:
    ```
-   http://localhost:4001/api/connections/oauth/outlook_calendar/callback
+   http://localhost:4001/api/connections/oauth/callback
    ```
-   If you changed `GATELET_ADMIN_PORT`, replace `4001` with your custom port.
+   If you changed `GATELET_ADMIN_PORT`, replace `4001` with your custom port. This single URI is shared by all Microsoft providers (Outlook Calendar, Outlook Mail, etc.).
 4. Under **Advanced settings**, set **Allow public client flows** to **Yes**
 5. Click **Save**
 
@@ -73,10 +73,19 @@ Enabling "Allow public client flows" lets Gatelet use PKCE (Proof Key for Code E
 
 1. Go to **API permissions** in the sidebar
 2. Click **Add a permission → Microsoft Graph → Delegated permissions**
-3. Add these permissions:
+3. Add permissions for the providers you plan to use:
+
+   **Outlook Calendar:**
    - `Calendars.ReadWrite`
+
+   **Outlook Mail:**
+   - `Mail.ReadWrite`
+   - `Mail.Send`
+
+   **Both providers also need:**
    - `User.Read`
    - `offline_access`
+
 4. Click **Add permissions**
 
 :::note
@@ -95,8 +104,8 @@ Once you have your credentials, configure them in Gatelet using either method:
 |---|---|
 | `GOOGLE_CLIENT_ID` | Google (Calendar + Gmail) |
 | `GOOGLE_CLIENT_SECRET` | Google (Calendar + Gmail) |
-| `MICROSOFT_CLIENT_ID` | Microsoft (Outlook Calendar) |
-| `MICROSOFT_CLIENT_SECRET` | Microsoft (Outlook Calendar) — optional |
+| `MICROSOFT_CLIENT_ID` | Microsoft (Outlook Calendar + Mail) |
+| `MICROSOFT_CLIENT_SECRET` | Microsoft (Outlook Calendar + Mail) — optional |
 
 Dashboard-configured credentials take precedence over environment variables.
 

@@ -45,14 +45,14 @@ describe('OAuth flow CSRF and state validation', () => {
   // FINDING-NEW-12: OAuth callback does not validate state nonce
   it('FINDING-NEW-12: OAuth callback ignores invalid/missing state', async () => {
     const res = await req(
-      '/api/connections/oauth/google_calendar/callback?code=fake_code&state=completely_fake',
+      '/api/connections/oauth/callback?code=fake_code&state=completely_fake',
     );
     expect(res.status).not.toBe(403);
   });
 
   it('FINDING-NEW-12: OAuth callback works without state parameter', async () => {
     const res = await req(
-      '/api/connections/oauth/google_calendar/callback?code=fake_code',
+      '/api/connections/oauth/callback?code=fake_code',
     );
     expect(res.status).not.toBe(403);
   });
@@ -61,7 +61,7 @@ describe('OAuth flow CSRF and state validation', () => {
 describe('Credential exposure prevention', () => {
   it('OAuth error from token exchange may leak client_secret in redirect', async () => {
     const res = await req(
-      '/api/connections/oauth/google_calendar/callback?code=invalid_code&state=test',
+      '/api/connections/oauth/callback?code=invalid_code&state=test',
     );
     if (res.status === 302) {
       const location = res.headers.get('Location') ?? '';

@@ -99,8 +99,8 @@ export function createAdminApp(): Hono {
       return next();
     }
 
-    // OAuth callbacks are unauthenticated (provider redirects here)
-    if (/^\/api\/connections\/oauth\/[^/]+\/callback$/.test(c.req.path)) {
+    // OAuth callback is unauthenticated (provider redirects here)
+    if (c.req.path === '/api/connections/oauth/callback') {
       return next();
     }
 

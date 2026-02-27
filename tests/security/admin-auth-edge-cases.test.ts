@@ -100,7 +100,7 @@ describe('Admin auth edge cases', () => {
       // OAuth callbacks come from the OAuth provider redirect,
       // so they must be accessible without authentication
       const res = await req(
-        '/api/connections/oauth/google_calendar/callback?code=test',
+        '/api/connections/oauth/callback?code=test',
       );
       // Should not be 401 -- it will likely fail on token exchange
       // but the point is it doesn't reject at the auth layer

@@ -80,14 +80,14 @@ function createOAuthState(adminToken: string, providerId: string, codeVerifier?:
   return nonce;
 }
 
-function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string; returnOrigin?: string; accessLevel?: string } | null {
+function redeemOAuthState(nonce: string): { token: string; providerId: string; codeVerifier?: string; returnOrigin?: string; accessLevel?: string } | null {
   const entry = oauthStates.get(nonce);
-  if (!entry || entry.expires < Date.now() || entry.providerId !== expectedProviderId) {
+  if (!entry || entry.expires < Date.now()) {
     oauthStates.delete(nonce);
     return null;
   }
   oauthStates.delete(nonce);
-  return { token: entry.token, codeVerifier: entry.codeVerifier, returnOrigin: entry.returnOrigin, accessLevel: entry.accessLevel };
+  return { token: entry.token, providerId: entry.providerId, codeVerifier: entry.codeVerifier, returnOrigin: entry.returnOrigin, accessLevel: entry.accessLevel };
 }
 
 /** Generate PKCE code_verifier and S256 code_challenge */
@@ -210,7 +210,7 @@ app.get('/connections/oauth/:providerId/start', (c) => {
     return c.json({ error: `OAuth credentials not configured for ${provider.displayName}. Add them in the dashboard settings.` }, 500);
   }
 
-  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
+  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/callback`;
 
   // Generate PKCE challenge for public-client providers
   let codeVerifier: string | undefined;
@@ -258,19 +258,19 @@ app.get('/connections/oauth/:providerId/start', (c) => {
   return c.redirect(authUrl);
 });
 
-app.get('/connections/oauth/:providerId/callback', async (c) => {
-  const providerId = c.req.param('providerId');
+app.get('/connections/oauth/callback', async (c) => {
+  // Validate CSRF nonce and retrieve provider ID + PKCE verifier before any state changes
+  const stateParam = c.req.query('state');
+  const oauthState = stateParam ? redeemOAuthState(stateParam) : null;
+  if (!oauthState) {
+    return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
+  }
+
+  const providerId = oauthState.providerId;
   const provider = getProvider(providerId);
 
   if (!provider?.oauth) {
-    return c.json({ error: 'Unknown provider or provider does not support OAuth' }, 400);
-  }
-
-  // Validate CSRF nonce and retrieve PKCE verifier before any state changes
-  const stateParam = c.req.query('state');
-  const oauthState = stateParam ? redeemOAuthState(stateParam, providerId) : null;
-  if (!oauthState) {
-    return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
+    return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid OAuth state. Please try again.'));
   }
 
   // Redirect back to the dashboard origin (may differ from the API server in dev mode)
@@ -289,7 +289,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     return c.json({ error: `OAuth credentials not configured for ${provider.displayName}` }, 500);
   }
 
-  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/${providerId}/callback`;
+  const redirectUri = `http://localhost:${config.ADMIN_PORT}/api/connections/oauth/callback`;
 
   // Build token exchange params — PKCE providers use code_verifier, others use client_secret
   const tokenParams: Record<string, string> = {

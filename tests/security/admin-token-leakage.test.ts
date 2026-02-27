@@ -63,7 +63,7 @@ describe('Admin Token Leakage', () => {
       // Simulate callback — code exchange will fail but we verify
       // the redirect does not contain the admin token
       const res = await req(
-        `/api/connections/oauth/google_calendar/callback?code=fake&state=${TEST_ADMIN_TOKEN}`,
+        `/api/connections/oauth/callback?code=fake&state=${TEST_ADMIN_TOKEN}`,
       );
 
       // May redirect or error, but should never include admin token in redirect URL
