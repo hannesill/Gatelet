@@ -83,7 +83,7 @@ export default defineConfig({
             { label: 'Constraints', slug: 'concepts/constraints' },
             { label: 'Mutations', slug: 'concepts/mutations' },
             { label: 'Field Policies', slug: 'concepts/field-policies' },
-            { label: 'Content Filters', slug: 'concepts/content-filters' },
+            { label: 'Content Filters & Guards', slug: 'concepts/content-filters' },
           ],
         },
         {

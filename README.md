@@ -27,17 +27,9 @@ Your agent connects via a policy-enforced MCP endpoint and can only perform oper
 
 ## How It Works
 
-```
-                                                ┌──────────────┐
-                                               ┌▸│ Google Cal   │
-┌─────────┐     MCP/HTTP      ┌──────────┐    │ └──────────────┘
-│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │ ───┤ ┌──────────────┐
-│          │  bearer token     │          │    ├▸│ Outlook Cal  │
-└─────────┘                    └──────────┘    │ └──────────────┘
-                                    │          │ ┌──────────────┐
-                               :4001 Admin     └▸│ Gmail        │
-                               (localhost)       └──────────────┘
-```
+<p align="center">
+  <img src="assets/gatelet-architecture.png" alt="Gatelet System Architecture" width="700" />
+</p>
 
 1. Connect your accounts (Google, Microsoft) via the admin dashboard on `:4001`
 2. Write YAML policies that define what the agent can do
@@ -263,7 +255,7 @@ Many MCPs are thin API wrappers that would be better as CLIs invoked by agent sk
 |---|---|---|
 | `GATELET_MCP_PORT` | `4000` | MCP server port (agent-facing) |
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
-| `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + master key location |
+| `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite database location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard token |
 | `GATELET_TRUST_PROXY` | — | Set to any value to trust `X-Forwarded-For` for client IP extraction (required behind a reverse proxy) |
 

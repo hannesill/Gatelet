@@ -11,7 +11,7 @@ Gatelet is configured through environment variables and the admin dashboard.
 |---|---|---|
 | `GATELET_MCP_PORT` | `4000` | MCP server port (agent-facing) |
 | `GATELET_ADMIN_PORT` | `4001` | Admin API port (human-facing) |
-| `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite DB + encryption keys location |
+| `GATELET_DATA_DIR` | `~/.gatelet/data` | SQLite database location |
 | `GATELET_ADMIN_TOKEN` | auto-generated | Admin dashboard authentication token |
 | `GATELET_ADMIN_TOKEN_FILE` | — | Path to file containing admin token (Docker secrets) |
 | `GATELET_TRUST_PROXY` | — | Trust `X-Forwarded-For` for client IP extraction |
@@ -26,7 +26,7 @@ The port the admin dashboard listens on. Bound to `127.0.0.1` in Docker so it's 
 
 ### `GATELET_DATA_DIR`
 
-The directory where Gatelet stores its SQLite database and encryption keys. In Docker, this maps to the `gatelet-data` volume at `/data`.
+The directory where Gatelet stores its SQLite database. In Docker, this maps to the `gatelet-data` volume at `/data`.
 
 ### `GATELET_ADMIN_TOKEN`
 

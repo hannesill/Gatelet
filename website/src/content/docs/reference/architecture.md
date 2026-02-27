@@ -5,20 +5,7 @@ description: System architecture, request pipeline, and project structure
 
 ## System overview
 
-Gatelet consists of three tiers:
-
-```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│  Agent Tier │  HTTP   │  Proxy Tier  │  HTTP   │  Upstream   │
-│             │────────▸│              │────────▸│   Tier      │
-│  :4000/mcp  │ Bearer  │   Gatelet    │ OAuth2  │  Google /   │
-│  MCP SDK    │ token   │   Policy +   │         │  Microsoft  │
-│             │         │   Audit      │         │   APIs      │
-└─────────────┘         └──────────────┘         └─────────────┘
-                              │
-                         :4001 Admin
-                         (localhost)
-```
+![Gatelet System Architecture](/gatelet-architecture.png)
 
 ### Agent Tier
 
@@ -81,7 +68,7 @@ src/
   cli.ts       CLI entry point (gatelet, gatelet doctor)
 dashboard/     Admin dashboard (React, Vite, Tailwind)
 website/       Documentation site (Astro, Starlight)
-tests/         Test suite (vitest, 424 tests)
+tests/         Test suite (vitest, 488 tests)
 ```
 
 ## Key modules

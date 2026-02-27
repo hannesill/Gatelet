@@ -71,16 +71,16 @@ This is useful for operations like sending email where certain fields are always
 
 ### `must_match`
 
-Field must match a regex pattern. Uses JavaScript regex syntax.
+Field must fully match a regex pattern. The pattern is automatically anchored — `^(?:pattern)$` — so partial matches are rejected. Uses JavaScript regex syntax, case-sensitive.
 
 ```yaml
 constraints:
   - field: from
     rule: must_match
-    value: "\\+agent@"
+    value: ".*\\+agent@.*"
 ```
 
-This example restricts the sender to a Gmail alias like `user+agent@gmail.com`, preventing the agent from sending as the primary address.
+This example restricts the sender to a Gmail alias like `user+agent@gmail.com`, preventing the agent from sending as the primary address. Note the `.*` anchors since the pattern must match the entire field value.
 
 ## Nested fields
 
@@ -156,5 +156,5 @@ send:
   constraints:
     - field: from
       rule: must_match
-      value: "\\+agent@"
+      value: ".*\\+agent@.*"
 ```

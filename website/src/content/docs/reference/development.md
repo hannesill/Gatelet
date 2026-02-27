@@ -31,7 +31,7 @@ npm test             # Run all tests
 npm run test:watch   # Watch mode
 ```
 
-The test suite includes 424 tests across 28 files covering:
+The test suite includes 488 tests across 40 files covering:
 
 - Admin API routes and authentication
 - Database operations and encryption

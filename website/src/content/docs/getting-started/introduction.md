@@ -13,17 +13,7 @@ MCP servers give AI agents direct access to your email, calendar, and other serv
 
 ## How Gatelet solves it
 
-```
-                                            ┌──────────────┐
-                                           ┌▸│ Google Cal   │
-┌─────────┐     MCP/HTTP      ┌──────────┐│ └──────────────┘
-│ AI Agent │ ───── :4000 ────▸ │ Gatelet  │├─┐──────────────┐
-│          │  bearer token     │          ││▸│ Outlook Cal  │
-└─────────┘                    └──────────┘│ └──────────────┘
-                                    │      │ ┌──────────────┐
-                               :4001 Admin └▸│ Gmail        │
-                               (localhost)   └──────────────┘
-```
+![Gatelet System Architecture](/gatelet-architecture.png)
 
 1. **Connect your accounts** (Google, Microsoft) via the admin dashboard on `:4001`
 2. **Write YAML policies** that define what the agent can do

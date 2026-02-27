@@ -1,6 +1,6 @@
 ---
-title: Content Filters
-description: Email content filtering, subject blocking, domain blocking, and PII redaction
+title: Content Filters & Guards
+description: Email content filtering, subject blocking, domain blocking, PII redaction, label guards, and organizer guards
 ---
 
 Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters protect sensitive content like 2FA codes, password resets, and financial data.

@@ -19,7 +19,7 @@ cd ~/.gatelet && docker compose pull && docker compose up -d
 
 ## Data persistence
 
-Your data volume is preserved across updates. The SQLite database, encryption keys, and all stored credentials persist through container recreations.
+Your data volume is preserved across updates. The SQLite database and all stored credentials persist through container recreations.
 
 ## Breaking changes
 

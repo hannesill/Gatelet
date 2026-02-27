@@ -275,7 +275,7 @@ operations:
     constraints:
       - field: from
         rule: must_match
-        value: "\\+agent@"
+        value: ".*\\+agent@.*"
       - field: to
         rule: must_not_be_empty
       - field: subject
