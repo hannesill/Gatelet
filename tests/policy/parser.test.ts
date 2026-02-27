@@ -374,6 +374,56 @@ operations:
     expect(policy.operations.op.mutations![0].action).toBe('delete');
   });
 
+  it('accepts cap mutation with numeric value', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    mutations:
+      - field: maxResults
+        action: cap
+        value: 50
+`;
+    const { policy, warnings } = parsePolicy(yaml);
+    expect(warnings).toHaveLength(0);
+    expect(policy.operations.op.mutations![0]).toEqual({
+      field: 'maxResults',
+      action: 'cap',
+      value: 50,
+    });
+  });
+
+  it('throws on cap mutation without value', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    mutations:
+      - field: maxResults
+        action: cap
+`;
+    expect(() => parsePolicy(yaml)).toThrow('requires a numeric "value"');
+  });
+
+  it('throws on cap mutation with non-numeric value', () => {
+    const yaml = `
+provider: test
+account: a
+operations:
+  op:
+    allow: true
+    mutations:
+      - field: maxResults
+        action: cap
+        value: "fifty"
+`;
+    expect(() => parsePolicy(yaml)).toThrow('requires a numeric "value"');
+  });
+
   it('throws on non-array mutations', () => {
     const yaml = `
 provider: test

@@ -35,12 +35,12 @@ const READ_MESSAGE_GUARDS = {
 
 const SEARCH_OP = {
   allow: true,
-  mutations: [{ field: 'maxResults', action: 'set', value: 10 }],
+  mutations: [{ field: 'maxResults', action: 'cap', value: 50 }],
 };
 
 const LIST_DRAFTS_OP = {
   allow: true,
-  mutations: [{ field: 'maxResults', action: 'set', value: 10 }],
+  mutations: [{ field: 'maxResults', action: 'cap', value: 50 }],
 };
 
 function buildPreset(operations: Record<string, unknown>): string {

@@ -48,6 +48,38 @@ describe('delete mutation', () => {
   });
 });
 
+describe('cap mutation', () => {
+  it('clamps a value that exceeds the cap', () => {
+    const params: Record<string, unknown> = { maxResults: 100 };
+    applyMutations([{ field: 'maxResults', action: 'cap', value: 50 }], params);
+    expect(params.maxResults).toBe(50);
+  });
+
+  it('leaves a value under the cap unchanged', () => {
+    const params: Record<string, unknown> = { maxResults: 5 };
+    applyMutations([{ field: 'maxResults', action: 'cap', value: 50 }], params);
+    expect(params.maxResults).toBe(5);
+  });
+
+  it('leaves a value equal to the cap unchanged', () => {
+    const params: Record<string, unknown> = { maxResults: 50 };
+    applyMutations([{ field: 'maxResults', action: 'cap', value: 50 }], params);
+    expect(params.maxResults).toBe(50);
+  });
+
+  it('does nothing when the field is absent', () => {
+    const params: Record<string, unknown> = { q: 'test' };
+    applyMutations([{ field: 'maxResults', action: 'cap', value: 50 }], params);
+    expect(params).not.toHaveProperty('maxResults');
+  });
+
+  it('does nothing when the field is not a number', () => {
+    const params: Record<string, unknown> = { maxResults: 'lots' };
+    applyMutations([{ field: 'maxResults', action: 'cap', value: 50 }], params);
+    expect(params.maxResults).toBe('lots');
+  });
+});
+
 describe('applyMutations', () => {
   it('applies multiple mutations in order', () => {
     const params: Record<string, unknown> = {

@@ -11,7 +11,7 @@ export const gmailTools: ToolDefinition[] = [
     policyOperation: 'search',
     inputSchema: {
       q: z.string().optional().describe('Gmail search query. Omit to list recent inbox messages.'),
-      maxResults: z.number().optional().describe('Max messages to return (default 10, max 50)'),
+      maxResults: z.number().optional().describe('Number of messages to return (1-50, default 10)'),
     },
   },
   {
@@ -44,7 +44,7 @@ export const gmailTools: ToolDefinition[] = [
     description: 'List existing draft emails. Returns draft IDs and message snippets.',
     policyOperation: 'list_drafts',
     inputSchema: {
-      maxResults: z.number().optional().describe('Max drafts to return (default 10, max 50)'),
+      maxResults: z.number().optional().describe('Number of drafts to return (1-50, default 10)'),
     },
   },
   {

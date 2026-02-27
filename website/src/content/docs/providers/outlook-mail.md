@@ -18,7 +18,7 @@ Search Outlook Mail messages using KQL search syntax.
 | `search` | string | no | KQL search query (e.g. `from:user@example.com subject:meeting`). Omit to list recent messages. |
 | `filter` | string | no | OData `$filter` expression (e.g. `isRead eq false`). Cannot be combined with `$orderby` when `$search` is present. |
 | `folderId` | string | no | Folder ID to search in (e.g. `Inbox`, `SentItems`). Omit to search all folders. |
-| `maxResults` | number | no | Max messages to return (default 10, max 50) |
+| `maxResults` | number | no | Number of messages to return (1-50, default 10) |
 
 Returns message IDs and snippets. Search results are filtered by [content filters](/concepts/content-filters/) when guards are configured. Use `outlook_mail_read_message` to get full content.
 
@@ -63,7 +63,7 @@ List existing draft emails.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `maxResults` | number | no | Max drafts to return (default 10, max 50) |
+| `maxResults` | number | no | Number of drafts to return (1-50, default 10) |
 
 ---
 
@@ -186,8 +186,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
     guards:
       block_subjects:
         - password reset
@@ -287,8 +287,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
 
   send:
     allow: false

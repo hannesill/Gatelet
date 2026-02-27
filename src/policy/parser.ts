@@ -3,7 +3,7 @@ import type { PolicyConfig, ParseResult } from './types.js';
 import { isSafeRegex } from './constraints.js';
 
 const VALID_CONSTRAINT_RULES = ['must_equal', 'must_be_one_of', 'must_not_be_empty', 'must_match'] as const;
-const VALID_MUTATION_ACTIONS = ['set', 'delete'] as const;
+const VALID_MUTATION_ACTIONS = ['set', 'delete', 'cap'] as const;
 const KNOWN_TOP_LEVEL_KEYS = ['provider', 'account', 'operations'];
 const KNOWN_OPERATION_KEYS = ['allow', 'constraints', 'mutations', 'guards', 'allowed_fields', 'denied_fields'];
 
@@ -212,5 +212,13 @@ function validateMutation(opName: string, mutation: unknown, index: number): voi
     throw new Error(
       `Invalid policy: mutation #${index} in "${opName}" with action "set" requires a "value"`,
     );
+  }
+
+  if (m.action === 'cap') {
+    if (typeof m.value !== 'number') {
+      throw new Error(
+        `Invalid policy: mutation #${index} in "${opName}" with action "cap" requires a numeric "value"`,
+      );
+    }
   }
 }

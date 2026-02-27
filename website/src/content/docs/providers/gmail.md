@@ -16,7 +16,7 @@ Search Gmail messages using Gmail search syntax.
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `q` | string | no | Gmail search query. Omit to list recent inbox messages. |
-| `maxResults` | number | no | Max messages to return (default 10, max 50) |
+| `maxResults` | number | no | Number of messages to return (1-50, default 10) |
 
 Supports Gmail search syntax: `is:unread`, `from:person@example.com`, `subject:meeting`, `after:2026/01/01`, `has:attachment`, `in:inbox`.
 
@@ -64,7 +64,7 @@ List existing draft emails.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `maxResults` | number | no | Max drafts to return (default 10, max 50) |
+| `maxResults` | number | no | Number of drafts to return (1-50, default 10) |
 
 ---
 
@@ -173,8 +173,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
     guards:
       block_subjects:
         - password reset
@@ -270,8 +270,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
 
   send:
     allow: false

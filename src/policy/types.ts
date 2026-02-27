@@ -21,7 +21,7 @@ export interface Constraint {
 
 export interface Mutation {
   field: string;
-  action: 'set' | 'delete';
+  action: 'set' | 'delete' | 'cap';
   value?: unknown;
 }
 

@@ -231,6 +231,64 @@ describe('policy engine', () => {
     }
   });
 
+  it('applies cap mutation — clamps value above cap', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        search: {
+          allow: true,
+          mutations: [{ field: 'maxResults', action: 'cap', value: 50 }],
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'search', { q: 'is:unread', maxResults: 100 });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.mutatedParams.maxResults).toBe(50);
+      expect(result.mutatedParams.q).toBe('is:unread');
+    }
+  });
+
+  it('applies cap mutation — leaves value under cap unchanged', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        search: {
+          allow: true,
+          mutations: [{ field: 'maxResults', action: 'cap', value: 50 }],
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'search', { maxResults: 5 });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.mutatedParams.maxResults).toBe(5);
+    }
+  });
+
+  it('applies cap mutation — no-op when field absent', () => {
+    const policy: PolicyConfig = {
+      provider: 'test',
+      account: 'test',
+      operations: {
+        search: {
+          allow: true,
+          mutations: [{ field: 'maxResults', action: 'cap', value: 50 }],
+        },
+      },
+    };
+
+    const result = evaluate(policy, 'search', { q: 'test' });
+    expect(result.action).toBe('allow');
+    if (result.action === 'allow') {
+      expect(result.mutatedParams).not.toHaveProperty('maxResults');
+    }
+  });
+
   it('fieldPolicy is undefined when neither allowed_fields nor denied_fields set', () => {
     const result = evaluate(basePolicy, 'list_calendars', {});
     expect(result.action).toBe('allow');

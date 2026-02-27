@@ -13,7 +13,7 @@ export const outlookMailTools: ToolDefinition[] = [
       search: z.string().optional().describe('KQL search query (e.g. "from:user@example.com subject:meeting"). Omit to list recent messages.'),
       filter: z.string().optional().describe('OData $filter expression (e.g. "isRead eq false"). Cannot be combined with $orderby when $search is present.'),
       folderId: z.string().optional().describe('Folder ID to search in (e.g. "Inbox", "SentItems"). Omit to search all folders.'),
-      maxResults: z.number().optional().describe('Max messages to return (default 10, max 50)'),
+      maxResults: z.number().optional().describe('Number of messages to return (1-50, default 10)'),
     },
   },
   {
@@ -45,7 +45,7 @@ export const outlookMailTools: ToolDefinition[] = [
     description: 'List existing draft emails in Outlook. Returns draft IDs and message snippets.',
     policyOperation: 'list_drafts',
     inputSchema: {
-      maxResults: z.number().optional().describe('Max drafts to return (default 10, max 50)'),
+      maxResults: z.number().optional().describe('Number of drafts to return (1-50, default 10)'),
     },
   },
   {

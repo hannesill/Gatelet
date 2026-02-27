@@ -1,5 +1,5 @@
 import type { Mutation } from './types.js';
-import { setByPath, deleteByPath } from './field-path.js';
+import { getByPath, setByPath, deleteByPath } from './field-path.js';
 
 function applyMutation(
   mutation: Mutation,
@@ -12,6 +12,13 @@ function applyMutation(
     case 'delete':
       deleteByPath(params, mutation.field);
       break;
+    case 'cap': {
+      const current = getByPath(params, mutation.field);
+      if (typeof current === 'number') {
+        setByPath(params, mutation.field, Math.min(current, mutation.value as number));
+      }
+      break;
+    }
   }
 }
 

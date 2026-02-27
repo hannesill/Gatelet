@@ -50,6 +50,19 @@ mutations:
     value: []
 ```
 
+### `cap`
+
+Clamp a numeric field to a maximum value. If the agent provides a value above the cap, it's reduced. If the value is at or below the cap, it's left unchanged. If the field is absent or not a number, the mutation does nothing — the provider's code default applies.
+
+```yaml
+mutations:
+  - field: maxResults
+    action: cap
+    value: 50
+```
+
+This lets the agent control the value within bounds — requesting fewer results to save context, or more when it needs to scan a larger inbox.
+
 ### `delete`
 
 Remove the field entirely from the parameters.
@@ -138,8 +151,8 @@ search:
   allow: true
   mutations:
     - field: maxResults
-      action: set
-      value: 10
+      action: cap
+      value: 50
 ```
 
 ### Strip CC/BCC from drafts

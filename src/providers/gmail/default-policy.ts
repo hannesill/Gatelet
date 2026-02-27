@@ -6,8 +6,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
     guards:
       block_subjects:
         - password reset
@@ -103,8 +103,8 @@ operations:
     allow: true
     mutations:
       - field: maxResults
-        action: set
-        value: 10
+        action: cap
+        value: 50
 
   send:
     allow: false
