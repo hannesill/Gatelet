@@ -19,7 +19,7 @@ import {
 
 describe('Connection settings', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true, mode: 0o700 });
     resetMasterKey();
     resetDb();
     initTestMasterKey();

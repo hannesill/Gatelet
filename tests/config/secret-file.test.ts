@@ -12,7 +12,7 @@ describe('readSecretFile', () => {
   });
 
   it('reads file contents and trims whitespace', () => {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true, mode: 0o700 });
     const filePath = path.join(TEST_DIR, 'secret');
     fs.writeFileSync(filePath, '  my-secret-value  \n');
     expect(readSecretFile(filePath)).toBe('my-secret-value');
@@ -23,14 +23,14 @@ describe('readSecretFile', () => {
   });
 
   it('returns undefined for empty file', () => {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true, mode: 0o700 });
     const filePath = path.join(TEST_DIR, 'empty');
     fs.writeFileSync(filePath, '');
     expect(readSecretFile(filePath)).toBeUndefined();
   });
 
   it('returns undefined for whitespace-only file', () => {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true, mode: 0o700 });
     const filePath = path.join(TEST_DIR, 'whitespace');
     fs.writeFileSync(filePath, '   \n\n  ');
     expect(readSecretFile(filePath)).toBeUndefined();
@@ -61,7 +61,7 @@ describe('resolveEnvSecret', () => {
   });
 
   it('prefers _FILE over direct env var', () => {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true, mode: 0o700 });
     const filePath = path.join(TEST_DIR, 'file-secret');
     fs.writeFileSync(filePath, 'from-file');
 

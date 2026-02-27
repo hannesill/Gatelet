@@ -22,7 +22,7 @@ import sodium from 'sodium-native';
 
 describe('Encryption Implementation Review', () => {
   beforeAll(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true, mode: 0o700 });
     resetMasterKey();
     resetDb();
     // Use setMasterKeyForTesting instead of getMasterKey() which no longer auto-generates

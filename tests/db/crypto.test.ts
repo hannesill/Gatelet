@@ -18,7 +18,7 @@ import {
 describe('Admin-token-derived master key (HKDF)', () => {
   beforeEach(() => {
     resetMasterKey();
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true, mode: 0o700 });
   });
 
   afterAll(() => {

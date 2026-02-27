@@ -7,6 +7,12 @@ operations:
 
   list_events:
     allow: true
+    # By default, agents can list events from any calendar the Google account
+    # has access to (including shared/group calendars). To restrict, uncomment:
+    # constraints:
+    #   - field: calendarId
+    #     rule: must_equal
+    #     value: primary
 
   get_event:
     allow: true

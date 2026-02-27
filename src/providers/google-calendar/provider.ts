@@ -71,7 +71,7 @@ export class GoogleCalendarProvider implements Provider {
           timeMin: params.timeMin as string | undefined,
           timeMax: params.timeMax as string | undefined,
           q: params.q as string | undefined,
-          maxResults: (params.maxResults as number) ?? 50,
+          maxResults: Math.min((params.maxResults as number) ?? 50, 250),
           singleEvents: true,
           orderBy: 'startTime',
         });

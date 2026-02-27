@@ -219,7 +219,13 @@ app.get('/connections/oauth/:providerId/start', (c) => {
   const referer = c.req.header('Referer');
   let returnOrigin: string | undefined;
   if (referer) {
-    try { returnOrigin = new URL(referer).origin; } catch { /* ignore invalid */ }
+    try {
+      const parsed = new URL(referer);
+      // Only allow localhost origins to prevent open redirect
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]') {
+        returnOrigin = parsed.origin;
+      }
+    } catch { /* ignore invalid */ }
   }
 
   const state = createOAuthState('session', providerId, codeVerifier, returnOrigin);
@@ -296,7 +302,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
-    return c.redirect(base + '/?oauth=error&message=' + encodeURIComponent(`Token exchange failed: ${errText}`));
+    return c.redirect(base + '/?oauth=error&message=' + encodeURIComponent(`Token exchange failed: ${stripSensitivePatterns(errText)}`));
   }
 
   const tokens = await tokenRes.json() as Record<string, unknown>;

@@ -97,7 +97,7 @@ export class OutlookCalendarProvider implements Provider {
         validatePathSegment(calendarId, 'calendarId');
         const startDateTime = params.startDateTime as string | undefined;
         const endDateTime = params.endDateTime as string | undefined;
-        const top = (params.top as number) ?? 50;
+        const top = Math.min((params.top as number) ?? 50, 250);
 
         // Use calendarView when date range is provided, otherwise use events
         if (startDateTime && endDateTime) {

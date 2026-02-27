@@ -7,6 +7,12 @@ operations:
 
   list_events:
     allow: true
+    # By default, agents can list events from any calendar the Microsoft account
+    # has access to (including shared calendars). To restrict, uncomment:
+    # constraints:
+    #   - field: calendarId
+    #     rule: must_equal
+    #     value: "YOUR_CALENDAR_ID"
 
   get_event:
     allow: true

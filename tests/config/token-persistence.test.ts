@@ -12,7 +12,7 @@ import { loadAdminToken, saveAdminToken } from '../../src/config.js';
 
 describe('Admin token persistence', () => {
   beforeEach(() => {
-    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true, mode: 0o700 });
     const tokenPath = path.join(TEST_DATA_DIR, 'admin.token');
     if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
   });

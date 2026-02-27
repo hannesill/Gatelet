@@ -46,7 +46,7 @@ export function createTestEnvironment(name: string): {
   return {
     dataDir,
     setup() {
-      fs.mkdirSync(dataDir, { recursive: true });
+      fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
       resetMasterKey();
       resetDb();
       initTestMasterKey();
