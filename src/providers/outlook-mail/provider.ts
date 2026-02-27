@@ -29,7 +29,13 @@ export class OutlookMailProvider implements Provider {
   defaultPolicyYaml = defaultPolicyYaml;
   presets = outlookMailPresets;
 
-  oauth: OAuthConfig = buildMicrosoftOAuthConfig(['offline_access', 'User.Read', 'Mail.ReadWrite', 'Mail.Send']);
+  oauth: OAuthConfig = buildMicrosoftOAuthConfig(
+    ['offline_access', 'User.Read', 'Mail.ReadWrite', 'Mail.Send'],
+    {
+      'read-only': ['offline_access', 'User.Read', 'Mail.Read'],
+      'full-access': ['offline_access', 'User.Read', 'Mail.ReadWrite', 'Mail.Send'],
+    },
+  );
 
   async execute(
     toolName: string,

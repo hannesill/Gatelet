@@ -12,6 +12,8 @@ export interface OAuthConfig {
   /** Use PKCE (S256) instead of client_secret for token exchange. For public clients. */
   pkce?: boolean;
   extraAuthorizeParams?: Record<string, string>;
+  /** Named scope sets (e.g. "read-only", "full") the user can choose from during OAuth. */
+  oauthScopeVariants?: Record<string, string[]>;
   discoverAccount(accessToken: string): Promise<string>;
 }
 

@@ -45,6 +45,7 @@ export interface OAuthProvider {
   displayName: string;
   configured: boolean;
   credentialSource: 'user' | 'env' | 'builtin' | 'none';
+  accessLevels?: string[];
 }
 
 export interface AuditEntry {

@@ -68,11 +68,11 @@ function testPreview(providerId: string, result: unknown): string {
 }
 
 // OAuth state store — maps nonce -> session data, auto-expires after 10 minutes
-const oauthStates = new Map<string, { token: string; providerId: string; codeVerifier?: string; returnOrigin?: string; expires: number }>();
+const oauthStates = new Map<string, { token: string; providerId: string; codeVerifier?: string; returnOrigin?: string; accessLevel?: string; expires: number }>();
 
-function createOAuthState(adminToken: string, providerId: string, codeVerifier?: string, returnOrigin?: string): string {
+function createOAuthState(adminToken: string, providerId: string, codeVerifier?: string, returnOrigin?: string, accessLevel?: string): string {
   const nonce = crypto.randomBytes(32).toString('hex');
-  oauthStates.set(nonce, { token: adminToken, providerId, codeVerifier, returnOrigin, expires: Date.now() + 10 * 60 * 1000 });
+  oauthStates.set(nonce, { token: adminToken, providerId, codeVerifier, returnOrigin, accessLevel, expires: Date.now() + 10 * 60 * 1000 });
   // Clean up expired entries
   for (const [key, value] of oauthStates) {
     if (value.expires < Date.now()) oauthStates.delete(key);
@@ -80,14 +80,14 @@ function createOAuthState(adminToken: string, providerId: string, codeVerifier?:
   return nonce;
 }
 
-function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string; returnOrigin?: string } | null {
+function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string; returnOrigin?: string; accessLevel?: string } | null {
   const entry = oauthStates.get(nonce);
   if (!entry || entry.expires < Date.now() || entry.providerId !== expectedProviderId) {
     oauthStates.delete(nonce);
     return null;
   }
   oauthStates.delete(nonce);
-  return { token: entry.token, codeVerifier: entry.codeVerifier, returnOrigin: entry.returnOrigin };
+  return { token: entry.token, codeVerifier: entry.codeVerifier, returnOrigin: entry.returnOrigin, accessLevel: entry.accessLevel };
 }
 
 /** Generate PKCE code_verifier and S256 code_challenge */
@@ -222,6 +222,11 @@ app.get('/connections/oauth/:providerId/start', (c) => {
     extraParams.code_challenge_method = 'S256';
   }
 
+  // Resolve OAuth scopes — use the requested access level's variant if available
+  const accessLevel = c.req.query('access');
+  const variants = provider.oauth.oauthScopeVariants;
+  const scopes = (accessLevel && variants?.[accessLevel]) ?? provider.oauth.scopes;
+
   // Capture the dashboard origin so the OAuth callback can redirect back to it.
   // In dev mode, the dashboard runs on a different port (Vite dev server) than the
   // admin API, so the callback must redirect to the correct origin.
@@ -237,13 +242,13 @@ app.get('/connections/oauth/:providerId/start', (c) => {
     } catch { /* ignore invalid */ }
   }
 
-  const state = createOAuthState('session', providerId, codeVerifier, returnOrigin);
+  const state = createOAuthState('session', providerId, codeVerifier, returnOrigin, accessLevel && variants?.[accessLevel] ? accessLevel : undefined);
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: provider.oauth.scopes.join(' '),
+    scope: scopes.join(' '),
     state,
     ...provider.oauth.extraAuthorizeParams,
     ...extraParams,
@@ -346,14 +351,24 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   if (existing) {
     updateConnectionCredentials(existing.id, newCredentials);
     setConnectionNeedsReauth(existing.id, false);
+    // Update stored access level if this re-auth used scope variants
+    if (oauthState.accessLevel) {
+      updateConnectionSettings(existing.id, { oauthAccessLevel: oauthState.accessLevel });
+    }
     conn = existing;
   } else {
-    // During setup, default new connections to the safer read-only preset
-    const setupCompleted = getSetting('setup_completed') === 'true';
-    const readOnlyYaml = provider.presets?.['read-only'];
-    const policyYaml = (!setupCompleted && readOnlyYaml)
-      ? readOnlyYaml.replace('{account}', accountName)
-      : provider.defaultPolicyYaml.replace('{account}', accountName);
+    // Pick preset based on access level when scope variants were used,
+    // otherwise fall back to the previous setup-based logic
+    let policyYaml: string;
+    if (oauthState.accessLevel && provider.presets?.[oauthState.accessLevel]) {
+      policyYaml = provider.presets[oauthState.accessLevel].replace('{account}', accountName);
+    } else {
+      const setupCompleted = getSetting('setup_completed') === 'true';
+      const readOnlyYaml = provider.presets?.['read-only'];
+      policyYaml = (!setupCompleted && readOnlyYaml)
+        ? readOnlyYaml.replace('{account}', accountName)
+        : provider.defaultPolicyYaml.replace('{account}', accountName);
+    }
 
     conn = createConnection({
       provider_id: providerId,
@@ -363,8 +378,15 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     });
 
     // Set default connection settings for email providers
+    const settings: Record<string, unknown> = {};
     if (providerId === 'google_gmail' || providerId === 'outlook_mail') {
-      updateConnectionSettings(conn.id, { emailAliasSuffix: '+agent' });
+      settings.emailAliasSuffix = '+agent';
+    }
+    if (oauthState.accessLevel) {
+      settings.oauthAccessLevel = oauthState.accessLevel;
+    }
+    if (Object.keys(settings).length > 0) {
+      updateConnectionSettings(conn.id, settings);
     }
   }
 

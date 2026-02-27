@@ -17,7 +17,13 @@ export class OutlookCalendarProvider implements Provider {
   defaultPolicyYaml = defaultPolicyYaml;
   presets = outlookPresets;
 
-  oauth: OAuthConfig = buildMicrosoftOAuthConfig(['offline_access', 'User.Read', 'Calendars.ReadWrite']);
+  oauth: OAuthConfig = buildMicrosoftOAuthConfig(
+    ['offline_access', 'User.Read', 'Calendars.ReadWrite'],
+    {
+      'read-only': ['offline_access', 'User.Read', 'Calendars.Read'],
+      'full-access': ['offline_access', 'User.Read', 'Calendars.ReadWrite'],
+    },
+  );
 
   async execute(
     toolName: string,

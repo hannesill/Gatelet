@@ -13,14 +13,16 @@ const LOGOS: Record<string, any> = {
 interface Props {
   provider: OAuthProvider;
   disabled?: boolean;
+  accessLevel?: string;
 }
 
-export function OAuthButton({ provider, disabled }: Props) {
+export function OAuthButton({ provider, disabled, accessLevel }: Props) {
   const Logo = LOGOS[provider.id];
 
   function connect() {
     if (disabled) return;
-    window.location.replace(`/api/connections/oauth/${provider.id}/start`);
+    const url = `/api/connections/oauth/${provider.id}/start` + (accessLevel ? `?access=${encodeURIComponent(accessLevel)}` : '');
+    window.location.replace(url);
   }
 
   if (!provider.configured) {

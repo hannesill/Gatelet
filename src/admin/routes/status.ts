@@ -99,6 +99,7 @@ app.get('/status', (c) => {
       displayName: p.displayName,
       configured: !!(getOAuthClientId(p) && (p.oauth!.pkce || getOAuthClientSecret(p))),
       credentialSource: getOAuthCredentialSource(p),
+      ...(p.oauth!.oauthScopeVariants ? { accessLevels: Object.keys(p.oauth!.oauthScopeVariants) } : {}),
     }));
 
   // setup_completed: explicit setting > fallback for upgrades (has connections or keys)

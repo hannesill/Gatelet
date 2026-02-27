@@ -95,7 +95,10 @@ export async function refreshMicrosoftTokens(
   };
 }
 
-export function buildMicrosoftOAuthConfig(scopes: string[]): OAuthConfig {
+export function buildMicrosoftOAuthConfig(
+  scopes: string[],
+  scopeVariants?: Record<string, string[]>,
+): OAuthConfig {
   return {
     authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
@@ -106,6 +109,7 @@ export function buildMicrosoftOAuthConfig(scopes: string[]): OAuthConfig {
     envClientSecret: 'MICROSOFT_CLIENT_SECRET',
     settingsKeyPrefix: 'microsoft',
     pkce: true,
+    oauthScopeVariants: scopeVariants,
     async discoverAccount(accessToken: string): Promise<string> {
       const res = await fetch(`${GRAPH_BASE}/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
