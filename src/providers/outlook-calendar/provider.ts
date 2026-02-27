@@ -2,29 +2,13 @@ import type { Provider, OAuthConfig } from '../types.js';
 import { outlookCalendarTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
 import { presets as outlookPresets } from './presets.js';
-
-const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
-
-function validatePathSegment(value: string, name: string): void {
-  if (/[\/\\?#&=\s\x00]|\.\./.test(value)) {
-    throw new Error(`Invalid ${name}: contains disallowed characters`);
-  }
-}
-
-/** Validate OData $filter to prevent injection. Only allow safe filter expressions. */
-function validateODataFilter(filter: string): void {
-  // Allow only: field comparisons (eq, ne, gt, ge, lt, le), contains(), startswith(),
-  // logical operators (and, or, not), ISO datetime literals, quoted strings, and whitespace
-  const safePattern = /^[\w/.':\-\s,()]+$/;
-  if (!safePattern.test(filter)) {
-    throw new Error('Invalid filter: contains disallowed characters');
-  }
-  // Block known dangerous OData functions
-  const dangerous = /\$(expand|select|count|search|compute|apply)/i;
-  if (dangerous.test(filter)) {
-    throw new Error('Invalid filter: contains disallowed OData operators');
-  }
-}
+import {
+  graphFetch,
+  validatePathSegment,
+  validateODataFilter,
+  refreshMicrosoftTokens,
+  buildMicrosoftOAuthConfig,
+} from '../microsoft/graph.js';
 
 export class OutlookCalendarProvider implements Provider {
   id = 'outlook_calendar';
@@ -33,52 +17,7 @@ export class OutlookCalendarProvider implements Provider {
   defaultPolicyYaml = defaultPolicyYaml;
   presets = outlookPresets;
 
-  oauth: OAuthConfig = {
-    authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scopes: ['offline_access', 'User.Read', 'Calendars.ReadWrite'],
-    builtinClientId: '1e200574-2d1a-4103-919d-2cbade780983',
-    // No builtinClientSecret — registered as a public client, uses PKCE instead.
-    envClientId: 'MICROSOFT_CLIENT_ID',
-    envClientSecret: 'MICROSOFT_CLIENT_SECRET',
-    settingsKeyPrefix: 'microsoft',
-    pkce: true,
-    async discoverAccount(accessToken: string): Promise<string> {
-      const res = await fetch(`${GRAPH_BASE}/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) return 'unknown';
-      const data = await res.json() as { mail?: string; userPrincipalName?: string };
-      return data.mail ?? data.userPrincipalName ?? 'unknown';
-    },
-  };
-
-  private async graphFetch(
-    path: string,
-    credentials: Record<string, unknown>,
-    options?: { method?: string; body?: unknown },
-  ): Promise<unknown> {
-    const method = options?.method ?? 'GET';
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${credentials.access_token as string}`,
-    };
-    if (options?.body) {
-      headers['Content-Type'] = 'application/json';
-    }
-
-    const res = await fetch(`${GRAPH_BASE}${path}`, {
-      method,
-      headers,
-      body: options?.body ? JSON.stringify(options.body) : undefined,
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Microsoft Graph API error (${res.status}): ${errText}`);
-    }
-
-    return res.json();
-  }
+  oauth: OAuthConfig = buildMicrosoftOAuthConfig(['offline_access', 'User.Read', 'Calendars.ReadWrite']);
 
   async execute(
     toolName: string,
@@ -89,7 +28,7 @@ export class OutlookCalendarProvider implements Provider {
   ): Promise<unknown> {
     switch (toolName) {
       case 'outlook_list_calendars': {
-        return this.graphFetch('/me/calendars', credentials);
+        return graphFetch('/me/calendars', credentials);
       }
 
       case 'outlook_list_events': {
@@ -111,7 +50,7 @@ export class OutlookCalendarProvider implements Provider {
             validateODataFilter(params.filter as string);
             qs.set('$filter', params.filter as string);
           }
-          return this.graphFetch(`/me/calendars/${calendarId}/calendarView?${qs.toString()}`, credentials);
+          return graphFetch(`/me/calendars/${calendarId}/calendarView?${qs.toString()}`, credentials);
         }
 
         const qs = new URLSearchParams({
@@ -122,18 +61,18 @@ export class OutlookCalendarProvider implements Provider {
           validateODataFilter(params.filter as string);
           qs.set('$filter', params.filter as string);
         }
-        return this.graphFetch(`/me/calendars/${calendarId}/events?${qs.toString()}`, credentials);
+        return graphFetch(`/me/calendars/${calendarId}/events?${qs.toString()}`, credentials);
       }
 
       case 'outlook_get_event': {
         validatePathSegment(params.eventId as string, 'eventId');
-        return this.graphFetch(`/me/events/${params.eventId as string}`, credentials);
+        return graphFetch(`/me/events/${params.eventId as string}`, credentials);
       }
 
       case 'outlook_create_event': {
         const { calendarId, ...body } = params;
         validatePathSegment(calendarId as string, 'calendarId');
-        return this.graphFetch(`/me/calendars/${calendarId as string}/events`, credentials, {
+        return graphFetch(`/me/calendars/${calendarId as string}/events`, credentials, {
           method: 'POST',
           body,
         });
@@ -144,7 +83,7 @@ export class OutlookCalendarProvider implements Provider {
         validatePathSegment(eventId as string, 'eventId');
 
         if (guards?.require_organizer_self) {
-          const existing = await this.graphFetch(`/me/events/${eventId as string}`, credentials) as {
+          const existing = await graphFetch(`/me/events/${eventId as string}`, credentials) as {
             organizer?: { emailAddress?: { address?: string } };
             isOrganizer?: boolean;
           };
@@ -156,7 +95,7 @@ export class OutlookCalendarProvider implements Provider {
           }
         }
 
-        return this.graphFetch(`/me/events/${eventId as string}`, credentials, {
+        return graphFetch(`/me/events/${eventId as string}`, credentials, {
           method: 'PATCH',
           body,
         });
@@ -171,34 +110,6 @@ export class OutlookCalendarProvider implements Provider {
     credentials: Record<string, unknown>,
     oauthClientInfo: { clientId: string; clientSecret?: string },
   ): Promise<Record<string, unknown>> {
-    const params: Record<string, string> = {
-      client_id: oauthClientInfo.clientId,
-      refresh_token: credentials.refresh_token as string,
-      grant_type: 'refresh_token',
-    };
-    // Public client (PKCE) — no client_secret needed for refresh
-    if (oauthClientInfo.clientSecret) {
-      params.client_secret = oauthClientInfo.clientSecret;
-    }
-    const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(params),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Token refresh failed: ${errText}`);
-    }
-
-    const tokens = await res.json() as Record<string, unknown>;
-    return {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token ?? credentials.refresh_token,
-      expiry_date: typeof tokens.expires_in === 'number'
-        ? Date.now() + (tokens.expires_in as number) * 1000
-        : credentials.expiry_date,
-      token_type: tokens.token_type,
-    };
+    return refreshMicrosoftTokens(credentials, oauthClientInfo);
   }
 }

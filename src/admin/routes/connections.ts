@@ -25,6 +25,7 @@ const TEST_OPERATIONS: Record<string, { tool: string; params: Record<string, unk
   google_gmail: { tool: 'gmail_search', params: { maxResults: 1 } },
   google_calendar: { tool: 'calendar_list_calendars', params: {} },
   outlook_calendar: { tool: 'outlook_list_calendars', params: {} },
+  outlook_mail: { tool: 'outlook_mail_search', params: { maxResults: 1 } },
 };
 
 /** Generate a human-readable preview from a test result. */
@@ -51,6 +52,14 @@ function testPreview(providerId: string, result: unknown): string {
         return `Found ${value.length} calendar${value.length === 1 ? '' : 's'}`;
       }
       return 'Outlook Calendar connected successfully';
+    }
+    if (providerId === 'outlook_mail') {
+      const messages = (result as any)?.messages;
+      if (Array.isArray(messages)) {
+        const count = messages.length;
+        return count > 0 ? `Found ${count} recent message${count === 1 ? '' : 's'}` : 'Mailbox accessible (no messages matched)';
+      }
+      return 'Outlook Mail connected successfully';
     }
     return 'Connection verified';
   } catch {
@@ -328,7 +337,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   }
 
   // Store account_email in credentials for alias suffix logic
-  if (providerId === 'google_gmail') {
+  if (providerId === 'google_gmail' || providerId === 'outlook_mail') {
     newCredentials.account_email = accountName;
   }
 
@@ -346,8 +355,8 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
       policy_yaml: provider.defaultPolicyYaml.replace('{account}', accountName),
     });
 
-    // Set default connection settings for Gmail
-    if (providerId === 'google_gmail') {
+    // Set default connection settings for email providers
+    if (providerId === 'google_gmail' || providerId === 'outlook_mail') {
       updateConnectionSettings(conn.id, { emailAliasSuffix: '+agent' });
     }
   }

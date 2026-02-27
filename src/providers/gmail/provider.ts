@@ -5,11 +5,8 @@ import { defaultPolicyYaml } from './default-policy.js';
 import { presets as gmailPresets } from './presets.js';
 import { parseMessage } from './message-parser.js';
 import { applyContentFilters, filterSearchResult } from '../email/content-filter.js';
-
-/** Strip CR/LF to prevent email header injection */
-function sanitizeHeader(value: string): string {
-  return value.replace(/[\r\n]/g, '');
-}
+import { sanitizeHeader } from '../email/sanitize.js';
+import { buildGoogleAuth, refreshGoogleTokens, buildGoogleOAuthConfig } from '../google/google.js';
 
 export class GmailProvider implements Provider {
   id = 'google_gmail';
@@ -18,24 +15,13 @@ export class GmailProvider implements Provider {
   defaultPolicyYaml = defaultPolicyYaml;
   presets = gmailPresets;
 
-  oauth: OAuthConfig = {
-    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scopes: [
+  oauth: OAuthConfig = buildGoogleOAuthConfig(
+    [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.compose',
       'https://www.googleapis.com/auth/gmail.modify',
     ],
-    // Google "installed app" (Desktop) OAuth — the client secret is not confidential by design.
-    // Google's security model relies on redirect URI and user consent, not the secret.
-    // See: https://developers.google.com/identity/protocols/oauth2/native-app
-    builtinClientId: '1096469986430-ap9lls3vhlu25v87ae3c8i8s3dhgaaiu.apps.googleusercontent.com',
-    builtinClientSecret: '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',
-    envClientId: 'GOOGLE_CLIENT_ID',
-    envClientSecret: 'GOOGLE_CLIENT_SECRET',
-    settingsKeyPrefix: 'google',
-    extraAuthorizeParams: { access_type: 'offline', prompt: 'consent' },
-    async discoverAccount(accessToken: string): Promise<string> {
+    async (accessToken: string): Promise<string> => {
       const res = await fetch(
         'https://www.googleapis.com/gmail/v1/users/me/profile',
         { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -44,16 +30,10 @@ export class GmailProvider implements Provider {
       const data = (await res.json()) as { emailAddress?: string };
       return data.emailAddress ?? 'unknown';
     },
-  };
+  );
 
   private buildClient(credentials: Record<string, unknown>) {
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({
-      access_token: credentials.access_token as string,
-      refresh_token: credentials.refresh_token as string,
-      expiry_date: credentials.expiry_date as number | undefined,
-      token_type: credentials.token_type as string | undefined,
-    });
+    const auth = buildGoogleAuth(credentials);
     return google.gmail({ version: 'v1', auth });
   }
 
@@ -404,19 +384,8 @@ export class GmailProvider implements Provider {
     credentials: Record<string, unknown>,
     oauthClientInfo: { clientId: string; clientSecret: string },
   ): Promise<Record<string, unknown>> {
-    const auth = new google.auth.OAuth2(
-      oauthClientInfo.clientId,
-      oauthClientInfo.clientSecret,
-    );
-    auth.setCredentials({
-      refresh_token: credentials.refresh_token as string,
-    });
-    const { credentials: newCreds } = await auth.refreshAccessToken();
     return {
-      access_token: newCreds.access_token,
-      refresh_token: newCreds.refresh_token ?? credentials.refresh_token,
-      expiry_date: newCreds.expiry_date,
-      token_type: newCreds.token_type,
+      ...await refreshGoogleTokens(credentials, oauthClientInfo),
       account_email: credentials.account_email,
     };
   }

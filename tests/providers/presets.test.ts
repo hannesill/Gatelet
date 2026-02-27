@@ -3,14 +3,19 @@ import { parse } from 'yaml';
 import { presets as gmailPresets } from '../../src/providers/gmail/presets.js';
 import { presets as calendarPresets } from '../../src/providers/google-calendar/presets.js';
 import { presets as outlookPresets } from '../../src/providers/outlook-calendar/presets.js';
+import { presets as outlookMailPresets } from '../../src/providers/outlook-mail/presets.js';
 import { defaultPolicyYaml as gmailDefault } from '../../src/providers/gmail/default-policy.js';
 import { defaultPolicyYaml as calendarDefault } from '../../src/providers/google-calendar/default-policy.js';
 import { defaultPolicyYaml as outlookDefault } from '../../src/providers/outlook-calendar/default-policy.js';
+import { defaultPolicyYaml as outlookMailDefault } from '../../src/providers/outlook-mail/default-policy.js';
 
 const PRESET_KEYS = ['read-only', 'standard', 'full-access'];
 
 const READ_OPS_GMAIL = ['search', 'read_message', 'list_drafts'];
 const WRITE_OPS_GMAIL = ['create_draft', 'send', 'reply', 'label', 'archive'];
+
+const READ_OPS_OUTLOOK_MAIL = ['search', 'read_message', 'list_drafts'];
+const WRITE_OPS_OUTLOOK_MAIL = ['create_draft', 'send', 'reply', 'categorize', 'archive'];
 
 const READ_OPS_CALENDAR = ['list_calendars', 'list_events', 'get_event'];
 const WRITE_OPS_CALENDAR = ['create_event', 'update_event'];
@@ -29,6 +34,7 @@ describe.each([
   { name: 'Gmail', presets: gmailPresets, defaultYaml: gmailDefault, provider: 'google_gmail', readOps: READ_OPS_GMAIL, writeOps: WRITE_OPS_GMAIL },
   { name: 'Google Calendar', presets: calendarPresets, defaultYaml: calendarDefault, provider: 'google_calendar', readOps: READ_OPS_CALENDAR, writeOps: WRITE_OPS_CALENDAR },
   { name: 'Outlook Calendar', presets: outlookPresets, defaultYaml: outlookDefault, provider: 'outlook_calendar', readOps: READ_OPS_CALENDAR, writeOps: WRITE_OPS_CALENDAR },
+  { name: 'Outlook Mail', presets: outlookMailPresets, defaultYaml: outlookMailDefault, provider: 'outlook_mail', readOps: READ_OPS_OUTLOOK_MAIL, writeOps: WRITE_OPS_OUTLOOK_MAIL },
 ])('$name presets', ({ presets, defaultYaml, provider, readOps, writeOps }) => {
   it('has all three preset keys', () => {
     expect(Object.keys(presets).sort()).toEqual(PRESET_KEYS.sort());
