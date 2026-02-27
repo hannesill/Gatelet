@@ -58,11 +58,11 @@ function testPreview(providerId: string, result: unknown): string {
 }
 
 // OAuth state store — maps nonce -> session data, auto-expires after 10 minutes
-const oauthStates = new Map<string, { token: string; providerId: string; codeVerifier?: string; expires: number }>();
+const oauthStates = new Map<string, { token: string; providerId: string; codeVerifier?: string; returnOrigin?: string; expires: number }>();
 
-function createOAuthState(adminToken: string, providerId: string, codeVerifier?: string): string {
+function createOAuthState(adminToken: string, providerId: string, codeVerifier?: string, returnOrigin?: string): string {
   const nonce = crypto.randomBytes(32).toString('hex');
-  oauthStates.set(nonce, { token: adminToken, providerId, codeVerifier, expires: Date.now() + 10 * 60 * 1000 });
+  oauthStates.set(nonce, { token: adminToken, providerId, codeVerifier, returnOrigin, expires: Date.now() + 10 * 60 * 1000 });
   // Clean up expired entries
   for (const [key, value] of oauthStates) {
     if (value.expires < Date.now()) oauthStates.delete(key);
@@ -70,14 +70,14 @@ function createOAuthState(adminToken: string, providerId: string, codeVerifier?:
   return nonce;
 }
 
-function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string } | null {
+function redeemOAuthState(nonce: string, expectedProviderId: string): { token: string; codeVerifier?: string; returnOrigin?: string } | null {
   const entry = oauthStates.get(nonce);
   if (!entry || entry.expires < Date.now() || entry.providerId !== expectedProviderId) {
     oauthStates.delete(nonce);
     return null;
   }
   oauthStates.delete(nonce);
-  return { token: entry.token, codeVerifier: entry.codeVerifier };
+  return { token: entry.token, codeVerifier: entry.codeVerifier, returnOrigin: entry.returnOrigin };
 }
 
 /** Generate PKCE code_verifier and S256 code_challenge */
@@ -212,7 +212,16 @@ app.get('/connections/oauth/:providerId/start', (c) => {
     extraParams.code_challenge_method = 'S256';
   }
 
-  const state = createOAuthState('session', providerId, codeVerifier);
+  // Capture the dashboard origin so the OAuth callback can redirect back to it.
+  // In dev mode, the dashboard runs on a different port (Vite dev server) than the
+  // admin API, so the callback must redirect to the correct origin.
+  const referer = c.req.header('Referer');
+  let returnOrigin: string | undefined;
+  if (referer) {
+    try { returnOrigin = new URL(referer).origin; } catch { /* ignore invalid */ }
+  }
+
+  const state = createOAuthState('session', providerId, codeVerifier, returnOrigin);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -243,6 +252,9 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
     return c.redirect('/?oauth=error&message=' + encodeURIComponent('Invalid or expired OAuth state. Please try again.'));
   }
 
+  // Redirect back to the dashboard origin (may differ from the API server in dev mode)
+  const base = oauthState.returnOrigin ?? '';
+
   const code = c.req.query('code');
   if (!code) {
     return c.json({ error: 'Missing authorization code' }, 400);
@@ -267,7 +279,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   };
   if (usePkce) {
     if (!oauthState.codeVerifier) {
-      return c.redirect('/?oauth=error&message=' + encodeURIComponent('PKCE verifier missing from OAuth state. Please try again.'));
+      return c.redirect(base + '/?oauth=error&message=' + encodeURIComponent('PKCE verifier missing from OAuth state. Please try again.'));
     }
     tokenParams.code_verifier = oauthState.codeVerifier;
   }
@@ -283,7 +295,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   if (!tokenRes.ok) {
     const errText = await tokenRes.text();
-    return c.redirect('/?oauth=error&message=' + encodeURIComponent(`Token exchange failed: ${errText}`));
+    return c.redirect(base + '/?oauth=error&message=' + encodeURIComponent(`Token exchange failed: ${errText}`));
   }
 
   const tokens = await tokenRes.json() as Record<string, unknown>;
@@ -334,7 +346,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
 
   refreshToolRegistry();
 
-  return c.redirect(`/?oauth=success&provider=${providerId}`);
+  return c.redirect(`${base}/?oauth=success&provider=${providerId}`);
 });
 
 app.post('/connections/:id/test', async (c) => {
