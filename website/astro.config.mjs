@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     starlight({
       title: 'Gatelet',
+      favicon: '/favicon.svg',
       customCss: ['./src/styles/starlight.css'],
       components: {
         Header: './src/components/DocsHeader.astro',
