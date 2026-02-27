@@ -9,6 +9,9 @@ dist/
 .env
 .env.*
 
+# Build artifacts
+dashboard/.astro/
+
 # OS
 .DS_Store
 
