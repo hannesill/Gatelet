@@ -22,7 +22,7 @@ Navigate to **Connections** and click **Add Connection**. Choose a provider (Goo
 You'll be redirected to Google or Microsoft to authorize access. After granting permission, you'll return to the dashboard with the connection active.
 
 :::note
-The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, register your own OAuth app under **Settings > Integrations** in the dashboard.
+The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, [register your own OAuth app](/deployment/custom-oauth-apps/) and enter the credentials under **Settings > Integrations** in the dashboard.
 :::
 
 Each connection comes with a **default policy** that is intentionally restrictive. Read operations are typically allowed, while write operations (create, update, send) are disabled by default. You can edit the policy in the dashboard's policy editor.

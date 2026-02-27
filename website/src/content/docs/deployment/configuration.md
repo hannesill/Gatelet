@@ -72,7 +72,7 @@ Gatelet ships with built-in OAuth client IDs for Google and Microsoft. These wor
 
 ### Custom credentials
 
-Register your own OAuth app with Google or Microsoft for a seamless sign-in experience. Configure credentials in the admin dashboard under **Settings > Integrations**.
+Register your own OAuth app with Google or Microsoft for a seamless sign-in experience. See the [Custom OAuth Apps](/deployment/custom-oauth-apps/) guide for step-by-step instructions. Configure credentials in the admin dashboard under **Settings > Integrations**.
 
 You can also set them via environment variables:
 
