@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AgentConfig } from '../components/AgentConfig';
 import { OAuthButton } from '../components/OAuthButton';
 import { PresetSelector } from '../components/PresetSelector';
@@ -151,6 +151,9 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
     return () => { cancelled = true; };
   }, []);
 
+  // Track which connections have already been defaulted to read-only
+  const defaultedRef = useRef<Set<string>>(new Set());
+
   // Fetch presets for each connection
   useEffect(() => {
     if (connections.length === 0) return;
@@ -171,8 +174,9 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
           const yamls = Object.fromEntries(entries);
           let active = detectPreset(conn.policy_yaml, yamls);
 
-          // Default new connections to read-only (conservative for new users)
-          if (active === 'standard' && yamls['read-only']) {
+          // Default new connections to read-only once (conservative for new users)
+          if (active === 'standard' && yamls['read-only'] && !defaultedRef.current.has(conn.id)) {
+            defaultedRef.current.add(conn.id);
             const resolvedYaml = yamls['read-only'].replace('{account}', conn.account_name);
             try {
               await api.savePolicy(conn.id, resolvedYaml);
@@ -202,7 +206,6 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
         ...prev,
         [connectionId]: { ...prev[connectionId], active: preset },
       }));
-      toast(`Policy updated to ${preset.replace('-', ' ')}`);
       onRefresh();
     } catch (e: any) {
       toast(e.message, 'error');

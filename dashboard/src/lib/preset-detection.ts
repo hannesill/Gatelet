@@ -34,19 +34,25 @@ export function detectPreset(
   return null;
 }
 
+/**
+ * Deep-sort all object keys so JSON.stringify produces a stable string
+ * regardless of insertion order (which varies between hand-written YAML
+ * and the output of stringifyPolicyYaml).
+ */
+function deepSortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(deepSortKeys);
+  if (value && typeof value === 'object') {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[key] = deepSortKeys((value as Record<string, unknown>)[key]);
+    }
+    return sorted;
+  }
+  return value;
+}
+
 function canonicalize(obj: Record<string, unknown>): string {
   const copy = { ...obj };
   delete copy.account;
-
-  // Sort operation keys for stable comparison
-  if (copy.operations && typeof copy.operations === 'object') {
-    const ops = copy.operations as Record<string, unknown>;
-    const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(ops).sort()) {
-      sorted[key] = ops[key];
-    }
-    copy.operations = sorted;
-  }
-
-  return JSON.stringify(copy);
+  return JSON.stringify(deepSortKeys(copy));
 }

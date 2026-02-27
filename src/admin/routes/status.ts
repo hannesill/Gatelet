@@ -17,6 +17,7 @@ interface ConnectionWithMeta {
   tokenStatus: 'valid' | 'expired' | 'unknown';
   tokenExpiresAt?: number;
   enabled: boolean;
+  policy_yaml: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +64,7 @@ app.get('/status', (c) => {
       tokenStatus: tokenInfo.status,
       tokenExpiresAt: tokenInfo.expiresAt,
       enabled: conn.enabled !== 0,
+      policy_yaml: conn.policy_yaml,
       created_at: conn.created_at,
       updated_at: conn.updated_at,
     };
