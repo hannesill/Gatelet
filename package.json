@@ -17,7 +17,7 @@
     "dev": "npm run dev:dashboard & npm run dev:api",
     "dev:api": "tsx src/index.ts",
     "dev:dashboard": "npm run --workspace=dashboard dev",
-    "build": "npm run build:dashboard && tsup src/index.ts src/cli.ts --format esm --dts --external better-sqlite3 --external sodium-native",
+    "build": "tsup src/index.ts src/cli.ts --clean --format esm --dts --external better-sqlite3 --external sodium-native && npm run build:dashboard",
     "build:dashboard": "npm run --workspace=dashboard build",
     "start": "node dist/index.js",
     "test": "vitest run",
