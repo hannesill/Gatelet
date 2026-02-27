@@ -11,10 +11,10 @@ Gatelet runs two separate HTTP servers on separate ports:
 
 | Domain | Port | Audience | Access |
 |---|---|---|---|
-| **Agent-facing** | `:4000` | AI agents | Bearer token auth, Docker internal network |
+| **Agent-facing** | `:4000` | AI agents | Bearer token auth |
 | **Admin-facing** | `:4001` | Human operators | Admin token, localhost only |
 
-The admin port is published to `127.0.0.1` only in Docker Compose — it's not accessible from the network.
+Both ports bind to `127.0.0.1` — they are not accessible from the network.
 
 ## Deny by default
 
@@ -50,29 +50,42 @@ OAuth tokens and API secrets are all encrypted with this master key.
 
 ### Admin token storage
 
-The install script stores the admin token in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) with `0600` permissions. The token is seeded into a Docker volume (`gatelet-secrets`) mounted read-only into the container. This means:
-
-- Reading the token requires `sudo` — regular users and compromised non-root processes cannot access it
-- The token is never written to `.env` or other user-readable files
-- The `GATELET_ADMIN_TOKEN_FILE` environment variable tells Gatelet to read the token from a file path instead of an env var
-- The admin token is masked in Docker startup logs — since any user on macOS can run `docker logs` without sudo, the full token is never printed to stdout in Docker deployments
-
 The admin token serves double duty: it authenticates admin dashboard access and derives the master encryption key via HKDF-SHA256.
 
-**Note:** Users in the `docker` group can bypass file permissions by mounting any host file into a container. This is a known Docker limitation (docker group membership is effectively root-equivalent), not specific to Gatelet.
+**Native host install (recommended):** The admin token is stored at `/var/lib/gatelet/admin.token`, owned by the Gatelet service user with mode `600`. The entire data directory is mode `700`. Reading the token requires `sudo` or being the service user — regular users and agent processes cannot access it.
+
+**Docker install:** The token is stored in a root-owned directory (`/usr/local/etc/gatelet/secrets/`) on the host, then seeded into a Docker volume mounted into the container. On the host, reading requires `sudo`. However, any process with Docker CLI access can read it via `docker exec` — see [Agent isolation](#agent-isolation) below.
+
+In both modes:
+- The token is never written to `.env` or other user-readable files
+- The admin token is masked in startup logs — agents can read `docker logs` or system logs without sudo, so the full token is never printed to stdout in service deployments
+- The `GATELET_ADMIN_TOKEN_FILE` environment variable tells Gatelet to read the token from a file path instead of an env var
 
 ### Agent isolation
 
-The admin token's root-only storage provides protection against agents regardless of whether they run in a container or directly on the host:
+The level of protection depends on both the deployment method and the agent type:
 
-| Scenario | Can reach admin port? | Can read admin token? | Protected? |
-|---|---|---|---|
-| **Docker-sandboxed agent** | No — port 4001 is not on the internal network | No — token is in a host-only path | Yes |
-| **Host agent (normal user)** | Yes — `localhost:4001` is reachable | No — requires `sudo` to read the token file | Yes |
-| **Host agent with `sudo`** | Yes | Yes | No — `sudo` is root-equivalent |
-| **Host agent with Docker socket** | Yes | Yes — can mount the secrets volume | No — Docker socket is root-equivalent |
+#### Native host deployment
 
-An unsandboxed agent running on the host as a regular user can reach `localhost:4001` but cannot authenticate without the admin token. The token is stored in a root-owned directory and cannot be read without `sudo`. The agent can only interact with the MCP endpoint on port 4000, which requires a separate API key and enforces the configured policies.
+| Scenario | Can read admin token? | Protected? |
+|---|---|---|
+| **Any host agent (normal user)** | No — wrong user, directory mode 700 | Yes |
+| **Host agent with `sudo`** | Yes | No — `sudo` is root-equivalent |
+
+The native host install provides the strongest isolation. The Gatelet data directory is owned by a dedicated system user and restricted to mode `700`. No matter how the agent runs — sandboxed, unsandboxed, with Docker CLI, with Bash — it cannot read the admin token unless it has `sudo`.
+
+#### Docker deployment
+
+| Scenario | Can read admin token? | Protected? |
+|---|---|---|
+| **Docker-sandboxed agent** | No — port 4001 not on internal network | Yes |
+| **Host agent without Docker CLI** | No — root-owned token file | Yes |
+| **Host agent with Docker CLI** | Yes — `docker exec` reads secrets | No |
+| **Host agent with `sudo`** | Yes | No |
+
+:::caution
+Most unsandboxed agents (Claude Code, Cursor, any agent with Bash access) have Docker CLI access. This means Docker provides **no protection** in the most common deployment scenario. Use the [native host install](/deployment/native-host/) for these environments.
+:::
 
 ## Authentication
 
@@ -130,7 +143,7 @@ Upstream API errors are classified and sanitized before being returned to the ag
 
 Many MCPs are thin API wrappers that would be better as CLIs. Gatelet is a security boundary, not a tool:
 
-- **Network isolation is the point.** A CLI runs inside the agent's sandbox. Gatelet runs in its own container.
+- **Network isolation is the point.** A CLI runs inside the agent's sandbox. Gatelet runs as a separate service.
 - **Tool visibility requires protocol-level control.** A CLI can only return errors after the fact, leaking what operations exist.
 - **Credentials never touch the agent process.** OAuth tokens stay in Gatelet's encrypted database.
 - **Transparent policy enforcement.** The agent calls a tool thinking it's talking to Gmail. Gatelet silently applies mutations, strips fields, and audits everything.

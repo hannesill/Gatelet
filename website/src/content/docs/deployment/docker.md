@@ -3,7 +3,11 @@ title: Docker
 description: Docker deployment, network isolation, and container architecture
 ---
 
-Docker is the recommended deployment method. It provides the filesystem and network isolation that Gatelet's security model depends on.
+Docker is the deployment method for Windows and for environments where agents run inside Docker containers. On macOS and Linux, the [native host install](/deployment/native-host/) is recommended instead — it provides stronger isolation against agents with host access.
+
+:::caution[Docker CLI access]
+Agents with Docker CLI access (e.g. Claude Code with Bash) can read secrets from inside the container via `docker exec`. Docker cannot protect against this — it's inherent to Docker's security model. If your agent has host access, use the [native host install](/deployment/native-host/).
+:::
 
 ## Network architecture
 

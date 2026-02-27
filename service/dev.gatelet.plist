@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.gatelet</string>
+  <key>UserName</key>
+  <string>_gatelet</string>
+  <key>GroupName</key>
+  <string>_gatelet</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE_PATH__</string>
+    <string>/usr/local/lib/gatelet/dist/index.js</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GATELET_DATA_DIR</key>
+    <string>/var/lib/gatelet</string>
+    <key>GATELET_ADMIN_TOKEN_FILE</key>
+    <string>/var/lib/gatelet/admin.token</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/var/lib/gatelet/gatelet.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/lib/gatelet/gatelet.log</string>
+</dict>
+</plist>

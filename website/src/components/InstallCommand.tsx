@@ -6,11 +6,11 @@ type Platform = 'mac' | 'linux' | 'windows';
 
 const commands: Record<Platform, { command: string; label: string }> = {
   mac: {
-    command: 'curl -fsSL https://gatelet.dev/install.sh | sh',
+    command: 'curl -fsSL https://gatelet.dev/install-host.sh | bash',
     label: 'macOS',
   },
   linux: {
-    command: 'curl -fsSL https://gatelet.dev/install.sh | sh',
+    command: 'curl -fsSL https://gatelet.dev/install-host.sh | bash',
     label: 'Linux',
   },
   windows: {

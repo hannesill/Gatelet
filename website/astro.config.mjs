@@ -98,6 +98,7 @@ export default defineConfig({
         {
           label: 'Deployment',
           items: [
+            { label: 'Native Host', slug: 'deployment/native-host' },
             { label: 'Docker', slug: 'deployment/docker' },
             { label: 'Configuration', slug: 'deployment/configuration' },
             { label: 'Updating', slug: 'deployment/updating' },

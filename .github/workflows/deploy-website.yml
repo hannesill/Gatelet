@@ -6,6 +6,7 @@ on:
     paths:
       - 'website/**'
       - 'install.sh'
+      - 'install-host.sh'
       - 'assets/**'
       - '.github/workflows/deploy-website.yml'
   workflow_dispatch:
@@ -44,6 +45,7 @@ jobs:
           mkdir -p website/public
           cp install.sh website/public/install.sh
           cp install.ps1 website/public/install.ps1
+          cp install-host.sh website/public/install-host.sh
 
       - name: Build Website
         run: |

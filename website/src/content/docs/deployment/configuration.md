@@ -36,9 +36,13 @@ If not set, Gatelet checks for a saved token at `$DATA_DIR/admin.token`. If neit
 
 ### Secret file convention (`_FILE`)
 
-`GATELET_ADMIN_TOKEN` supports the `_FILE` suffix convention used by Docker secrets. When `GATELET_ADMIN_TOKEN_FILE` is set, Gatelet reads the token from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
+`GATELET_ADMIN_TOKEN` supports the `_FILE` suffix convention. When `GATELET_ADMIN_TOKEN_FILE` is set, Gatelet reads the token from that file path instead of the environment variable. The `_FILE` variant takes precedence over the direct env var.
 
-The default install script uses this approach: the admin token is stored on the host at `/usr/local/etc/gatelet/secrets/` with root-only permissions (`0600`), then seeded into a Docker volume (`gatelet-secrets`) mounted read-only into the container:
+Both install methods use this approach:
+
+**Native host:** The token is stored at `/var/lib/gatelet/admin.token`, owned by the Gatelet service user (mode 600). Reading requires `sudo`.
+
+**Docker:** The token is stored on the host at `/usr/local/etc/gatelet/secrets/` with root-only permissions, then seeded into a Docker volume:
 
 ```yaml
 volumes:
@@ -46,8 +50,6 @@ volumes:
 environment:
   - GATELET_ADMIN_TOKEN_FILE=/run/secrets/gatelet/admin-token
 ```
-
-Reading the token on the host requires `sudo` — regular users and agent processes cannot access it.
 
 ### `GATELET_TRUST_PROXY`
 
@@ -85,7 +87,15 @@ Dashboard-configured credentials take precedence over environment variables.
 
 ## Data directory structure
 
-**Docker deployment** (install script):
+**Native host deployment:**
+```
+/var/lib/gatelet/           # mode 700, owned by _gatelet/gatelet
+├── gatelet.db              # SQLite database
+├── admin.token             # Admin token (mode 600)
+└── gatelet.log             # Service logs (macOS)
+```
+
+**Docker deployment:**
 ```
 gatelet-data volume (/data inside container):
 └── gatelet.db              # SQLite database

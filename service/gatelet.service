@@ -1,0 +1,24 @@
+[Unit]
+Description=Gatelet MCP Permission Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=gatelet
+Group=gatelet
+ExecStart=__NODE_PATH__ /usr/local/lib/gatelet/dist/index.js
+Environment=GATELET_DATA_DIR=/var/lib/gatelet
+Environment=GATELET_ADMIN_TOKEN_FILE=/var/lib/gatelet/admin.token
+Environment=NODE_ENV=production
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/gatelet
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

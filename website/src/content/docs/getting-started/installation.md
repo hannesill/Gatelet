@@ -3,28 +3,45 @@ title: Installation
 description: How to install and run Gatelet
 ---
 
-Docker is the recommended deployment method — it provides the filesystem and network isolation the security model depends on.
+## macOS / Linux (recommended)
 
-## Quick start
-
-### macOS / Linux
+The native host install runs Gatelet as a dedicated system service with OS-level agent isolation.
 
 ```bash
-curl -fsSL https://gatelet.dev/install.sh | sh
+curl -fsSL https://gatelet.dev/install-host.sh | bash
 ```
 
-### Windows (PowerShell)
+The install script:
+- Checks for Node.js 22+
+- Creates a system user (`_gatelet` on macOS, `gatelet` on Linux)
+- Installs Gatelet to `/usr/local/lib/gatelet/`
+- Creates a data directory at `/var/lib/gatelet/` (mode 700, owned by the service user)
+- Generates an admin token
+- Installs and starts a system service (launchd on macOS, systemd on Linux)
+
+**Why this is recommended:** The admin token, database, and stored credentials live in a directory that only the Gatelet service user can read. Your agent (running as your normal user) cannot access them — Unix file permissions enforce this.
+
+### Retrieve the admin token
+
+```bash
+sudo cat /var/lib/gatelet/admin.token
+```
+
+## Windows (Docker)
 
 ```powershell
 powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://gatelet.dev/install.ps1)"
 ```
 
-The install script:
-- Checks for Docker and Docker Compose
-- Creates `~/.gatelet/` with a `docker-compose.yml`
-- Generates an admin token (stored at a root-only-readable path)
-- Starts the Gatelet container
-- Sets up [Watchtower](https://containrrr.dev/watchtower/) for automatic updates
+The Windows installer uses Docker, which is the only supported deployment method on Windows.
+
+## Docker (alternative for macOS / Linux)
+
+```bash
+curl -fsSL https://gatelet.dev/install.sh | sh
+```
+
+Docker works well for agents that run inside Docker containers (sandboxed). However, agents with host access (like Claude Code, Cursor, or any agent with Bash) can use `docker exec` to read secrets from inside the container. For these environments, use the native host install instead.
 
 ## Verify installation
 
@@ -34,16 +51,14 @@ Once installed, open the admin dashboard:
 open http://localhost:4001
 ```
 
-Paste the admin token that was printed during installation. If you've lost it, it's stored in the secrets directory (requires sudo on macOS/Linux):
-
-```bash
-sudo cat /usr/local/etc/gatelet/secrets/admin-token
-```
+Paste the admin token that was printed during installation (or retrieve it with `sudo cat`).
 
 ## Requirements
 
-- **Docker** (recommended) — provides filesystem and network isolation
-- **Node.js v22+** — only needed for development or running without Docker
+| Method | Requirements |
+|---|---|
+| **Native host** (macOS / Linux) | Node.js 22+, sudo access |
+| **Docker** (Windows / alternative) | Docker, Docker Compose |
 
 ## What's next
 

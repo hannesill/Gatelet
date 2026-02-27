@@ -39,15 +39,27 @@ Your agent connects via a policy-enforced MCP endpoint and can only perform oper
 
 ## Quick Start
 
-```bash
-# macOS / Linux
-curl -fsSL https://gatelet.dev/install.sh | sh
+### macOS / Linux (recommended)
 
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://gatelet.dev/install.ps1)"
+```bash
+curl -fsSL https://gatelet.dev/install-host.sh | bash
 ```
 
-This pulls the Docker image, generates an admin token, and starts Gatelet in `~/.gatelet`. The installer prints your admin token and dashboard URL when done.
+This installs Gatelet as a system service under a dedicated OS user (`_gatelet` on macOS, `gatelet` on Linux). The admin token, database, and credentials are stored in a directory only that user can read — your agent literally cannot access them via file permissions.
+
+### Windows / Docker
+
+```bash
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -Command "iex (iwr -UseBasicParsing https://gatelet.dev/install.ps1)"
+
+# macOS / Linux (Docker alternative)
+curl -fsSL https://gatelet.dev/install.sh | sh
+```
+
+The Docker installer is the only option on Windows and works well for sandboxed agents that run inside Docker containers. However, agents with host access (like Claude Code) can use `docker exec` to read secrets from inside the container — see [Security Model](#security-model) for details.
+
+### After installation
 
 ```
 open http://localhost:4001   # paste the admin token to log in
@@ -57,19 +69,17 @@ The dashboard walks you through setup: generate an API key, connect your account
 
 > **Note:** The built-in OAuth credentials are not yet verified by Google or Microsoft. You'll see an "unverified app" warning during sign-in — this is expected. Gatelet is fully self-hosted: all tokens are stored locally on your machine, encrypted at rest. The built-in credentials do not give the publisher any access to your data. To avoid the warning, register your own OAuth app under **Settings > Integrations** in the dashboard.
 
-Docker is the recommended deployment method — it provides the filesystem and network isolation the security model depends on.
-
 ## Updating
 
-The install script includes [Watchtower](https://containrrr.dev/watchtower/), which automatically pulls new images and restarts the container. Updates are checked every 5 minutes.
+**Native host:** Re-run the install script — it preserves your data directory and admin token.
 
-To update manually instead:
+**Docker:** The install script includes [Watchtower](https://containrrr.dev/watchtower/) for automatic updates (checked every 5 minutes). To update manually:
 
 ```bash
 cd ~/.gatelet && docker compose pull && docker compose up -d
 ```
 
-Your data volume is preserved across updates.
+Your data is preserved across updates in both modes.
 
 ## Supported Providers
 
@@ -251,6 +261,19 @@ Patterns use JavaScript regex syntax with case-insensitive and global flags.
 | **Payload mutation** | Even when an operation is allowed, mutations can strip or override fields before the upstream call |
 | **Rate limiting** | Failed auth attempts (admin and API key) are rate-limited per IP (10 per minute) |
 
+### Agent Isolation
+
+The native host install provides the strongest isolation. Gatelet runs as a dedicated system user with its data directory restricted to mode `700` — the agent (running as your normal user) cannot read the admin token, database, or stored credentials. This is enforced by Unix file permissions.
+
+Docker provides weaker isolation against host-based agents. While the admin token is stored in a root-owned directory on the host, any agent with Docker CLI access (which most unsandboxed agents like Claude Code have) can read secrets from inside the container via `docker exec`. Docker is still effective for agents that run inside containers on the Docker network.
+
+| Deployment | Agent type | Admin token protected? |
+|---|---|---|
+| **Native host** | Any host agent | Yes — wrong user, mode 700 |
+| **Docker** | Sandboxed (in container) | Yes — port 4001 not on internal network |
+| **Docker** | Host agent without Docker CLI | Yes — root-owned token file |
+| **Docker** | Host agent with Docker CLI | No — `docker exec` can read secrets |
+
 ### Why Not a CLI?
 
 Many MCPs are thin API wrappers that would be better as CLIs invoked by agent skills. Gatelet is not one of them — it's a security boundary, not a tool.
@@ -274,12 +297,14 @@ OAuth credentials can be configured through the admin dashboard under Settings >
 
 ## Docker
 
-The install script sets up Docker Compose automatically. The `docker-compose.yml` uses two networks for isolation:
+The Docker install script sets up Docker Compose in `~/.gatelet/`. The `docker-compose.yml` uses two networks for isolation:
 
 - **gatelet-internal** — Other containers (your agent) connect to Gatelet on `:4000`. Not published to the host.
 - **gatelet-egress** — Allows Gatelet to reach external APIs (Google, Microsoft).
 
 Admin port is bound to `127.0.0.1` only — not accessible from the network.
+
+> **Note:** Docker cannot protect secrets from agents with Docker CLI access (`docker exec` can read any file inside the container). Use the [native host install](#quick-start) for environments where agents have host-level access.
 
 To build from source:
 

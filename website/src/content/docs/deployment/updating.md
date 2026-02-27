@@ -3,15 +3,23 @@ title: Updating
 description: Automatic and manual update methods
 ---
 
-## Automatic updates (Watchtower)
+## Native host
 
-The install script sets up [Watchtower](https://containrrr.dev/watchtower/), which automatically pulls new Docker images and restarts the container. Updates are checked every 5 minutes.
+Re-run the install script. It preserves your existing data directory and admin token:
+
+```bash
+curl -fsSL https://gatelet.dev/install-host.sh | bash
+```
+
+## Docker
+
+### Automatic updates (Watchtower)
+
+The Docker install script sets up [Watchtower](https://containrrr.dev/watchtower/), which automatically pulls new Docker images and restarts the container. Updates are checked every 5 minutes.
 
 No action is required — Gatelet stays up to date automatically.
 
-## Manual update
-
-If you prefer to update manually:
+### Manual update
 
 ```bash
 cd ~/.gatelet && docker compose pull && docker compose up -d
@@ -19,7 +27,7 @@ cd ~/.gatelet && docker compose pull && docker compose up -d
 
 ## Data persistence
 
-Your data volume is preserved across updates. The SQLite database and all stored credentials persist through container recreations.
+Your data is preserved across updates in both deployment modes. The SQLite database and all stored credentials persist through updates.
 
 ## Breaking changes
 

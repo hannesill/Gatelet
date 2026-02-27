@@ -122,11 +122,13 @@ async function main(): Promise<void> {
   console.log('');
   console.log(`Gatelet v${VERSION}`);
   console.log('');
-  // In Docker, mask the token — agents on the host can read `docker logs` without sudo.
-  // The full token is retrievable via `sudo cat /usr/local/etc/gatelet/secrets/admin-token`.
-  // Outside Docker, print the full URL for convenience (token is already on disk at admin.token).
-  if (config.IS_DOCKER) {
-    console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}  (token masked — use sudo cat /usr/local/etc/gatelet/secrets/admin-token)`);
+  // Mask the token whenever it was loaded from a file (Docker or native host service mode).
+  // Agents can read logs without sudo (`docker logs`, macOS unified log), so never print the
+  // actual token in service deployments. In local dev mode, print the full URL for convenience.
+  const tokenFile = process.env.GATELET_ADMIN_TOKEN_FILE;
+  if (tokenFile || config.IS_DOCKER) {
+    const hint = tokenFile ? `sudo cat ${tokenFile}` : 'sudo cat /usr/local/etc/gatelet/secrets/admin-token';
+    console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}  (token masked — use ${hint})`);
   } else {
     console.log(`  Admin:  http://localhost:${config.ADMIN_PORT}/?token=${encodeURIComponent(config.ADMIN_TOKEN!)}`);
   }
