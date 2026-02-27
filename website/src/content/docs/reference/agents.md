@@ -3,28 +3,126 @@ title: Agent Setup
 description: Configure MCP-compatible agents to use Gatelet
 ---
 
-Gatelet works with any MCP-compatible agent. The admin dashboard can auto-install the configuration for supported agents, or you can configure manually.
+Gatelet works with any MCP-compatible agent. The admin dashboard generates the correct configuration snippet for each supported agent, or you can configure manually using the guides below.
 
 ## Supported agents
 
-The dashboard's **Setup** page can write Gatelet's MCP config directly into your agent's configuration file:
+| Agent | Config file | Setup |
+|---|---|---|
+| OpenClaw | `./config/mcporter.json` | [Full guide](/reference/openclaw-setup/) |
+| Claude Code | `~/.claude.json` | [Jump to section](#claude-code) |
+| Gemini CLI | `~/.gemini/settings.json` | [Jump to section](#gemini-cli) |
+| Codex | `~/.codex/config.toml` | [Jump to section](#codex) |
 
-| Agent | Config file |
-|---|---|
-| OpenClaw | `~/.openclaw/config.json` |
-| Claude Code | `~/.claude.json` |
-| Gemini CLI | `~/.gemini/settings.json` |
-| Codex | `~/.codex/config.toml` |
+## OpenClaw
 
-Select your agent and click **Install** to write the config automatically.
+OpenClaw agents access MCP servers through the **mcporter** CLI skill. Agents can run unsandboxed on the host or inside Docker sandboxes — the setup differs depending on the mode.
 
-## Manual configuration
+See the [full OpenClaw setup guide](/reference/openclaw-setup/) for detailed instructions covering both modes.
 
-For any MCP-compatible agent, you need to configure an MCP server entry pointing at Gatelet's endpoint with your API key as a bearer token.
+**Quick reference** — the mcporter config at `./config/mcporter.json`:
 
-### Agent in Docker (same network as Gatelet)
+```json
+{
+  "mcpServers": {
+    "gatelet": {
+      "description": "Gatelet MCP proxy",
+      "baseUrl": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
 
-If your agent runs in a container on the `gatelet-internal` Docker network, use Docker's internal DNS:
+:::note
+If your agent runs in a Docker sandbox, the config goes at `~/.openclaw/workspace/config/mcporter.json` and the URL should use `host.docker.internal` instead of `localhost`. See the [full guide](/reference/openclaw-setup/#sandboxed-agents-docker) for details.
+:::
+
+## Claude Code
+
+Claude Code stores MCP server configuration in `~/.claude.json`. You can add Gatelet via the CLI or by editing the file directly.
+
+### Via CLI
+
+```bash
+claude mcp add --transport http gatelet http://localhost:4000/mcp \
+  --header "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Manual configuration
+
+Add to `~/.claude.json` (merging with existing `mcpServers` if present):
+
+```json
+{
+  "mcpServers": {
+    "gatelet": {
+      "type": "http",
+      "url": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+After editing, restart Claude Code and verify with `claude mcp list` or the `/mcp` command inside a session.
+
+:::tip
+Claude Code also supports project-scoped config via `.mcp.json` in the project root (shared with your team) and user-scoped config in `~/.claude.json` (private, available across all projects). Use `--scope user` with the CLI to ensure the server is available everywhere.
+:::
+
+## Gemini CLI
+
+Gemini CLI stores MCP configuration in `~/.gemini/settings.json`. For HTTP-based servers like Gatelet, use the `httpUrl` field.
+
+Add to `~/.gemini/settings.json` (merging with existing `mcpServers` if present):
+
+```json
+{
+  "mcpServers": {
+    "gatelet": {
+      "httpUrl": "http://localhost:4000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Restart Gemini CLI after editing the settings file.
+
+## Codex
+
+Codex uses TOML configuration at `~/.codex/config.toml`. For remote HTTP servers, use the `url` and `http_headers` fields.
+
+### Via CLI
+
+```bash
+codex mcp add gatelet --url http://localhost:4000/mcp
+```
+
+Then manually add the auth header to `~/.codex/config.toml`.
+
+### Manual configuration
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.gatelet]
+url = "http://localhost:4000/mcp"
+http_headers = { "Authorization" = "Bearer YOUR_API_KEY" }
+```
+
+Verify with `codex mcp list`.
+
+## Agent in Docker (same network as Gatelet)
+
+If your agent runs in a container on the `gatelet-internal` Docker network (not the case for OpenClaw — see above), use Docker's internal DNS:
 
 ```json
 {
@@ -37,33 +135,6 @@ If your agent runs in a container on the `gatelet-internal` Docker network, use 
     }
   }
 }
-```
-
-### Agent on the host machine
-
-If your agent runs directly on the host (not in Docker), connect to localhost:
-
-```json
-{
-  "mcpServers": {
-    "gatelet": {
-      "url": "http://localhost:4000/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-### Codex (TOML)
-
-Codex uses TOML configuration. Add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.gatelet]
-url = "http://localhost:4000/mcp"
-http_headers = { "Authorization" = "Bearer YOUR_API_KEY" }
 ```
 
 ## What the agent sees
@@ -89,10 +160,6 @@ If you connect multiple accounts (e.g. both Google Calendar and Gmail), the agen
 
 :::note
 If you connect two accounts of the same provider type (e.g., two Google Calendar accounts), their tool names will collide since both register tools like `calendar_list_events`. The first connection's tools are registered and the duplicate is skipped. To use multiple accounts, disable conflicting operations in one connection's policy so each tool name is unique.
-:::
-
-:::note
-Each agent expects a slightly different MCP config format. The dashboard's **Setup** page handles this automatically. If configuring manually, refer to your agent's documentation for the exact format.
 :::
 
 ## API key management

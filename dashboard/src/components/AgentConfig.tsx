@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { useToast } from '../hooks/useToast';
-import { Copy, Terminal, Pencil } from 'lucide-react';
+import { Copy, Terminal, Pencil, ExternalLink } from 'lucide-react';
 
 type Tool = 'openclaw' | 'claude-code' | 'gemini-cli' | 'codex';
 
-const TOOLS: { id: Tool; label: string; filePath: string }[] = [
-  { id: 'openclaw', label: 'OpenClaw', filePath: '~/.openclaw/config.json' },
-  { id: 'claude-code', label: 'Claude Code', filePath: '~/.claude.json' },
-  { id: 'gemini-cli', label: 'Gemini CLI', filePath: '~/.gemini/settings.json' },
-  { id: 'codex', label: 'Codex', filePath: '~/.codex/config.toml' },
-];
+const DOCS_BASE = 'https://gatelet.dev';
 
-// Tools that run inside Docker containers on the same network as Gatelet
-const DOCKER_NATIVE_TOOLS: ReadonlySet<Tool> = new Set<Tool>(['openclaw']);
+const TOOLS: { id: Tool; label: string; filePath: string; docsPath: string }[] = [
+  { id: 'openclaw', label: 'OpenClaw', filePath: './config/mcporter.json', docsPath: '/reference/openclaw-setup/' },
+  { id: 'claude-code', label: 'Claude Code', filePath: '~/.claude.json', docsPath: '/reference/agents/#claude-code' },
+  { id: 'gemini-cli', label: 'Gemini CLI', filePath: '~/.gemini/settings.json', docsPath: '/reference/agents/#gemini-cli' },
+  { id: 'codex', label: 'Codex', filePath: '~/.codex/config.toml', docsPath: '/reference/agents/#codex' },
+];
 
 const STORAGE_KEY = 'gatelet-agent-tab';
 
@@ -24,10 +23,7 @@ function getStoredTab(): Tool {
   return 'openclaw';
 }
 
-function getDefaultUrl(tool: Tool, docker: boolean): string {
-  if (docker && DOCKER_NATIVE_TOOLS.has(tool)) {
-    return 'http://gatelet:4000/mcp';
-  }
+function getDefaultUrl(_tool: Tool, _docker: boolean): string {
   return `http://${window.location.hostname}:4000/mcp`;
 }
 
@@ -37,8 +33,8 @@ function buildConfig(tool: Tool, url: string, key: string): string {
       return JSON.stringify({
         mcpServers: {
           gatelet: {
-            transport: 'streamable-http',
-            url,
+            description: 'Gatelet MCP proxy',
+            baseUrl: url,
             headers: { Authorization: `Bearer ${key}` },
           },
         },
@@ -148,11 +144,19 @@ export function AgentConfig({ apiKey, runtime }: { apiKey: string; runtime?: { d
         ))}
       </div>
 
-      {/* Config file path hint */}
-      <div className="border-b border-white/5 bg-white/[0.02] px-5 py-1.5">
+      {/* Config file path hint + docs link */}
+      <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] px-5 py-1.5">
         <span className="text-[10px] text-zinc-500">
           Config file: <code className="text-zinc-400">{toolMeta.filePath}</code>
         </span>
+        <a
+          href={`${DOCS_BASE}${toolMeta.docsPath}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-[10px] text-indigo-400 transition-colors hover:text-indigo-300"
+        >
+          Setup guide <ExternalLink className="h-2.5 w-2.5" />
+        </a>
       </div>
 
       {/* Config snippet */}

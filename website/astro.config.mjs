@@ -109,6 +109,7 @@ export default defineConfig({
           items: [
             { label: 'Security Model', slug: 'reference/security' },
             { label: 'Agent Setup', slug: 'reference/agents' },
+            { label: 'OpenClaw Setup', slug: 'reference/openclaw-setup' },
             { label: 'CLI', slug: 'reference/cli' },
             { label: 'Architecture', slug: 'reference/architecture' },
             { label: 'Creating a Provider', slug: 'reference/creating-a-provider' },

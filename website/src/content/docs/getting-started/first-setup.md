@@ -31,48 +31,20 @@ Each connection comes with a **default policy** that is intentionally restrictiv
 
 Navigate to **Setup** in the sidebar. The dashboard can install Gatelet's MCP config directly into your agent's configuration file.
 
-Select your agent from the dropdown:
+Select your agent from the tabs in the MCP configurator. The dashboard generates the correct config snippet for each agent:
 
-| Agent | Config file |
-|---|---|
-| OpenClaw | `~/.openclaw/config.json` |
-| Claude Code | `~/.claude.json` |
-| Gemini CLI | `~/.gemini/settings.json` |
-| Codex | `~/.codex/config.toml` |
+| Agent | Config file | Guide |
+|---|---|---|
+| OpenClaw | `./config/mcporter.json` | [Full guide](/reference/openclaw-setup/) |
+| Claude Code | `~/.claude.json` | [Setup details](/reference/agents/#claude-code) |
+| Gemini CLI | `~/.gemini/settings.json` | [Setup details](/reference/agents/#gemini-cli) |
+| Codex | `~/.codex/config.toml` | [Setup details](/reference/agents/#codex) |
 
-Click **Install** to write the MCP config automatically, or copy the configuration manually.
+Copy the configuration snippet and paste it into the config file for your agent, or click **Install** to write it automatically.
 
-### Manual configuration
-
-For any MCP-compatible agent, point it at the Gatelet MCP endpoint with your API key:
-
-**Docker network** (agent runs in a container on the same Docker network):
-```json
-{
-  "mcpServers": {
-    "gatelet": {
-      "url": "http://gatelet:4000/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-**Localhost** (agent runs directly on the host):
-```json
-{
-  "mcpServers": {
-    "gatelet": {
-      "url": "http://localhost:4000/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
+:::note
+OpenClaw requires additional setup beyond just the config file — see the [full OpenClaw setup guide](/reference/openclaw-setup/).
+:::
 
 ## 5. Test the connection
 
