@@ -12,6 +12,16 @@ export interface ParsedMessage {
   hasAttachments: boolean;
 }
 
+export interface SearchResultSummary {
+  id: string | null;
+  threadId: string | null;
+  from: string;
+  subject: string;
+  date: string;
+  snippet: string;
+  labelIds: string[];
+}
+
 export interface ContentFilterResult {
   blocked: boolean;
   reason?: string;

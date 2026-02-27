@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyContentFilters } from '../../src/providers/email/content-filter.js';
-import type { ParsedMessage } from '../../src/providers/email/types.js';
+import { applyContentFilters, filterSearchResult } from '../../src/providers/email/content-filter.js';
+import type { ParsedMessage, SearchResultSummary } from '../../src/providers/email/types.js';
 
 function makeMessage(overrides: Partial<ParsedMessage> = {}): ParsedMessage {
   return {
@@ -188,5 +188,139 @@ describe('applyContentFilters', () => {
       expect(result.blocked).toBe(false);
       expect(result.message!.body).toBe('SSN: 123-45-6789');
     });
+  });
+
+  describe('domain suffix matching', () => {
+    it('blocks subdomain of a blocked domain', () => {
+      const msg = makeMessage({ from: 'noreply@mail.accounts.google.com' });
+      const result = applyContentFilters(msg, {
+        block_sender_domains: ['accounts.google.com'],
+      });
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toContain('accounts.google.com');
+    });
+
+    it('blocks deeply nested subdomain', () => {
+      const msg = makeMessage({ from: 'noreply@a.b.c.accounts.google.com' });
+      const result = applyContentFilters(msg, {
+        block_sender_domains: ['accounts.google.com'],
+      });
+      expect(result.blocked).toBe(true);
+    });
+
+    it('does not block partial domain name match', () => {
+      const msg = makeMessage({ from: 'user@notaccounts.google.com' });
+      const result = applyContentFilters(msg, {
+        block_sender_domains: ['accounts.google.com'],
+      });
+      expect(result.blocked).toBe(false);
+    });
+
+    it('still matches exact domain', () => {
+      const msg = makeMessage({ from: 'user@accounts.google.com' });
+      const result = applyContentFilters(msg, {
+        block_sender_domains: ['accounts.google.com'],
+      });
+      expect(result.blocked).toBe(true);
+    });
+  });
+
+  describe('snippet redaction', () => {
+    it('redacts patterns in snippet via applyContentFilters', () => {
+      const msg = makeMessage({
+        body: 'SSN: 123-45-6789',
+        snippet: 'SSN: 123-45-6789',
+      });
+      const result = applyContentFilters(msg, {
+        redact_patterns: [{ pattern: '\\b\\d{3}-\\d{2}-\\d{4}\\b', replace: '[REDACTED-SSN]' }],
+      });
+      expect(result.blocked).toBe(false);
+      expect(result.message!.body).toBe('SSN: [REDACTED-SSN]');
+      expect(result.message!.snippet).toBe('SSN: [REDACTED-SSN]');
+    });
+
+    it('does not modify snippet when no patterns match', () => {
+      const msg = makeMessage({
+        body: 'No sensitive data',
+        snippet: 'No sensitive data',
+      });
+      const result = applyContentFilters(msg, {
+        redact_patterns: [{ pattern: '\\b\\d{3}-\\d{2}-\\d{4}\\b', replace: '[REDACTED-SSN]' }],
+      });
+      expect(result.message!.snippet).toBe('No sensitive data');
+    });
+  });
+});
+
+function makeSearchResult(overrides: Partial<SearchResultSummary> = {}): SearchResultSummary {
+  return {
+    id: 'msg1',
+    threadId: 'thread1',
+    from: 'Alice <alice@example.com>',
+    subject: 'Hello there',
+    date: 'Mon, 24 Feb 2026 10:00:00 +0100',
+    snippet: 'This is a search result snippet.',
+    labelIds: ['INBOX'],
+    ...overrides,
+  };
+}
+
+describe('filterSearchResult', () => {
+  it('filters result with blocked subject', () => {
+    const result = filterSearchResult(
+      makeSearchResult({ subject: 'Your Verification Code' }),
+      { block_subjects: ['verification code'] },
+    );
+    expect(result.from).toBe('[filtered]');
+    expect(result.subject).toBe('[filtered]');
+    expect(result.snippet).toBe('[content hidden]');
+  });
+
+  it('filters result with blocked sender domain', () => {
+    const result = filterSearchResult(
+      makeSearchResult({ from: 'noreply@accounts.google.com' }),
+      { block_sender_domains: ['accounts.google.com'] },
+    );
+    expect(result.from).toBe('[filtered]');
+    expect(result.subject).toBe('[filtered]');
+    expect(result.snippet).toBe('[content hidden]');
+  });
+
+  it('filters result with blocked sender subdomain', () => {
+    const result = filterSearchResult(
+      makeSearchResult({ from: 'noreply@mail.accounts.google.com' }),
+      { block_sender_domains: ['accounts.google.com'] },
+    );
+    expect(result.from).toBe('[filtered]');
+    expect(result.snippet).toBe('[content hidden]');
+  });
+
+  it('redacts snippet patterns for non-blocked results', () => {
+    const result = filterSearchResult(
+      makeSearchResult({ snippet: 'SSN: 123-45-6789 in message' }),
+      { redact_patterns: [{ pattern: '\\b\\d{3}-\\d{2}-\\d{4}\\b', replace: '[REDACTED-SSN]' }] },
+    );
+    expect(result.snippet).toBe('SSN: [REDACTED-SSN] in message');
+    expect(result.from).toBe('Alice <alice@example.com>');
+    expect(result.subject).toBe('Hello there');
+  });
+
+  it('returns unchanged result with empty guards', () => {
+    const original = makeSearchResult();
+    const result = filterSearchResult(original, {});
+    expect(result.from).toBe('Alice <alice@example.com>');
+    expect(result.subject).toBe('Hello there');
+    expect(result.snippet).toBe('This is a search result snippet.');
+  });
+
+  it('preserves id, threadId, date, and labelIds', () => {
+    const result = filterSearchResult(
+      makeSearchResult({ subject: 'Your OTP code' }),
+      { block_subjects: ['OTP'] },
+    );
+    expect(result.id).toBe('msg1');
+    expect(result.threadId).toBe('thread1');
+    expect(result.date).toBe('Mon, 24 Feb 2026 10:00:00 +0100');
+    expect(result.labelIds).toEqual(['INBOX']);
   });
 });

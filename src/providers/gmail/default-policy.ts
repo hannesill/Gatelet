@@ -8,6 +8,43 @@ operations:
       - field: maxResults
         action: set
         value: 10
+    guards:
+      block_subjects:
+        - password reset
+        - reset your password
+        - verification code
+        - security code
+        - two-factor
+        - 2FA
+        - one-time password
+        - one-time pin
+        - one-time code
+        - OTP
+        - sign-in attempt
+        - login alert
+        - security alert
+        - confirm your identity
+        - einmalcode
+        - sicherheitswarnung
+        - sicherheitscode
+      block_sender_domains:
+        - accounts.google.com
+        - accountprotection.microsoft.com
+      redact_patterns:
+        - pattern: "\\\\b\\\\d{3}-\\\\d{2}-\\\\d{4}\\\\b"
+          replace: "[REDACTED-SSN]"
+        - pattern: "\\\\b\\\\d{4}[\\\\s-]?\\\\d{4}[\\\\s-]?\\\\d{4}[\\\\s-]?\\\\d{4}\\\\b"
+          replace: "[REDACTED-CC]"
+        - pattern: "\\\\b\\\\d{4}[\\\\s-]?\\\\d{6}[\\\\s-]?\\\\d{5}\\\\b"
+          replace: "[REDACTED-CC]"
+        - pattern: "\\\\bCVV[:\\\\s]*\\\\d{3,4}\\\\b"
+          replace: "CVV [REDACTED]"
+        - pattern: "\\\\b[A-Z]{1,2}\\\\d{6,9}\\\\b"
+          replace: "[REDACTED-PASSPORT]"
+        - pattern: "\\\\brouting[:\\\\s#]*\\\\d{9}\\\\b"
+          replace: "routing [REDACTED]"
+        - pattern: "\\\\baccount[:\\\\s#]*\\\\d{8,17}\\\\b"
+          replace: "account [REDACTED]"
 
   read_message:
     allow: true
@@ -20,11 +57,16 @@ operations:
         - two-factor
         - 2FA
         - one-time password
+        - one-time pin
+        - one-time code
         - OTP
         - sign-in attempt
         - login alert
         - security alert
         - confirm your identity
+        - einmalcode
+        - sicherheitswarnung
+        - sicherheitscode
       block_sender_domains:
         - accounts.google.com
         - accountprotection.microsoft.com

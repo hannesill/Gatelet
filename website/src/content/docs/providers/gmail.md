@@ -20,7 +20,7 @@ Search Gmail messages using Gmail search syntax.
 
 Supports Gmail search syntax: `is:unread`, `from:person@example.com`, `subject:meeting`, `after:2026/01/01`, `has:attachment`, `in:inbox`.
 
-Returns message IDs and snippets. Use `gmail_read_message` to get full content.
+Returns message IDs and snippets. Search results are filtered by [content filters](/concepts/content-filters/) when guards are configured. Use `gmail_read_message` to get full content.
 
 ---
 
@@ -135,7 +135,7 @@ Archive a Gmail message by removing the INBOX label. The message remains accessi
 
 ## Content filters
 
-The `read_message` operation supports a content filter pipeline configured via `guards`. See [Content Filters](/concepts/content-filters/) for full documentation.
+The `search` and `read_message` operations support a content filter pipeline configured via `guards`. See [Content Filters](/concepts/content-filters/) for full documentation.
 
 ## Default policy
 
@@ -150,6 +150,43 @@ operations:
       - field: maxResults
         action: set
         value: 10
+    guards:
+      block_subjects:
+        - password reset
+        - reset your password
+        - verification code
+        - security code
+        - two-factor
+        - 2FA
+        - one-time password
+        - one-time pin
+        - one-time code
+        - OTP
+        - sign-in attempt
+        - login alert
+        - security alert
+        - confirm your identity
+        - einmalcode
+        - sicherheitswarnung
+        - sicherheitscode
+      block_sender_domains:
+        - accounts.google.com
+        - accountprotection.microsoft.com
+      redact_patterns:
+        - pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          replace: "[REDACTED-SSN]"
+        - pattern: "\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b"
+          replace: "[REDACTED-CC]"
+        - pattern: "\\b\\d{4}[\\s-]?\\d{6}[\\s-]?\\d{5}\\b"
+          replace: "[REDACTED-CC]"
+        - pattern: "\\bCVV[:\\s]*\\d{3,4}\\b"
+          replace: "CVV [REDACTED]"
+        - pattern: "\\b[A-Z]{1,2}\\d{6,9}\\b"
+          replace: "[REDACTED-PASSPORT]"
+        - pattern: "\\brouting[:\\s#]*\\d{9}\\b"
+          replace: "routing [REDACTED]"
+        - pattern: "\\baccount[:\\s#]*\\d{8,17}\\b"
+          replace: "account [REDACTED]"
 
   read_message:
     allow: true
@@ -162,11 +199,16 @@ operations:
         - two-factor
         - 2FA
         - one-time password
+        - one-time pin
+        - one-time code
         - OTP
         - sign-in attempt
         - login alert
         - security alert
         - confirm your identity
+        - einmalcode
+        - sicherheitswarnung
+        - sicherheitscode
       block_sender_domains:
         - accounts.google.com
         - accountprotection.microsoft.com
@@ -255,6 +297,13 @@ account: me@gmail.com
 operations:
   search:
     allow: true
+    guards:
+      block_subjects:
+        - password reset
+        - verification code
+        - 2FA
+      block_sender_domains:
+        - accounts.google.com
 
   read_message:
     allow: true

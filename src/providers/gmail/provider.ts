@@ -4,7 +4,7 @@ import { gmailTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
 import { presets as gmailPresets } from './presets.js';
 import { parseMessage } from './message-parser.js';
-import { applyContentFilters } from '../email/content-filter.js';
+import { applyContentFilters, filterSearchResult } from '../email/content-filter.js';
 
 /** Strip CR/LF to prevent email header injection */
 function sanitizeHeader(value: string): string {
@@ -104,6 +104,11 @@ export class GmailProvider implements Provider {
             };
           }),
         );
+
+        if (guards) {
+          const filtered = summaries.map((s) => filterSearchResult(s, guards));
+          return { messages: filtered, resultSizeEstimate: res.data.resultSizeEstimate };
+        }
 
         return { messages: summaries, resultSizeEstimate: res.data.resultSizeEstimate };
       }

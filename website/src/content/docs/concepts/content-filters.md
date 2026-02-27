@@ -3,7 +3,7 @@ title: Content Filters & Guards
 description: Email content filtering, subject blocking, domain blocking, PII redaction, label guards, and organizer guards
 ---
 
-Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters protect sensitive content like 2FA codes, password resets, and financial data.
+Gmail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters protect sensitive content like 2FA codes, password resets, and financial data.
 
 ## Filter pipeline
 
@@ -11,16 +11,28 @@ Messages pass through three stages in order:
 
 1. **Subject blocking** — if the subject contains any blocked pattern, the entire message is blocked
 2. **Sender domain blocking** — if the sender's email domain matches, the message is blocked
-3. **PII redaction** — regex patterns replace sensitive data in the message body
+3. **PII redaction** — regex patterns replace sensitive data in the message body and snippet
 
 Blocked messages return a notice — the agent knows the message exists but cannot read its content.
 
 ## Configuration
 
-Content filters are configured as `guards` on the `read_message` operation in the policy YAML:
+Content filters are configured as `guards` on the `search` and `read_message` operations in the policy YAML:
 
 ```yaml
 operations:
+  search:
+    allow: true
+    guards:
+      block_subjects:
+        - password reset
+        - verification code
+      block_sender_domains:
+        - accounts.google.com
+      redact_patterns:
+        - pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          replace: "[REDACTED-SSN]"
+
   read_message:
     allow: true
     guards:
@@ -54,6 +66,11 @@ The default Gmail policy blocks these subjects:
 - `login alert`
 - `security alert`
 - `confirm your identity`
+- `one-time pin`
+- `one-time code`
+- `einmalcode`
+- `sicherheitswarnung`
+- `sicherheitscode`
 
 ### Adding custom subjects
 
@@ -69,7 +86,7 @@ guards:
 
 ## Sender domain blocking
 
-If the sender's email domain matches a blocked domain, the entire message is blocked.
+If the sender's email domain matches a blocked domain (or is a subdomain of it), the entire message is blocked. For example, blocking `accounts.google.com` also blocks `mail.accounts.google.com`.
 
 ### Default blocked domains
 
@@ -88,7 +105,7 @@ guards:
 
 ## PII redaction
 
-Regex patterns match against the message body and replace sensitive data. Patterns use JavaScript regex syntax with case-insensitive and global flags.
+Regex patterns match against the message body and snippet, replacing sensitive data. Patterns use JavaScript regex syntax with case-insensitive and global flags.
 
 ### Default redaction patterns
 
@@ -139,6 +156,30 @@ account: me@gmail.com
 operations:
   search:
     allow: true
+    guards:
+      block_subjects:
+        - password reset
+        - reset your password
+        - verification code
+        - security code
+        - two-factor
+        - 2FA
+        - OTP
+        - sign-in attempt
+        - login alert
+        - security alert
+        - confidential memo
+      block_sender_domains:
+        - accounts.google.com
+        - accountprotection.microsoft.com
+        - hr-internal.company.com
+      redact_patterns:
+        - pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          replace: "[REDACTED-SSN]"
+        - pattern: "\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b"
+          replace: "[REDACTED-CC]"
+        - pattern: "\\bPROJECT-[A-Z]+-\\d+\\b"
+          replace: "[REDACTED-PROJECT]"
 
   read_message:
     allow: true

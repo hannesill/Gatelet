@@ -163,7 +163,7 @@ create_event:
 
 ## Email Content Filters
 
-Gmail's `read_message` operation runs messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML.
+Gmail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML.
 
 ### Filter Pipeline
 
@@ -178,7 +178,7 @@ Blocked messages return a notice — the agent knows the message exists but cann
 <details>
 <summary><strong>Default blocked subjects</strong></summary>
 
-`password reset` · `reset your password` · `verification code` · `security code` · `two-factor` · `2FA` · `one-time password` · `OTP` · `sign-in attempt` · `login alert` · `security alert` · `confirm your identity`
+`password reset` · `reset your password` · `verification code` · `security code` · `two-factor` · `2FA` · `one-time password` · `one-time pin` · `one-time code` · `OTP` · `sign-in attempt` · `login alert` · `security alert` · `confirm your identity` · `einmalcode` · `sicherheitswarnung` · `sicherheitscode`
 
 </details>
 
@@ -212,6 +212,17 @@ Edit the policy YAML for any Gmail connection in the admin dashboard:
 
 ```yaml
 operations:
+  search:
+    allow: true
+    guards:
+      block_subjects:
+        - my custom blocked subject
+      block_sender_domains:
+        - spam-domain.com
+      redact_patterns:
+        - pattern: "\\bSECRET-\\d+\\b"
+          replace: "[REDACTED]"
+
   read_message:
     allow: true
     guards:
