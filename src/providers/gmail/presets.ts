@@ -56,6 +56,7 @@ export const presets: Record<string, string> = {
     search: SEARCH_OP,
     read_message: { allow: true, guards: READ_MESSAGE_GUARDS },
     list_drafts: LIST_DRAFTS_OP,
+    list_labels: { allow: true },
   }),
 
   'standard': defaultPolicyYaml,
@@ -99,5 +100,10 @@ export const presets: Record<string, string> = {
       guards: { protected_labels: ['TRASH', 'SPAM'] },
     },
     archive: { allow: true },
+    move: {
+      allow: true,
+      guards: { protected_labels: ['TRASH', 'SPAM'] },
+    },
+    list_labels: { allow: true },
   }),
 };

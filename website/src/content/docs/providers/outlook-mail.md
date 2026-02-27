@@ -130,6 +130,45 @@ Archive a message by moving it to the Archive folder. The message remains access
 |---|---|---|---|
 | `messageId` | string | yes | Outlook message ID to archive |
 
+---
+
+### `outlook_mail_list_folders`
+
+List all mail folders in the Outlook account. Returns folder IDs, display names, and unread counts. Use the returned folder IDs with `outlook_mail_move` or `outlook_mail_search`.
+
+**Policy operation:** `list_folders`
+
+This tool takes no parameters.
+
+---
+
+### `outlook_mail_move`
+
+Move a message to a different folder. Use well-known folder names (e.g. `Inbox`, `Archive`, `SentItems`) or folder IDs from `outlook_mail_list_folders`.
+
+**Policy operation:** `move`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `messageId` | string | yes | Outlook message ID to move |
+| `folderId` | string | yes | Destination folder ID or well-known name |
+
+The default policy includes a `protected_folders` guard that prevents moving messages to `deleteditems` (Trash) and `junkemail` (Spam).
+
+---
+
+### `outlook_mail_flag`
+
+Set or clear the follow-up flag and importance level on a message.
+
+**Policy operation:** `flag`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `messageId` | string | yes | Outlook message ID |
+| `flagStatus` | string | no | `"flagged"`, `"notFlagged"`, or `"complete"` |
+| `importance` | string | no | `"low"`, `"normal"`, or `"high"` |
+
 ## Content filters
 
 The `search` and `read_message` operations support the same content filter pipeline as Gmail, configured via `guards`. See [Content Filters](/concepts/content-filters/) for full documentation.
@@ -281,6 +320,19 @@ operations:
 
   archive:
     allow: true
+
+  list_folders:
+    allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_folders:
+        - deleteditems
+        - junkemail
+
+  flag:
+    allow: true
 ```
 
 ## Not implemented
@@ -346,5 +398,18 @@ operations:
     allow: true
 
   archive:
+    allow: true
+
+  list_folders:
+    allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_folders:
+        - deleteditems
+        - junkemail
+
+  flag:
     allow: true
 ```

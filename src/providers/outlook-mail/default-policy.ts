@@ -148,4 +148,17 @@ operations:
 
   archive:
     allow: true
+
+  list_folders:
+    allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_folders:
+        - deleteditems
+        - junkemail
+
+  flag:
+    allow: true
 `;

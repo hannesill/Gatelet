@@ -14,6 +14,9 @@ vi.mock('googleapis', () => {
     list: vi.fn(),
     get: vi.fn(),
   };
+  const mockLabels = {
+    list: vi.fn(),
+  };
 
   return {
     google: {
@@ -27,15 +30,17 @@ vi.mock('googleapis', () => {
         users: {
           messages: mockMessages,
           drafts: mockDrafts,
+          labels: mockLabels,
         },
       })),
     },
     _mockMessages: mockMessages,
     _mockDrafts: mockDrafts,
+    _mockLabels: mockLabels,
   };
 });
 
-import { _mockMessages as mockMessages, _mockDrafts as mockDrafts } from 'googleapis';
+import { _mockMessages as mockMessages, _mockDrafts as mockDrafts, _mockLabels as mockLabels } from 'googleapis';
 type MockFn = ReturnType<typeof vi.fn>;
 
 const provider = new GmailProvider();
@@ -61,8 +66,8 @@ describe('GmailProvider', () => {
       expect(provider.displayName).toBe('Gmail');
     });
 
-    it('has all 8 tools with correct names', () => {
-      expect(provider.tools).toHaveLength(8);
+    it('has all 10 tools with correct names', () => {
+      expect(provider.tools).toHaveLength(10);
       const names = provider.tools.map((t) => t.name);
       expect(names).toEqual([
         'gmail_search',
@@ -73,6 +78,8 @@ describe('GmailProvider', () => {
         'gmail_reply',
         'gmail_label',
         'gmail_archive',
+        'gmail_move',
+        'gmail_list_labels',
       ]);
     });
 
@@ -735,6 +742,73 @@ describe('GmailProvider', () => {
       expect(result.archived).toBe(true);
       const call = (mockMessages.modify as MockFn).mock.calls[0][0];
       expect(call.requestBody.removeLabelIds).toEqual(['INBOX']);
+    });
+  });
+
+  describe('gmail_move', () => {
+    it('adds target label and removes INBOX', async () => {
+      (mockMessages.modify as MockFn).mockResolvedValue({
+        data: { id: 'msg1', threadId: 't1', labelIds: ['Label_42'] },
+      });
+
+      const result = await provider.execute('gmail_move', {
+        messageId: 'msg1',
+        labelId: 'Label_42',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      expect(result.movedTo).toBe('Label_42');
+      expect(result.labelIds).toEqual(['Label_42']);
+
+      const call = (mockMessages.modify as MockFn).mock.calls[0][0];
+      expect(call.requestBody.addLabelIds).toEqual(['Label_42']);
+      expect(call.requestBody.removeLabelIds).toEqual(['INBOX']);
+    });
+
+    it('blocks protected labels (TRASH)', async () => {
+      await expect(
+        provider.execute('gmail_move', {
+          messageId: 'msg1',
+          labelId: 'TRASH',
+        }, creds, { protected_labels: ['TRASH', 'SPAM'] }),
+      ).rejects.toThrow('Cannot move to protected label: TRASH');
+    });
+
+    it('blocks protected labels (SPAM)', async () => {
+      await expect(
+        provider.execute('gmail_move', {
+          messageId: 'msg1',
+          labelId: 'SPAM',
+        }, creds, { protected_labels: ['TRASH', 'SPAM'] }),
+      ).rejects.toThrow('Cannot move to protected label: SPAM');
+    });
+  });
+
+  describe('gmail_list_labels', () => {
+    it('returns all labels', async () => {
+      (mockLabels.list as MockFn).mockResolvedValue({
+        data: {
+          labels: [
+            { id: 'INBOX', name: 'INBOX', type: 'system' },
+            { id: 'STARRED', name: 'STARRED', type: 'system' },
+            { id: 'Label_1', name: 'Newsletters', type: 'user' },
+          ],
+        },
+      });
+
+      const result = await provider.execute('gmail_list_labels', {}, creds) as any;
+
+      expect(result.labels).toHaveLength(3);
+      expect(result.labels[0]).toEqual({ id: 'INBOX', name: 'INBOX', type: 'system' });
+      expect(result.labels[2]).toEqual({ id: 'Label_1', name: 'Newsletters', type: 'user' });
+    });
+
+    it('returns empty array when no labels', async () => {
+      (mockLabels.list as MockFn).mockResolvedValue({ data: {} });
+
+      const result = await provider.execute('gmail_list_labels', {}, creds) as any;
+
+      expect(result.labels).toEqual([]);
     });
   });
 

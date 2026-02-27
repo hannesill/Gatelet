@@ -76,7 +76,8 @@ export const gmailTools: ToolDefinition[] = [
   {
     name: 'gmail_label',
     description:
-      'Add or remove labels from a Gmail message. Use label IDs (e.g. "STARRED", "IMPORTANT", or custom label IDs).',
+      'Add or remove labels from a Gmail message. Use label IDs (e.g. "STARRED", "IMPORTANT", or custom label IDs). ' +
+      'To move a message to a folder, use gmail_move instead.',
     policyOperation: 'label',
     inputSchema: {
       messageId: z.string().describe('Gmail message ID'),
@@ -92,5 +93,24 @@ export const gmailTools: ToolDefinition[] = [
     inputSchema: {
       messageId: z.string().describe('Gmail message ID to archive'),
     },
+  },
+  {
+    name: 'gmail_move',
+    description:
+      'Move a Gmail message to a label/folder by adding the target label and removing INBOX. ' +
+      'Use gmail_list_labels to discover available label IDs.',
+    policyOperation: 'move',
+    inputSchema: {
+      messageId: z.string().describe('Gmail message ID to move'),
+      labelId: z.string().describe('Destination label ID (from gmail_list_labels results)'),
+    },
+  },
+  {
+    name: 'gmail_list_labels',
+    description:
+      'List all labels in the Gmail account. Returns label IDs, names, and types (system vs user). ' +
+      'Use label IDs from this list with gmail_move or gmail_label to organize messages.',
+    policyOperation: 'list_labels',
+    inputSchema: {},
   },
 ];

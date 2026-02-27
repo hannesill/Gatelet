@@ -109,7 +109,7 @@ Reply is disabled in the default policy. The default mutations force `replyAll: 
 
 ### `gmail_label`
 
-Add or remove labels from a Gmail message.
+Add or remove labels from a Gmail message. To move a message to a folder, use `gmail_move` instead.
 
 **Policy operation:** `label`
 
@@ -132,6 +132,31 @@ Archive a Gmail message by removing the INBOX label. The message remains accessi
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `messageId` | string | yes | Gmail message ID to archive |
+
+---
+
+### `gmail_move`
+
+Move a Gmail message to a label/folder. Adds the target label and removes `INBOX` in a single operation. Use `gmail_list_labels` to discover available label IDs.
+
+**Policy operation:** `move`
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `messageId` | string | yes | Gmail message ID to move |
+| `labelId` | string | yes | Destination label ID (from `gmail_list_labels` results) |
+
+The default policy includes a `protected_labels` guard that prevents moving messages to `TRASH` and `SPAM`.
+
+---
+
+### `gmail_list_labels`
+
+List all labels in the Gmail account. Returns label IDs, names, and types (system vs user). Use the returned label IDs with `gmail_move` or `gmail_label` to organize messages.
+
+**Policy operation:** `list_labels`
+
+This tool takes no parameters.
 
 ## Content filters
 
@@ -282,6 +307,16 @@ operations:
 
   archive:
     allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_labels:
+        - TRASH
+        - SPAM
+
+  list_labels:
+    allow: true
 ```
 
 ## Not implemented
@@ -350,5 +385,15 @@ operations:
         - SPAM
 
   archive:
+    allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_labels:
+        - TRASH
+        - SPAM
+
+  list_labels:
     allow: true
 ```

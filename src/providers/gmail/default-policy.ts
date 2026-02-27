@@ -148,4 +148,14 @@ operations:
 
   archive:
     allow: true
+
+  move:
+    allow: true
+    guards:
+      protected_labels:
+        - TRASH
+        - SPAM
+
+  list_labels:
+    allow: true
 `;

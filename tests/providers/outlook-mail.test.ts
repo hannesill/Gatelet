@@ -43,8 +43,8 @@ describe('OutlookMailProvider', () => {
       expect(provider.displayName).toBe('Outlook Mail');
     });
 
-    it('has all 8 tools with correct names', () => {
-      expect(provider.tools).toHaveLength(8);
+    it('has all 11 tools with correct names', () => {
+      expect(provider.tools).toHaveLength(11);
       const names = provider.tools.map((t) => t.name);
       expect(names).toEqual([
         'outlook_mail_search',
@@ -55,6 +55,9 @@ describe('OutlookMailProvider', () => {
         'outlook_mail_reply',
         'outlook_mail_categorize',
         'outlook_mail_archive',
+        'outlook_mail_list_folders',
+        'outlook_mail_move',
+        'outlook_mail_flag',
       ]);
     });
 
@@ -940,6 +943,181 @@ describe('OutlookMailProvider', () => {
       expect(fetchCall[1].method).toBe('POST');
       const body = JSON.parse(fetchCall[1].body);
       expect(body.destinationId).toBe('archive');
+    });
+  });
+
+  describe('outlook_mail_list_folders', () => {
+    it('returns all folders', async () => {
+      mockFetch({
+        value: [
+          { id: 'AAA', displayName: 'Inbox', totalItemCount: 42, unreadItemCount: 5 },
+          { id: 'BBB', displayName: 'Newsletters', totalItemCount: 100, unreadItemCount: 0 },
+        ],
+      });
+
+      const result = await provider.execute('outlook_mail_list_folders', {}, creds) as any;
+
+      expect(result.folders).toHaveLength(2);
+      expect(result.folders[0]).toEqual({
+        id: 'AAA',
+        displayName: 'Inbox',
+        totalItemCount: 42,
+        unreadItemCount: 5,
+      });
+      expect(result.folders[1].displayName).toBe('Newsletters');
+
+      const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(fetchCall[0]).toContain('/me/mailFolders');
+      expect(fetchCall[0]).toContain('displayName');
+    });
+
+    it('returns empty array when no folders', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_list_folders', {}, creds) as any;
+
+      expect(result.folders).toEqual([]);
+    });
+  });
+
+  describe('outlook_mail_move', () => {
+    it('moves message to specified folder', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_move', {
+        messageId: 'msg1',
+        folderId: 'Newsletters',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      expect(result.movedTo).toBe('Newsletters');
+
+      const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(fetchCall[0]).toBe('https://graph.microsoft.com/v1.0/me/messages/msg1/move');
+      expect(fetchCall[1].method).toBe('POST');
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.destinationId).toBe('Newsletters');
+    });
+
+    it('blocks protected folders (deleteditems)', async () => {
+      await expect(
+        provider.execute('outlook_mail_move', {
+          messageId: 'msg1',
+          folderId: 'deleteditems',
+        }, creds, { protected_folders: ['deleteditems', 'junkemail'] }),
+      ).rejects.toThrow('Cannot move to protected folder: deleteditems');
+    });
+
+    it('blocks protected folders case-insensitively', async () => {
+      await expect(
+        provider.execute('outlook_mail_move', {
+          messageId: 'msg1',
+          folderId: 'JunkEmail',
+        }, creds, { protected_folders: ['deleteditems', 'junkemail'] }),
+      ).rejects.toThrow('Cannot move to protected folder: JunkEmail');
+    });
+
+    it('validates messageId against path traversal', async () => {
+      await expect(
+        provider.execute('outlook_mail_move', {
+          messageId: '../admin',
+          folderId: 'Inbox',
+        }, creds),
+      ).rejects.toThrow('Invalid messageId');
+    });
+  });
+
+  describe('outlook_mail_flag', () => {
+    it('sets flag status', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_flag', {
+        messageId: 'msg1',
+        flagStatus: 'flagged',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      expect(result.flagStatus).toBe('flagged');
+
+      const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(fetchCall[0]).toBe('https://graph.microsoft.com/v1.0/me/messages/msg1');
+      expect(fetchCall[1].method).toBe('PATCH');
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.flag).toEqual({ flagStatus: 'flagged' });
+    });
+
+    it('sets importance', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_flag', {
+        messageId: 'msg1',
+        importance: 'high',
+      }, creds) as any;
+
+      expect(result.messageId).toBe('msg1');
+      expect(result.importance).toBe('high');
+
+      const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.importance).toBe('high');
+      expect(body.flag).toBeUndefined();
+    });
+
+    it('sets both flag and importance', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_flag', {
+        messageId: 'msg1',
+        flagStatus: 'flagged',
+        importance: 'high',
+      }, creds) as any;
+
+      expect(result.flagStatus).toBe('flagged');
+      expect(result.importance).toBe('high');
+
+      const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.flag).toEqual({ flagStatus: 'flagged' });
+      expect(body.importance).toBe('high');
+    });
+
+    it('returns early with no flag or importance', async () => {
+      mockFetch({});
+
+      const result = await provider.execute('outlook_mail_flag', {
+        messageId: 'msg1',
+      }, creds) as any;
+
+      expect(result.modified).toBe(false);
+      expect(result.reason).toBe('No flag or importance to set');
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it('validates messageId against path traversal', async () => {
+      await expect(
+        provider.execute('outlook_mail_flag', {
+          messageId: '..\\admin',
+          flagStatus: 'flagged',
+        }, creds),
+      ).rejects.toThrow('Invalid messageId');
+    });
+
+    it('rejects invalid flagStatus', async () => {
+      await expect(
+        provider.execute('outlook_mail_flag', {
+          messageId: 'msg1',
+          flagStatus: 'urgent',
+        }, creds),
+      ).rejects.toThrow('Invalid flagStatus: urgent');
+    });
+
+    it('rejects invalid importance', async () => {
+      await expect(
+        provider.execute('outlook_mail_flag', {
+          messageId: 'msg1',
+          importance: 'critical',
+        }, creds),
+      ).rejects.toThrow('Invalid importance: critical');
     });
   });
 

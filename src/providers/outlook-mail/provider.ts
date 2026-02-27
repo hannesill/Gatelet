@@ -296,6 +296,75 @@ export class OutlookMailProvider implements Provider {
         return { messageId, archived: true };
       }
 
+      case 'outlook_mail_list_folders': {
+        const data = await graphFetch(
+          '/me/mailFolders?$top=100&$select=id,displayName,totalItemCount,unreadItemCount',
+          credentials,
+        ) as { value?: Array<Record<string, unknown>> };
+
+        const folders = (data.value ?? []).map((f) => ({
+          id: f.id as string,
+          displayName: f.displayName as string,
+          totalItemCount: f.totalItemCount as number,
+          unreadItemCount: f.unreadItemCount as number,
+        }));
+
+        return { folders };
+      }
+
+      case 'outlook_mail_move': {
+        const messageId = params.messageId as string;
+        const folderId = params.folderId as string;
+
+        validatePathSegment(messageId, 'messageId');
+
+        // Check protected folders
+        const protectedFolders = (guards?.protected_folders as string[]) ?? ['deleteditems', 'junkemail'];
+        if (protectedFolders.some((pf) => pf.toLowerCase() === folderId.toLowerCase())) {
+          throw new Error(`Cannot move to protected folder: ${folderId}`);
+        }
+
+        await graphFetch(`/me/messages/${messageId}/move`, credentials, {
+          method: 'POST',
+          body: { destinationId: folderId },
+        });
+
+        return { messageId, movedTo: folderId };
+      }
+
+      case 'outlook_mail_flag': {
+        const messageId = params.messageId as string;
+        const flagStatus = params.flagStatus as string | undefined;
+        const importance = params.importance as string | undefined;
+
+        if (!flagStatus && !importance) {
+          return { messageId, modified: false, reason: 'No flag or importance to set' };
+        }
+
+        validatePathSegment(messageId, 'messageId');
+
+        const VALID_FLAG_STATUSES = ['flagged', 'notFlagged', 'complete'];
+        const VALID_IMPORTANCES = ['low', 'normal', 'high'];
+
+        if (flagStatus && !VALID_FLAG_STATUSES.includes(flagStatus)) {
+          throw new Error(`Invalid flagStatus: ${flagStatus}. Must be one of: ${VALID_FLAG_STATUSES.join(', ')}`);
+        }
+        if (importance && !VALID_IMPORTANCES.includes(importance)) {
+          throw new Error(`Invalid importance: ${importance}. Must be one of: ${VALID_IMPORTANCES.join(', ')}`);
+        }
+
+        const body: Record<string, unknown> = {};
+        if (flagStatus) body.flag = { flagStatus };
+        if (importance) body.importance = importance;
+
+        await graphFetch(`/me/messages/${messageId}`, credentials, {
+          method: 'PATCH',
+          body,
+        });
+
+        return { messageId, flagStatus, importance };
+      }
+
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }

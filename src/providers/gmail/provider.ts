@@ -339,6 +339,43 @@ export class GmailProvider implements Provider {
         };
       }
 
+      case 'gmail_move': {
+        const messageId = params.messageId as string;
+        const labelId = params.labelId as string;
+
+        // Check protected labels — agent cannot move messages to TRASH or SPAM
+        const protectedLabels = (guards?.protected_labels as string[]) ?? ['TRASH', 'SPAM'];
+        if (protectedLabels.includes(labelId)) {
+          throw new Error(`Cannot move to protected label: ${labelId}`);
+        }
+
+        const res = await gmail.users.messages.modify({
+          userId: 'me',
+          id: messageId,
+          requestBody: {
+            addLabelIds: [labelId],
+            removeLabelIds: ['INBOX'],
+          },
+        });
+
+        return {
+          messageId: res.data.id,
+          threadId: res.data.threadId,
+          labelIds: res.data.labelIds,
+          movedTo: labelId,
+        };
+      }
+
+      case 'gmail_list_labels': {
+        const res = await gmail.users.labels.list({ userId: 'me' });
+        const labels = (res.data.labels ?? []).map((l) => ({
+          id: l.id,
+          name: l.name,
+          type: l.type,
+        }));
+        return { labels };
+      }
+
       case 'gmail_list_drafts': {
         const maxResults = Math.min((params.maxResults as number) ?? 10, 50);
 

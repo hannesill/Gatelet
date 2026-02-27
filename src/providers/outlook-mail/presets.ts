@@ -58,6 +58,7 @@ export const presets: Record<string, string> = {
     search: SEARCH_OP,
     read_message: { allow: true, guards: READ_MESSAGE_GUARDS },
     list_drafts: LIST_DRAFTS_OP,
+    list_folders: { allow: true },
   }),
 
   'standard': defaultPolicyYaml,
@@ -98,5 +99,11 @@ export const presets: Record<string, string> = {
     },
     categorize: { allow: true },
     archive: { allow: true },
+    list_folders: { allow: true },
+    move: {
+      allow: true,
+      guards: { protected_folders: ['deleteditems', 'junkemail'] },
+    },
+    flag: { allow: true },
   }),
 };

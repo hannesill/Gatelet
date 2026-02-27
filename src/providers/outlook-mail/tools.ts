@@ -94,4 +94,35 @@ export const outlookMailTools: ToolDefinition[] = [
       messageId: z.string().describe('Outlook message ID to archive'),
     },
   },
+  {
+    name: 'outlook_mail_list_folders',
+    description:
+      'List all mail folders in the Outlook account. Returns folder IDs, display names, and unread counts. ' +
+      'Use folder IDs from this list with outlook_mail_move or outlook_mail_search.',
+    policyOperation: 'list_folders',
+    inputSchema: {},
+  },
+  {
+    name: 'outlook_mail_move',
+    description:
+      'Move an Outlook message to a different folder. Use well-known folder names ' +
+      '(e.g. "Inbox", "Archive", "SentItems") or folder IDs from outlook_mail_list_folders.',
+    policyOperation: 'move',
+    inputSchema: {
+      messageId: z.string().describe('Outlook message ID to move'),
+      folderId: z.string().describe('Destination folder ID or well-known name (e.g. "Inbox", "Archive")'),
+    },
+  },
+  {
+    name: 'outlook_mail_flag',
+    description:
+      'Set or clear the follow-up flag and importance level on an Outlook message. ' +
+      'Use flagStatus "flagged" to flag, "complete" to mark done, or "notFlagged" to clear.',
+    policyOperation: 'flag',
+    inputSchema: {
+      messageId: z.string().describe('Outlook message ID'),
+      flagStatus: z.enum(['flagged', 'notFlagged', 'complete']).optional().describe('Flag status: "flagged", "notFlagged", or "complete"'),
+      importance: z.enum(['low', 'normal', 'high']).optional().describe('Message importance: "low", "normal", or "high"'),
+    },
+  },
 ];

@@ -11,11 +11,11 @@ import { defaultPolicyYaml as outlookMailDefault } from '../../src/providers/out
 
 const PRESET_KEYS = ['read-only', 'standard', 'full-access'];
 
-const READ_OPS_GMAIL = ['search', 'read_message', 'list_drafts'];
-const WRITE_OPS_GMAIL = ['create_draft', 'send', 'reply', 'label', 'archive'];
+const READ_OPS_GMAIL = ['search', 'read_message', 'list_drafts', 'list_labels'];
+const WRITE_OPS_GMAIL = ['create_draft', 'send', 'reply', 'label', 'archive', 'move'];
 
-const READ_OPS_OUTLOOK_MAIL = ['search', 'read_message', 'list_drafts'];
-const WRITE_OPS_OUTLOOK_MAIL = ['create_draft', 'send', 'reply', 'categorize', 'archive'];
+const READ_OPS_OUTLOOK_MAIL = ['search', 'read_message', 'list_drafts', 'list_folders'];
+const WRITE_OPS_OUTLOOK_MAIL = ['create_draft', 'send', 'reply', 'categorize', 'archive', 'move', 'flag'];
 
 const READ_OPS_CALENDAR = ['list_calendars', 'list_events', 'get_event'];
 const WRITE_OPS_CALENDAR = ['create_event', 'update_event'];
