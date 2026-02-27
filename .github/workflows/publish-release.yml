@@ -1,0 +1,47 @@
+name: Publish Release Tarball
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Create release tarball
+        run: |
+          mkdir -p gatelet
+          cp -r dist gatelet/
+          cp package.json package-lock.json gatelet/
+          mkdir -p gatelet/dashboard
+          cp dashboard/package.json gatelet/dashboard/
+          cp -r service gatelet/
+          tar -czf gatelet.tar.gz gatelet
+
+      - name: Upload release asset
+        run: gh release upload "$TAG" gatelet.tar.gz --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
