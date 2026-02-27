@@ -7,6 +7,7 @@ export interface ConnectionWithMeta {
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
   tokenExpiresAt?: number;
+  needsReauth: boolean;
   enabled: boolean;
   created_at: string;
   updated_at: string;

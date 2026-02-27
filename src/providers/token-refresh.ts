@@ -1,6 +1,6 @@
 import type { Provider } from './types.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
-import { updateConnectionCredentials } from '../db/connections.js';
+import { updateConnectionCredentials, setConnectionNeedsReauth } from '../db/connections.js';
 
 const AUTH_ERROR_PATTERNS = ['invalid_grant', 'Token has been expired', '401'];
 
@@ -36,7 +36,15 @@ export async function refreshConnectionCredentials(
     refreshLocks.set(connectionId, refreshPromise);
   }
 
-  const newCreds = await refreshPromise;
-  updateConnectionCredentials(connectionId, newCreds);
-  return newCreds;
+  try {
+    const newCreds = await refreshPromise;
+    updateConnectionCredentials(connectionId, newCreds);
+    setConnectionNeedsReauth(connectionId, false);
+    return newCreds;
+  } catch (err) {
+    if (isAuthError(err)) {
+      setConnectionNeedsReauth(connectionId, true);
+    }
+    throw err;
+  }
 }

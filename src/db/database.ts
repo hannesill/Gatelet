@@ -71,6 +71,11 @@ export function getDb(): Database.Database {
   } catch {
     // Column already exists
   }
+  try {
+    db.exec(`ALTER TABLE connections ADD COLUMN needs_reauth INTEGER NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists
+  }
 
   return db;
 }

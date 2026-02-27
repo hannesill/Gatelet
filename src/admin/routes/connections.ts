@@ -11,6 +11,7 @@ import {
   getConnectionSettings,
   updateConnectionSettings,
   toggleConnectionEnabled,
+  setConnectionNeedsReauth,
 } from '../../db/connections.js';
 import { getProvider } from '../../providers/registry.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../../db/settings.js';
@@ -329,6 +330,7 @@ app.get('/connections/oauth/:providerId/callback', async (c) => {
   let conn;
   if (existing) {
     updateConnectionCredentials(existing.id, newCredentials);
+    setConnectionNeedsReauth(existing.id, false);
     conn = existing;
   } else {
     conn = createConnection({

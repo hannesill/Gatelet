@@ -16,6 +16,7 @@ interface ConnectionWithMeta {
   totalTools: number;
   tokenStatus: 'valid' | 'expired' | 'unknown';
   tokenExpiresAt?: number;
+  needsReauth: boolean;
   enabled: boolean;
   policy_yaml: string;
   created_at: string;
@@ -63,6 +64,7 @@ app.get('/status', (c) => {
       totalTools,
       tokenStatus: tokenInfo.status,
       tokenExpiresAt: tokenInfo.expiresAt,
+      needsReauth: conn.needs_reauth === 1,
       enabled: conn.enabled !== 0,
       policy_yaml: conn.policy_yaml,
       created_at: conn.created_at,

@@ -29,6 +29,7 @@ vi.mock('../../src/db/connections.js', async (importOriginal) => {
     ...actual,
     getConnectionWithCredentials: vi.fn(),
     updateConnectionCredentials: vi.fn(),
+    setConnectionNeedsReauth: vi.fn(),
   };
 });
 
@@ -53,7 +54,7 @@ vi.mock('../../src/db/settings.js', async (importOriginal) => {
   };
 });
 
-import { getConnectionWithCredentials, updateConnectionCredentials } from '../../src/db/connections.js';
+import { getConnectionWithCredentials, updateConnectionCredentials, setConnectionNeedsReauth } from '../../src/db/connections.js';
 import { getProvider } from '../../src/providers/registry.js';
 import { insertAuditEntry } from '../../src/db/audit.js';
 
@@ -61,6 +62,7 @@ const mockedGetConn = vi.mocked(getConnectionWithCredentials);
 const mockedGetProvider = vi.mocked(getProvider);
 const mockedAudit = vi.mocked(insertAuditEntry);
 const mockedUpdateCreds = vi.mocked(updateConnectionCredentials);
+const mockedSetNeedsReauth = vi.mocked(setConnectionNeedsReauth);
 
 const MOCK_POLICY_YAML = `provider: test_provider
 account: test@example.com
@@ -116,6 +118,7 @@ function makeConnection(overrides?: Partial<ConnectionWithCredentials>): Connect
     settings_json: '{}',
     credentials: { access_token: 'test_token', refresh_token: 'test_refresh' },
     enabled: 1,
+    needs_reauth: 0,
     created_at: '2026-01-01',
     updated_at: '2026-01-01',
     ...overrides,
@@ -303,6 +306,27 @@ describe('handleToolCall', () => {
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'allowed',
+      }),
+    );
+  });
+
+  it('returns definitive error when refresh permanently fails with auth error', async () => {
+    const provider = makeProvider({
+      execute: vi.fn(async () => { throw new Error('401 Unauthorized'); }),
+      refreshCredentials: vi.fn(async () => { throw new Error('invalid_grant: Token has been revoked'); }),
+    });
+    mockedGetConn.mockReturnValue(makeConnection());
+    mockedGetProvider.mockReturnValue(provider);
+
+    const result = await handleToolCall('test_tool', { query: 'hello' }, makeRegisteredTool());
+
+    expect(result.content[0].text).toContain('Authentication failed for test_tool');
+    expect(result.content[0].text).toContain('needs to be re-authorized');
+    expect(mockedSetNeedsReauth).toHaveBeenCalledWith('conn_test123', true);
+    expect(mockedAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'error',
+        deny_reason: expect.stringContaining('Authentication permanently failed'),
       }),
     );
   });

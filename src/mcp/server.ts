@@ -4,16 +4,56 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import http from 'node:http';
 import { buildToolRegistry, type RegisteredTool } from './tool-registry.js';
 import { authenticateBearer, isMcpRateLimited } from './auth.js';
-import { getConnectionWithCredentials, getConnectionSettings } from '../db/connections.js';
+import { getConnectionWithCredentials, getConnectionSettings, setConnectionNeedsReauth } from '../db/connections.js';
 import { parsePolicy } from '../policy/parser.js';
 import { evaluate } from '../policy/engine.js';
 import { getProvider } from '../providers/registry.js';
+import type { Provider } from '../providers/types.js';
 import { insertAuditEntry } from '../db/audit.js';
 import { config } from '../config.js';
 import { stripUnknownParams, applyFieldPolicy } from './param-filter.js';
 import { sanitizeUpstreamError } from './error-sanitizer.js';
 import { isAuthError, refreshConnectionCredentials } from '../providers/token-refresh.js';
 import { VERSION } from '../version.js';
+
+/** Thrown when token refresh confirms the connection is permanently broken. */
+class PermanentAuthError extends Error {
+  constructor(toolName: string, cause: unknown) {
+    const msg = `Authentication failed for ${toolName}. This connection needs to be re-authorized by the admin in the Gatelet dashboard.`;
+    super(msg, { cause });
+  }
+}
+
+/**
+ * Execute a tool call, automatically refreshing credentials on auth errors.
+ * Throws PermanentAuthError if refresh itself fails with an auth error.
+ */
+async function executeWithRefresh(
+  provider: Provider,
+  toolName: string,
+  params: Record<string, unknown>,
+  credentials: Record<string, unknown>,
+  connectionId: string,
+  guards: unknown,
+  settings: Record<string, unknown>,
+): Promise<unknown> {
+  try {
+    return await provider.execute(toolName, params, credentials, guards, settings);
+  } catch (err: unknown) {
+    if (!provider.refreshCredentials || !isAuthError(err)) throw err;
+
+    try {
+      const newCreds = await refreshConnectionCredentials(connectionId, provider, credentials);
+      return await provider.execute(toolName, params, newCreds, guards, settings);
+    } catch (retryErr: unknown) {
+      if (isAuthError(retryErr)) {
+        setConnectionNeedsReauth(connectionId, true);
+        throw new PermanentAuthError(toolName, retryErr);
+      }
+      throw retryErr;
+    }
+  }
+}
 
 let toolRegistry: Map<string, RegisteredTool>;
 
@@ -361,29 +401,10 @@ export async function handleToolCall(
     .filter(k => !(k in finalParams));
 
   try {
-    let result: unknown;
-    try {
-      result = await provider.execute(
-        toolName,
-        finalParams,
-        conn.credentials,
-        policyResult.guards,
-        settings,
-      );
-    } catch (err: unknown) {
-      if (provider.refreshCredentials && isAuthError(err)) {
-        const newCreds = await refreshConnectionCredentials(conn.id, provider, conn.credentials);
-        result = await provider.execute(
-          toolName,
-          finalParams,
-          newCreds,
-          policyResult.guards,
-          settings,
-        );
-      } else {
-        throw err;
-      }
-    }
+    const result = await executeWithRefresh(
+      provider, toolName, finalParams, conn.credentials,
+      conn.id, policyResult.guards, settings,
+    );
 
     const responseText = JSON.stringify(result, null, 2);
 
@@ -404,6 +425,26 @@ export async function handleToolCall(
       content: [{ type: 'text', text: responseText }],
     };
   } catch (err: unknown) {
+    if (err instanceof PermanentAuthError) {
+      const cause = err.cause;
+      const detail = cause instanceof Error ? cause.message : String(cause);
+
+      insertAuditEntry({
+        api_key_id: apiKeyId,
+        connection_id: registered.connectionId,
+        tool_name: toolName,
+        original_params: originalParams,
+        mutated_params: finalParams,
+        result: 'error',
+        deny_reason: `Authentication permanently failed: ${detail}`,
+        duration_ms: Date.now() - startTime,
+      });
+
+      return {
+        content: [{ type: 'text', text: `Error: ${err.message}` }],
+      };
+    }
+
     const sanitized = sanitizeUpstreamError(err, toolName);
 
     console.error(sanitized.logMessage);

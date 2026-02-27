@@ -3,7 +3,7 @@ import { ConnectionCard } from '../components/ConnectionCard';
 import { OAuthButton } from '../components/OAuthButton';
 import { OAuthInfo } from '../components/OAuthSettings';
 import { SystemHealth } from '../components/SystemHealth';
-import { Sparkles, Plus, Info, X } from 'lucide-react';
+import { Sparkles, Plus, Info, X, AlertTriangle } from 'lucide-react';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
 import type { Status } from '../types';
 
@@ -76,6 +76,22 @@ export function Connections({ status, onRefresh }: Props) {
         <EmptyState oauthProviders={status.oauthProviders} />
       ) : (
         <div className="space-y-8">
+          {status.connections.some(c => c.needsReauth) && (
+            <div className="animate-in glass overflow-hidden rounded-2xl border border-red-200 dark:border-red-500/20">
+              <div className="flex items-start gap-4 p-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-red-900 dark:text-red-300">Re-authorization Required</h3>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-400/80">
+                    A connection needs to be re-authorized to continue working.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-6">
             {status.connections.map((conn, i) => (
               <div

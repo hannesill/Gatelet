@@ -37,7 +37,15 @@ const PROVIDER_COLORS: Record<string, { bg: string; text: string; icon: string }
   google_gmail: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
 };
 
-function TokenStatus({ status, expiresAt }: { status: 'valid' | 'expired' | 'unknown'; expiresAt?: number }) {
+function TokenStatus({ status, expiresAt, needsReauth }: { status: 'valid' | 'expired' | 'unknown'; expiresAt?: number; needsReauth?: boolean }) {
+  if (needsReauth) {
+    return (
+      <div className="flex items-center gap-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-700 dark:bg-red-500/10 dark:text-red-400">
+        <AlertCircle className="h-3 w-3" />
+        Needs Re-auth
+      </div>
+    );
+  }
   if (status === 'valid') {
     let label = 'Active';
     if (typeof expiresAt === 'number') {
@@ -211,7 +219,7 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
                     Paused
                   </div>
                 )}
-                <TokenStatus status={connection.tokenStatus} expiresAt={connection.tokenExpiresAt} />
+                <TokenStatus status={connection.tokenStatus} expiresAt={connection.tokenExpiresAt} needsReauth={connection.needsReauth} />
               </div>
             </div>
 
@@ -259,10 +267,15 @@ export function ConnectionCard({ connection, onDisconnect }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {connection.tokenStatus === 'expired' && (
+            {(connection.needsReauth || connection.tokenStatus === 'expired') && (
               <button
                 onClick={handleReauthorize}
-                className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-all duration-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
+                  connection.needsReauth
+                    ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+                )}
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="hidden sm:inline">Re-authorize</span>
