@@ -400,7 +400,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
         </div>
 
         <p className="animate-fade stagger-5 mt-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
-          Need help? <a href="https://github.com/hannesill/gatelet" className="text-indigo-600 underline">View Documentation</a>
+          Need help? <a href="https://gatelet.dev" className="text-indigo-600 underline">View Documentation</a>
         </p>
       </div>
     </div>
