@@ -3,7 +3,7 @@ title: Content Filters & Guards
 description: Email content filtering, subject blocking, domain blocking, PII redaction, label guards, and organizer guards
 ---
 
-Gmail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters protect sensitive content like 2FA codes, password resets, and financial data.
+Gmail and Outlook Mail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters protect sensitive content like 2FA codes, password resets, and financial data.
 
 ## Filter pipeline
 
@@ -52,7 +52,7 @@ If the email subject contains any blocked pattern (case-insensitive), the entire
 
 ### Default blocked subjects
 
-The default Gmail policy blocks these subjects:
+The default Gmail and Outlook Mail policies block these subjects:
 
 - `password reset`
 - `reset your password`

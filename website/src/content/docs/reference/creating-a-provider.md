@@ -535,7 +535,6 @@ Here's a quick checklist for adding a provider:
 
 We'd love to see more providers! Some ideas:
 
-- Outlook Mail (Microsoft Graph `/me/messages`)
 - Google Contacts
 - Google Drive
 - Slack

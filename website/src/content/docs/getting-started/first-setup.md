@@ -17,7 +17,7 @@ Copy the key — it won't be shown again. This is the bearer token your agent wi
 
 ## 3. Connect an account
 
-Navigate to **Connections** and click **Add Connection**. Choose a provider (Google Calendar, Outlook Calendar, or Gmail) and click the OAuth button.
+Navigate to **Connections** and click **Add Connection**. Choose a provider (Google Calendar, Outlook Calendar, Gmail, or Outlook Mail) and click the OAuth button.
 
 You'll be redirected to Google or Microsoft to authorize access. After granting permission, you'll return to the dashboard with the connection active.
 

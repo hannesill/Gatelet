@@ -88,6 +88,7 @@ Your data is preserved across updates in both modes.
 | Google Calendar | list calendars, list/get/create/update events | Yes |
 | Outlook Calendar | list calendars, list/get/create/update events | Yes |
 | Gmail | search, read, create draft, list drafts, send, reply, label, archive | Yes |
+| Outlook Mail | search, read, create draft, list drafts, send, reply, categorize, archive | Yes |
 
 No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
@@ -173,7 +174,7 @@ create_event:
 
 ## Email Content Filters
 
-Gmail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML.
+Gmail and Outlook Mail's `search` and `read_message` operations run messages through a content filter pipeline before returning them to the agent. Filters are configured as `guards` in the policy YAML.
 
 ### Filter Pipeline
 
@@ -218,7 +219,7 @@ Prices, dates, order numbers, tracking numbers, phone numbers, flight numbers, Z
 
 ### Customizing Filters
 
-Edit the policy YAML for any Gmail connection in the admin dashboard:
+Edit the policy YAML for any Gmail or Outlook Mail connection in the admin dashboard:
 
 ```yaml
 operations:
@@ -351,6 +352,9 @@ src/
     google-calendar/    Google Calendar via googleapis
     outlook-calendar/   Outlook Calendar via Microsoft Graph
     gmail/              Gmail via googleapis
+    outlook-mail/       Outlook Mail via Microsoft Graph
+    google/             Shared Google OAuth helpers
+    microsoft/          Shared Microsoft Graph helpers
     email/              Shared email types, content filters, HTML stripping
   config.ts    Environment variable config
   index.ts     Entry point

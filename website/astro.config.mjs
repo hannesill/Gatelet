@@ -93,6 +93,7 @@ export default defineConfig({
             { label: 'Google Calendar', slug: 'providers/google-calendar' },
             { label: 'Outlook Calendar', slug: 'providers/outlook-calendar' },
             { label: 'Gmail', slug: 'providers/gmail' },
+            { label: 'Outlook Mail', slug: 'providers/outlook-mail' },
           ],
         },
         {

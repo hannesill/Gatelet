@@ -19,22 +19,24 @@ import {
   Save,
   Loader2
 } from 'lucide-react';
-import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from './ProviderLogos';
+import { GmailLogo, GoogleCalendarLogo, MicrosoftLogo } from './ProviderLogos';
 import { TestConnectionButton } from './TestConnectionButton';
 import type { ConnectionWithMeta } from '../types';
 
 const PROVIDER_ICONS: Record<string, any> = {
   google_calendar: GoogleCalendarLogo,
-  outlook_calendar: OutlookCalendarLogo,
+  outlook_calendar: MicrosoftLogo,
   google_gmail: GmailLogo,
+  outlook_mail: MicrosoftLogo,
 };
 
-const PROVIDERS_WITH_SETTINGS = new Set(['google_gmail']);
+const PROVIDERS_WITH_SETTINGS = new Set(['google_gmail', 'outlook_mail']);
 
 const PROVIDER_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   google_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
   outlook_calendar: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
   google_gmail: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
+  outlook_mail: { bg: 'bg-zinc-100 dark:bg-white/5', text: 'text-zinc-700 dark:text-zinc-300', icon: '' },
 };
 
 function TokenStatus({ status, expiresAt, needsReauth }: { status: 'valid' | 'expired' | 'unknown'; expiresAt?: number; needsReauth?: boolean }) {

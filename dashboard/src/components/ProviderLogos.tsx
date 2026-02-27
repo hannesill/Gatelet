@@ -39,8 +39,9 @@ export function GoogleCalendarLogo({ className }: { className?: string }) {
 
 /**
  * Microsoft Logo (Colorful 4-Square)
+ * Used for all Microsoft/Outlook providers.
  */
-export function OutlookCalendarLogo({ className }: { className?: string }) {
+export function MicrosoftLogo({ className }: { className?: string }) {
   return (
     <svg className={cn("h-full w-full", className)} viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -50,3 +51,6 @@ export function OutlookCalendarLogo({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** @deprecated Use MicrosoftLogo instead */
+export const OutlookCalendarLogo = MicrosoftLogo;

@@ -31,7 +31,7 @@ When the agent calls a tool:
 5. Strip params  ─▸  Remove fields not in tool's input schema
 6. Field policy  ─▸  Apply allowed_fields / denied_fields
 7. Execute       ─▸  Call provider (upstream API)
-8. Filter        ─▸  Apply content filters (Gmail only)
+8. Filter        ─▸  Apply content filters (email providers)
 9. Audit         ─▸  Log API key, original params, mutated params, result, timing
 10. Respond      ─▸  Return sanitized result to agent
 ```
@@ -62,13 +62,16 @@ src/
     google-calendar/    Google Calendar via googleapis
     outlook-calendar/   Outlook Calendar via Microsoft Graph
     gmail/              Gmail via googleapis
+    outlook-mail/       Outlook Mail via Microsoft Graph
+    google/             Shared Google OAuth helpers
+    microsoft/          Shared Microsoft Graph helpers
     email/              Shared email types, content filters, HTML stripping
   config.ts    Environment variable config
   index.ts     Entry point
   cli.ts       CLI entry point (gatelet, gatelet doctor)
 dashboard/     Admin dashboard (React, Vite, Tailwind)
 website/       Documentation site (Astro, Starlight)
-tests/         Test suite (vitest, 488 tests)
+tests/         Test suite (vitest, 590 tests)
 ```
 
 ## Key modules

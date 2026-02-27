@@ -1,12 +1,13 @@
 import { cn } from '../utils';
 import { ExternalLink, Lock } from 'lucide-react';
-import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from './ProviderLogos';
+import { GmailLogo, GoogleCalendarLogo, MicrosoftLogo } from './ProviderLogos';
 import type { OAuthProvider } from '../types';
 
 const LOGOS: Record<string, any> = {
   google_calendar: GoogleCalendarLogo,
-  outlook_calendar: OutlookCalendarLogo,
+  outlook_calendar: MicrosoftLogo,
   google_gmail: GmailLogo,
+  outlook_mail: MicrosoftLogo,
 };
 
 interface Props {

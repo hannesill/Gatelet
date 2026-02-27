@@ -7,7 +7,7 @@ import { DynamicBackground } from '../components/DynamicBackground';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { detectPreset } from '../lib/preset-detection';
 import { Logo } from '../components/Logo';
-import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
+import { GmailLogo, GoogleCalendarLogo, MicrosoftLogo } from '../components/ProviderLogos';
 import { useToast } from '../hooks/useToast';
 import { api } from '../api';
 import { cn } from '../utils';
@@ -28,7 +28,8 @@ import type { OAuthProvider, ConnectionWithMeta } from '../types';
 const SETUP_PROVIDER_ICONS: Record<string, any> = {
   google_gmail: GmailLogo,
   google_calendar: GoogleCalendarLogo,
-  outlook_calendar: OutlookCalendarLogo,
+  outlook_calendar: MicrosoftLogo,
+  outlook_mail: MicrosoftLogo,
 };
 
 interface ConnectionPresetState {

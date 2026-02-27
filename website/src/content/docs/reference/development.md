@@ -31,12 +31,12 @@ npm test             # Run all tests
 npm run test:watch   # Watch mode
 ```
 
-The test suite includes 488 tests across 40 files covering:
+The test suite includes 590 tests across 43 files covering:
 
 - Admin API routes and authentication
 - Database operations and encryption
 - Policy engine (constraints, mutations, parsing)
-- Provider implementations (Google Calendar, Outlook Calendar, Gmail)
+- Provider implementations (Google Calendar, Outlook Calendar, Gmail, Outlook Mail)
 - MCP server pipeline (tool registry, parameter filtering, error sanitization)
 - Security edge cases (auth bypass, prototype pollution, rate limiting, audit integrity)
 - Content filters (subject blocking, domain blocking, PII redaction)
