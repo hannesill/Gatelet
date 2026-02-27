@@ -82,7 +82,7 @@ Pure functional, no side effects. The engine receives a policy config, operation
 
 - `engine.ts` — orchestrates constraints → mutations → result
 - `constraints.ts` — evaluates the four constraint rules
-- `mutations.ts` — applies set/delete mutations
+- `mutations.ts` — applies set/delete/cap mutations
 - `parser.ts` — YAML parsing with validation
 - `field-path.ts` — dot-notation field access for nested paths
 

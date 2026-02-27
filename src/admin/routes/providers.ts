@@ -10,6 +10,7 @@ const CONSTRAINT_REFERENCE = [
 
 const MUTATION_REFERENCE = [
   { action: 'set', requiresValue: true },
+  { action: 'cap', requiresValue: true },
   { action: 'delete', requiresValue: false },
 ];
 

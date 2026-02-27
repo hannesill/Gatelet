@@ -87,8 +87,8 @@ Your data is preserved across updates in both modes.
 |---|---|---|
 | Google Calendar | list calendars, list/get/create/update events | Yes |
 | Outlook Calendar | list calendars, list/get/create/update events | Yes |
-| Gmail | search, read, create draft, list drafts, send, reply, label, archive | Yes |
-| Outlook Mail | search, read, create draft, list drafts, send, reply, categorize, archive | Yes |
+| Gmail | search, read, create draft, list drafts, send, reply, label, archive, move, list labels | Yes |
+| Outlook Mail | search, read, create draft, list drafts, send, reply, categorize, archive, move, flag, list folders | Yes |
 
 No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
@@ -156,6 +156,7 @@ Modify fields before sending upstream. The agent never knows. Use these to strip
 | Action | Description |
 |---|---|
 | `set` | Set the field to a given value (supports nested paths via dot notation, e.g. `start.timeZone`) |
+| `cap` | Clamp a numeric field to a maximum value — the agent can request fewer, but never more |
 | `delete` | Remove the field entirely |
 
 ### Field Policies

@@ -39,8 +39,8 @@ MCP servers give AI agents direct access to your email, calendar, and other serv
 |---|---|---|
 | Google Calendar | list calendars, list/get/create/update events | Yes |
 | Outlook Calendar | list calendars, list/get/create/update events | Yes |
-| Gmail | search, read, create draft, list drafts, send, reply, label, archive | Yes |
-| Outlook Mail | search, read, create draft, list drafts, send, reply, categorize, archive | Yes |
+| Gmail | search, read, create draft, list drafts, send, reply, label, archive, move, list labels | Yes |
+| Outlook Mail | search, read, create draft, list drafts, send, reply, categorize, archive, move, flag, list folders | Yes |
 
 No delete operations are implemented for any provider. Absence of code is the strongest guarantee.
 
