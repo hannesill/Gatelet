@@ -93,7 +93,7 @@ app.get('/status', (c) => {
     .map(p => ({
       id: p.id,
       displayName: p.displayName,
-      configured: !!(getOAuthClientId(p) && getOAuthClientSecret(p)),
+      configured: !!(getOAuthClientId(p) && (p.oauth!.pkce || getOAuthClientSecret(p))),
       credentialSource: getOAuthCredentialSource(p),
     }));
 

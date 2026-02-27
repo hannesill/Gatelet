@@ -109,6 +109,7 @@ export default defineConfig({
             { label: 'Agent Setup', slug: 'reference/agents' },
             { label: 'CLI', slug: 'reference/cli' },
             { label: 'Architecture', slug: 'reference/architecture' },
+            { label: 'Creating a Provider', slug: 'reference/creating-a-provider' },
             { label: 'Development', slug: 'reference/development' },
           ],
         },
