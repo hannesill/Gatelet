@@ -29,6 +29,7 @@ The `docker-compose.yml` uses two networks for isolation:
 │  │                    Google / Microsoft    │    │
 │  └─────────────────────────────────────────┘    │
 │                                                 │
+│  127.0.0.1:4000 ─── MCP endpoint               │
 │  127.0.0.1:4001 ─── Admin Dashboard            │
 │  (localhost only)                               │
 └─────────────────────────────────────────────────┘
@@ -36,15 +37,15 @@ The `docker-compose.yml` uses two networks for isolation:
 
 ### `gatelet-internal`
 
-Other containers (your agent) connect to Gatelet on port `4000` via this network. The MCP port is **not** published to the host — only containers on the same Docker network can reach it.
+Other containers (your agent) connect to Gatelet on port `4000` via this network using Docker's internal DNS (`http://gatelet:4000/mcp`).
 
 ### `gatelet-egress`
 
 Allows Gatelet to reach external APIs (Google, Microsoft). This network provides outbound internet access.
 
-### Admin port
+### Ports
 
-The admin port (`4001`) is bound to `127.0.0.1` only — it's accessible from the host machine but not from the network or other machines.
+Both ports are bound to `127.0.0.1` — accessible from the host machine but not from the network or other machines. The MCP port (`4000`) is protected by API key authentication; the admin port (`4001`) is protected by the admin token.
 
 ## Docker Compose
 
@@ -55,6 +56,7 @@ services:
   gatelet:
     image: ghcr.io/hannesill/gatelet:latest
     ports:
+      - "127.0.0.1:4000:4000"  # MCP — localhost only
       - "127.0.0.1:4001:4001"  # Admin — localhost only
     volumes:
       - gatelet-data:/data
@@ -114,15 +116,7 @@ services:
 
 The agent reaches Gatelet at `http://gatelet:4000/mcp` using Docker's internal DNS.
 
-If your agent runs directly on the host (not in Docker), the MCP port needs to be published. Add a port binding:
-
-```yaml
-services:
-  gatelet:
-    ports:
-      - "127.0.0.1:4001:4001"
-      - "127.0.0.1:4000:4000"  # MCP — localhost only
-```
+Agents running on the host (like Claude Code or Gemini CLI) connect via `http://localhost:4000/mcp` instead.
 
 ## Building from source
 

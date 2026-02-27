@@ -110,6 +110,7 @@ services:
   gatelet:
     image: \${GATELET_IMAGE:-ghcr.io/hannesill/gatelet:latest}
     ports:
+      - "127.0.0.1:4000:4000"  # MCP endpoint — localhost only (for host-based agents)
       - "127.0.0.1:4001:4001"  # Admin dashboard — localhost only
     volumes:
       - gatelet-data:/data
@@ -174,8 +175,9 @@ printf "  ${Cyan}Dashboard${Color_Off}    http://localhost:4001/?token=%s\n" "$U
 printf "  ${Cyan}Install dir${Color_Off}  %s\n" "$GATELET_DIR"
 printf "  ${Cyan}Secrets dir${Color_Off}  %s ${Dim}(root-only)${Color_Off}\n" "$GATELET_SECRETS_DIR"
 printf "\n"
-printf "  ${Dim}MCP endpoint (for agents on the Docker network):${Color_Off}\n"
-printf "  ${Dim}http://gatelet:4000/mcp${Color_Off}\n"
+printf "  ${Dim}MCP endpoint:${Color_Off}\n"
+printf "  ${Dim}  Host agents:   http://localhost:4000/mcp${Color_Off}\n"
+printf "  ${Dim}  Docker agents:  http://gatelet:4000/mcp${Color_Off}\n"
 printf "\n"
 printf "  Manage:  cd %s && %s logs -f\n" "$GATELET_DIR" "$COMPOSE"
 printf "  Stop:    cd %s && %s down\n" "$GATELET_DIR" "$COMPOSE"

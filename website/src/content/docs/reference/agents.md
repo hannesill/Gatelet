@@ -41,14 +41,7 @@ If your agent runs in a container on the `gatelet-internal` Docker network, use 
 
 ### Agent on the host machine
 
-If your agent runs directly on the host (not in Docker), you need to publish Gatelet's MCP port. Add this to your `docker-compose.yml`:
-
-```yaml
-ports:
-  - "127.0.0.1:4000:4000"
-```
-
-Then configure your agent to connect to localhost:
+If your agent runs directly on the host (not in Docker), connect to localhost:
 
 ```json
 {
