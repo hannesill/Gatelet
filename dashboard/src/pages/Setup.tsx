@@ -21,8 +21,6 @@ import {
   Copy,
   Fingerprint,
   MessageSquare,
-  Shield,
-  ShieldCheck,
 } from 'lucide-react';
 
 import type { OAuthProvider, ConnectionWithMeta } from '../types';
@@ -140,7 +138,6 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
   const [creating, setCreating] = useState(false);
   const [connectionPresets, setConnectionPresets] = useState<Record<string, ConnectionPresetState>>({});
   const [setupReady, setSetupReady] = useState(false);
-  const [accessLevels, setAccessLevels] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   // Track known connection IDs to detect newly added ones (e.g. after OAuth redirect)
@@ -302,37 +299,7 @@ export function Setup({ oauthProviders, connections, runtime, onComplete, onRefr
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {oauthProviders.map(p => (
-                  <div key={p.id} className="flex flex-col gap-2">
-                    {p.accessLevels && p.accessLevels.length > 1 && p.configured && (
-                      <div className="flex items-center gap-1 rounded-xl bg-zinc-50 p-1 ring-1 ring-zinc-200 dark:bg-white/5 dark:ring-white/10">
-                        {p.accessLevels.map(level => {
-                          const selected = (accessLevels[p.id] ?? p.accessLevels![0]) === level;
-                          const isReadOnly = level === 'read-only';
-                          const Icon = isReadOnly ? ShieldCheck : Shield;
-                          return (
-                            <button
-                              key={level}
-                              onClick={() => setAccessLevels(prev => ({ ...prev, [p.id]: level }))}
-                              className={cn(
-                                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-                                selected
-                                  ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-700 dark:text-white dark:ring-white/10"
-                                  : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
-                              )}
-                            >
-                              <Icon className="h-3 w-3" />
-                              {isReadOnly ? 'Read-only' : 'Full access'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <OAuthButton
-                      provider={p}
-                      disabled={!setupReady}
-                      accessLevel={p.accessLevels ? (accessLevels[p.id] ?? p.accessLevels[0]) : undefined}
-                    />
-                  </div>
+                  <OAuthButton key={p.id} provider={p} disabled={!setupReady} />
                 ))}
               </div>
 
