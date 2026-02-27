@@ -363,6 +363,23 @@ dashboard/     Admin dashboard (React, Vite, Tailwind)
 website/       Landing page (Astro, gatelet.dev)
 ```
 
+## Contributing
+
+We welcome community contributions — especially new providers! Gatelet's provider architecture is designed to be extended: each provider is a self-contained module implementing a common `Provider` interface, and the policy engine, MCP registration, OAuth flow, and audit logging all work generically off that interface.
+
+See the **[Creating a Provider](https://gatelet.dev/reference/creating-a-provider/)** guide for a full walkthrough – from defining tools and policies to wiring up the dashboard and writing tests.
+
+Some provider ideas I'd love to see:
+
+- More mail and calendar providers
+- Team communication platforms like Slack, Teams, Discord
+- Wikis and note taking tools like Notion
+- Task and project management tools like Todoist, Asana, ...
+- Development tools like Linear
+- ...
+
+If you're building a provider, feel free to open a draft PR early. I am happy to help with design questions and review.
+
 ## License
 
 [MIT](LICENSE)
