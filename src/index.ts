@@ -16,6 +16,7 @@ import { startMcpServer, getRegisteredToolCount } from './mcp/server.js';
 import { closeDb } from './db/database.js';
 import path from 'node:path';
 import { VERSION } from './version.js';
+import { startUpdateChecker, stopUpdateChecker } from './update-checker.js';
 
 function initMasterKey(adminToken: string): void {
   fs.mkdirSync(config.DATA_DIR, { recursive: true });
@@ -94,10 +95,12 @@ async function main(): Promise<void> {
   // Start servers
   const adminServer = startAdminServer();
   const mcpServer = startMcpServer();
+  startUpdateChecker();
 
   // Graceful shutdown
   function shutdown() {
     console.log('\nShutting down...');
+    stopUpdateChecker();
     adminServer.close();
     mcpServer.close();
     closeDb();

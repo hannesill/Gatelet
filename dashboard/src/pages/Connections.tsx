@@ -3,6 +3,7 @@ import { ConnectionCard } from '../components/ConnectionCard';
 import { OAuthButton } from '../components/OAuthButton';
 import { OAuthInfo } from '../components/OAuthSettings';
 import { SystemHealth } from '../components/SystemHealth';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { Sparkles, Plus, Info, X, AlertTriangle } from 'lucide-react';
 import { GmailLogo, GoogleCalendarLogo, OutlookCalendarLogo } from '../components/ProviderLogos';
 import type { Status } from '../types';
@@ -70,6 +71,7 @@ export function Connections({ status, onRefresh }: Props) {
 
   return (
     <div className="space-y-10">
+      <UpdateBanner update={status.update} />
       <SystemHealth />
 
       {status.connections.length === 0 ? (

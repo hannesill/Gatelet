@@ -6,6 +6,7 @@ import { parsePolicy } from '../../policy/parser.js';
 import { getSetting, setSetting, getOAuthClientId, getOAuthClientSecret, getOAuthCredentialSource } from '../../db/settings.js';
 import { startTime } from '../../start-time.js';
 import { config } from '../../config.js';
+import { getUpdateInfo } from '../../update-checker.js';
 
 interface ConnectionWithMeta {
   id: string;
@@ -115,6 +116,7 @@ app.get('/status', (c) => {
     apiKeys: { total: totalKeys, active: activeKeys },
     oauthProviders,
     setupCompleted,
+    update: getUpdateInfo(),
     runtime: {
       docker: config.IS_DOCKER,
     },

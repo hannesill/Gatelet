@@ -30,6 +30,15 @@ export interface ApiKey {
   revoked_at: string | null;
 }
 
+export interface UpdateInfo {
+  available: boolean;
+  latestVersion: string | null;
+  currentVersion: string;
+  releaseUrl: string | null;
+  lastCheckedAt: number | null;
+  error: string | null;
+}
+
 export interface Status {
   uptime: number;
   connections: ConnectionWithMeta[];
@@ -37,6 +46,7 @@ export interface Status {
   apiKeys: { total: number; active: number };
   oauthProviders: OAuthProvider[];
   setupCompleted: boolean;
+  update?: UpdateInfo;
   runtime?: { docker: boolean };
 }
 
