@@ -5,8 +5,9 @@ export function buildGoogleAuth(credentials: Record<string, unknown>) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({
     access_token: credentials.access_token as string,
-    refresh_token: credentials.refresh_token as string,
-    expiry_date: credentials.expiry_date as number | undefined,
+    // Omit refresh_token and expiry_date: this client has no client_id/secret,
+    // so googleapis' built-in auto-refresh would fail with invalid_request.
+    // Token refresh is handled by executeWithRefresh() which has proper credentials.
     token_type: credentials.token_type as string | undefined,
   });
   return auth;

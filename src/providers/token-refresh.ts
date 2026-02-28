@@ -2,7 +2,7 @@ import type { Provider } from './types.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { updateConnectionCredentials, setConnectionNeedsReauth } from '../db/connections.js';
 
-const AUTH_ERROR_PATTERNS = ['invalid_grant', 'Token has been expired', '401'];
+const AUTH_ERROR_PATTERNS = ['invalid_grant', 'invalid_client', 'Token has been expired', '401'];
 
 export function isAuthError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
