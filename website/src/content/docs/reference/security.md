@@ -100,6 +100,7 @@ Most unsandboxed agents (Claude Code, Cursor, any agent with Bash access) have D
 - Bearer token authentication per API key
 - API keys are hashed with SHA-256 in the database
 - Sessions are bound to the API key that created them — a different key cannot reuse an existing session
+- 20 session cap with LRU eviction; idle sessions expire after 48 hours
 - Rate limiting: 10 failed attempts per minute per IP
 - Last-used timestamp tracking
 

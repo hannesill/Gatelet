@@ -43,8 +43,8 @@ If any step fails (auth, constraints, provider error), the pipeline short-circui
 The MCP server creates a new `McpServer` instance per session. Sessions have:
 
 - **API key binding** — each session is bound to the API key that created it; requests with a different key are rejected
-- **30-minute TTL** — inactive sessions are cleaned up and transport resources are released
-- **100 session cap** — oldest sessions are evicted when the cap is reached
+- **20 session cap** — least-recently-used sessions are evicted when the cap is reached
+- **48-hour TTL** — idle sessions are automatically cleaned up after 48 hours of inactivity
 - **Fresh tool registry** — each session rebuilds the tool list from current policies
 
 This ensures policy changes take effect on the next agent connection without restarting the server.

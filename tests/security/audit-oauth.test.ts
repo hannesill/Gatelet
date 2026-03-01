@@ -2,7 +2,7 @@
  * Security Audit: OAuth CSRF state validation + credential exposure
  *
  * FINDING-NEW-10/11 (code review, no test): Admin sessions have no count limit.
- * Unlike MCP sessions (MAX_SESSIONS = 100), the admin session Map grows without bound.
+ * Unlike MCP sessions (MAX_SESSIONS = 20), the admin session Map grows without bound.
  * Sessions are not bound to client identity — no IP or user-agent binding.
  *
  * FINDING-NEW-13 (code review, no test): Builtin OAuth client secrets are

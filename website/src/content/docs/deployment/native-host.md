@@ -107,6 +107,14 @@ The systemd unit includes security directives:
 | `ReadWritePaths=/var/lib/gatelet` | Only the data directory is writable |
 | `PrivateTmp=true` | Isolated `/tmp` |
 
+## Troubleshooting
+
+### "Session not found" after restarting Gatelet
+
+Gatelet holds up to 20 MCP sessions in memory. When the service restarts, all sessions are lost. Connected agents will receive a "Session not found" error on their next request.
+
+Most MCP clients should automatically re-initialize a new session when this happens (the MCP spec requires clients to handle HTTP 404 this way), but some clients — including Claude Code at the time of writing — surface the error instead. If this happens, restart your agent or reconnect the MCP server from your client.
+
 ## Local build install
 
 To install from a local build instead of downloading:

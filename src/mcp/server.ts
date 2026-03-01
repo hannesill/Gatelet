@@ -155,13 +155,13 @@ function createMcpServer(apiKeyId: string): {
 }
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
-const MAX_SESSIONS = 100;
-const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_SESSIONS = 20;
+const SESSION_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
 export function startMcpServer(): http.Server {
   toolRegistry = buildToolRegistry();
 
-  // Periodic session cleanup
+  // Periodic cleanup of idle sessions
   const cleanupInterval = setInterval(() => {
     const now = Date.now();
     for (const [id, session] of sessions) {
@@ -258,11 +258,20 @@ export function startMcpServer(): http.Server {
         : body != null && typeof body === 'object' && (body as Record<string, unknown>).method === 'initialize';
 
       if (isInit) {
-        // Enforce session limit
+        // Evict least-recently-used session if at capacity
         if (sessions.size >= MAX_SESSIONS) {
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Too many active sessions' }));
-          return;
+          let oldestId: string | undefined;
+          let oldestTime = Infinity;
+          for (const [id, session] of sessions) {
+            if (session.lastActive < oldestTime) {
+              oldestTime = session.lastActive;
+              oldestId = id;
+            }
+          }
+          if (oldestId) {
+            sessions.get(oldestId)!.transport.close();
+            sessions.delete(oldestId);
+          }
         }
 
         const transport = new StreamableHTTPServerTransport({
