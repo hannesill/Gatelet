@@ -121,6 +121,29 @@ import { ThemeToggle } from '../components/ThemeToggle';
       </div>
     </section>
 
+    <!-- ═══ THE PROBLEM ═══ -->
+    <section class="mx-auto mt-28 w-full max-w-3xl px-6 sm:mt-36">
+      <div class="reveal text-center">
+        <h2 class="font-[Fraunces] text-3xl font-bold italic text-zinc-900 dark:text-white sm:text-4xl">
+          The Problem
+        </h2>
+        <p class="mx-auto mt-4 max-w-2xl text-base text-zinc-500 dark:text-zinc-400">
+          AI agents with account access can go off the rails (fast).
+          Even with "confirm before acting" instructions, agents can take destructive
+          actions faster than you can stop them.
+        </p>
+      </div>
+
+      <div class="reveal reveal-delay-1 mt-12 flex justify-center">
+        <blockquote class="twitter-tweet" data-dnt="true"><p lang="en" dir="ltr">Nothing humbles you like telling your OpenClaw "confirm before acting" and watching it speedrun deleting your inbox. I couldn't stop it from my phone. I had to RUN to my Mac mini like I was defusing a bomb. <a href="https://t.co/XAxyRwPJ5R">pic.twitter.com/XAxyRwPJ5R</a></p>&mdash; Summer Yue (@summeryue0) <a href="https://twitter.com/summeryue0/status/2025774069124399363?ref_src=twsrc%5Etfw">February 23, 2026</a></blockquote>
+      </div>
+
+      <p class="reveal reveal-delay-2 mt-10 text-center text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+        Prompt-level guardrails aren't guardrails. Gatelet enforces permissions at the infrastructure
+        level: your agents are securely restricted to the actions you allow.
+      </p>
+    </section>
+
     <!-- ═══ HOW IT WORKS ═══ -->
     <section class="mx-auto mt-28 w-full max-w-5xl px-6 sm:mt-36">
       <div class="reveal text-center">
@@ -383,6 +406,16 @@ import { ThemeToggle } from '../components/ThemeToggle';
   </main>
 
   <!-- ═══ Scripts ═══ -->
+  <script is:inline>
+    // Set tweet embed theme before Twitter widgets.js loads
+    (function() {
+      var isDark = document.documentElement.classList.contains('dark');
+      document.querySelectorAll('.twitter-tweet').forEach(function(el) {
+        el.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      });
+    })();
+  </script>
+  <script is:inline async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <script is:inline>
     // Nav scroll effect
     (function() {
