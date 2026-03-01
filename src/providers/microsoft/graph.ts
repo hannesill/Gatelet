@@ -1,10 +1,11 @@
 import type { OAuthConfig } from '../types.js';
+import { GateletError } from '../gatelet-error.js';
 
 export const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 export function validatePathSegment(value: string, name: string): void {
   if (/[\/\\?#&=\s\x00]|\.\./.test(value)) {
-    throw new Error(`Invalid ${name}: contains disallowed characters`);
+    throw new GateletError(`Invalid ${name}: contains disallowed characters`);
   }
 }
 
@@ -14,12 +15,12 @@ export function validateODataFilter(filter: string): void {
   // logical operators (and, or, not), ISO datetime literals, quoted strings, and whitespace
   const safePattern = /^[\w/.':\-\s,()]+$/;
   if (!safePattern.test(filter)) {
-    throw new Error('Invalid filter: contains disallowed characters');
+    throw new GateletError('Invalid filter: contains disallowed characters');
   }
   // Block known dangerous OData functions
   const dangerous = /\$(expand|select|count|search|compute|apply)/i;
   if (dangerous.test(filter)) {
-    throw new Error('Invalid filter: contains disallowed OData operators');
+    throw new GateletError('Invalid filter: contains disallowed OData operators');
   }
 }
 

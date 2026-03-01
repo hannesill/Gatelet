@@ -13,6 +13,7 @@ import { insertAuditEntry } from '../db/audit.js';
 import { config } from '../config.js';
 import { stripUnknownParams, applyFieldPolicy } from './param-filter.js';
 import { sanitizeUpstreamError } from './error-sanitizer.js';
+import { GateletError } from '../providers/gatelet-error.js';
 import { isAuthError, refreshConnectionCredentials } from '../providers/token-refresh.js';
 import { VERSION } from '../version.js';
 
@@ -336,7 +337,7 @@ export async function handleToolCall(
   params: Record<string, unknown>,
   registered: RegisteredTool,
   apiKeyId?: string,
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   const startTime = Date.now();
   const originalParams = structuredClone(params);
 
@@ -353,6 +354,7 @@ export async function handleToolCall(
     });
     return {
       content: [{ type: 'text', text: 'Error: Connection not found' }],
+      isError: true,
     };
   }
 
@@ -370,6 +372,7 @@ export async function handleToolCall(
     });
     return {
       content: [{ type: 'text', text: 'Error: Invalid policy configuration' }],
+      isError: true,
     };
   }
 
@@ -387,6 +390,7 @@ export async function handleToolCall(
     });
     return {
       content: [{ type: 'text', text: `Denied: ${policyResult.reason}` }],
+      isError: true,
     };
   }
 
@@ -402,6 +406,7 @@ export async function handleToolCall(
     });
     return {
       content: [{ type: 'text', text: 'Error: Provider not found' }],
+      isError: true,
     };
   }
 
@@ -460,6 +465,25 @@ export async function handleToolCall(
 
       return {
         content: [{ type: 'text', text: `Error: ${err.message}` }],
+        isError: true,
+      };
+    }
+
+    if (err instanceof GateletError) {
+      insertAuditEntry({
+        api_key_id: apiKeyId,
+        connection_id: registered.connectionId,
+        tool_name: toolName,
+        original_params: originalParams,
+        mutated_params: finalParams,
+        result: 'error',
+        deny_reason: err.message,
+        duration_ms: Date.now() - startTime,
+      });
+
+      return {
+        content: [{ type: 'text', text: `Error: ${err.message}` }],
+        isError: true,
       };
     }
 
@@ -480,6 +504,7 @@ export async function handleToolCall(
 
     return {
       content: [{ type: 'text', text: `Error: ${sanitized.agentMessage}` }],
+      isError: true,
     };
   }
 }

@@ -30,7 +30,7 @@ export function sanitizeUpstreamError(
 
   if (isNotFoundError(raw)) {
     return {
-      agentMessage: `Resource not found for ${toolName}. The ID may be incorrect or the resource may have been deleted.`,
+      agentMessage: `Resource not found for ${toolName}. Verify the ID is correct — the resource may have been deleted or you may not have access.`,
       logMessage,
     };
   }
@@ -43,14 +43,16 @@ export function sanitizeUpstreamError(
   }
 
   if (isValidationError(raw)) {
-    return {
-      agentMessage: `Invalid request for ${toolName}. Check the parameters and try again.`,
-      logMessage,
-    };
+    const fieldMatch = raw.match(/required.*field.*"(\w+)"|missing.*param.*"(\w+)"/i);
+    const field = fieldMatch?.[1] ?? fieldMatch?.[2];
+    const agentMessage = field
+      ? `Invalid request for ${toolName}: the field '${field}' may be missing or incorrect.`
+      : `Invalid request for ${toolName}. Double-check required fields like IDs and dates.`;
+    return { agentMessage, logMessage };
   }
 
   return {
-    agentMessage: `${toolName} failed. The error has been logged. Try again or contact the admin if the problem persists.`,
+    agentMessage: `${toolName} encountered an unexpected error. Try the request again. If it persists, the admin may need to check the connection.`,
     logMessage,
   };
 }

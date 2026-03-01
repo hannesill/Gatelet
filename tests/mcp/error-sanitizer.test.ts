@@ -36,6 +36,7 @@ describe('sanitizeUpstreamError', () => {
       'get_event',
     );
     expect(result.agentMessage).toContain('Resource not found');
+    expect(result.agentMessage).toContain('Verify the ID is correct');
     expect(result).not.toHaveProperty('retryable');
   });
 
@@ -63,6 +64,17 @@ describe('sanitizeUpstreamError', () => {
       'create_event',
     );
     expect(result.agentMessage).toContain('Invalid request');
+    expect(result.agentMessage).toContain("'summary'");
+    expect(result).not.toHaveProperty('retryable');
+  });
+
+  it('classifies 400/validation errors without field name', () => {
+    const result = sanitizeUpstreamError(
+      new Error('400 Bad Request: invalid payload'),
+      'create_event',
+    );
+    expect(result.agentMessage).toContain('Invalid request');
+    expect(result.agentMessage).toContain('Double-check required fields');
     expect(result).not.toHaveProperty('retryable');
   });
 
@@ -71,8 +83,8 @@ describe('sanitizeUpstreamError', () => {
       new Error('ECONNRESET: socket hang up'),
       'list_events',
     );
-    expect(result.agentMessage).toContain('failed');
-    expect(result.agentMessage).toContain('logged');
+    expect(result.agentMessage).toContain('unexpected error');
+    expect(result.agentMessage).toContain('Try the request again');
     expect(result).not.toHaveProperty('retryable');
   });
 

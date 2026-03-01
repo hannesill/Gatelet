@@ -51,20 +51,56 @@ describe('stripHtml', () => {
     expect(stripHtml(html)).toBe('Cell');
   });
 
-  it('does not execute script tags (strips them)', () => {
+  it('removes script blocks entirely', () => {
     const html = '<script>alert("xss")</script>Safe text';
     const result = stripHtml(html);
     expect(result).not.toContain('<script>');
-    expect(result).toContain('Safe text');
+    expect(result).not.toContain('alert');
+    expect(result).toBe('Safe text');
   });
 
-  it('strips style tag elements but not their text content', () => {
-    // NOTE: stripHtml only removes tags, not content between <style> tags.
-    // This is a known limitation -- for email display this is acceptable
-    // because the CSS text is harmless once tags are removed.
-    const html = '<style>body{color:red}</style><p>Text</p>';
+  it('removes style blocks and their content entirely', () => {
+    const html = '<style>body{color:red} .cls{font-size:14px}</style><p>Text</p>';
     const result = stripHtml(html);
     expect(result).not.toContain('<style>');
+    expect(result).not.toContain('body{color:red}');
+    expect(result).not.toContain('font-size');
     expect(result).toContain('Text');
+  });
+
+  it('removes &zwnj; entities', () => {
+    expect(stripHtml('Hello&zwnj;World')).toBe('HelloWorld');
+    expect(stripHtml('&zwnj;&zwnj;&zwnj;text')).toBe('text');
+  });
+
+  it('removes numeric HTML entities', () => {
+    expect(stripHtml('Copyright &#169; 2026')).toBe('Copyright 2026');
+    expect(stripHtml('&#8203;invisible&#8203;')).toBe('invisible');
+  });
+
+  it('collapses runs of horizontal whitespace', () => {
+    expect(stripHtml('hello    world')).toBe('hello world');
+    expect(stripHtml('hello\t\t  world')).toBe('hello world');
+  });
+
+  it('handles real-world HTML email with style blocks and &zwnj;', () => {
+    const html = `
+      <html><head><style type="text/css">
+        @media only screen and (max-width:600px) { .content { width: 100% !important; } }
+        body { margin: 0; padding: 0; }
+      </style></head><body>
+        &zwnj;&zwnj;&zwnj;
+        <div class="content">
+          <p>Your receipt:</p>
+          <p>Total: $5.00</p>
+        </div>
+      </body></html>
+    `;
+    const result = stripHtml(html);
+    expect(result).not.toContain('@media');
+    expect(result).not.toContain('!important');
+    expect(result).not.toContain('&zwnj;');
+    expect(result).toContain('Your receipt:');
+    expect(result).toContain('Total: $5.00');
   });
 });

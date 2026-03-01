@@ -12,6 +12,7 @@ import {
   buildMicrosoftOAuthConfig,
 } from '../microsoft/graph.js';
 import { sanitizeHeader } from '../email/sanitize.js';
+import { GateletError } from '../gatelet-error.js';
 
 /** Parse comma-separated email addresses into Graph API recipient format */
 function parseRecipients(addresses: string): Array<{ emailAddress: { address: string } }> {
@@ -321,7 +322,7 @@ export class OutlookMailProvider implements Provider {
         // Check protected folders
         const protectedFolders = (guards?.protected_folders as string[]) ?? ['deleteditems', 'junkemail'];
         if (protectedFolders.some((pf) => pf.toLowerCase() === folderId.toLowerCase())) {
-          throw new Error(`Cannot move to protected folder: ${folderId}`);
+          throw new GateletError(`Cannot move to protected folder: ${folderId}`);
         }
 
         await graphFetch(`/me/messages/${messageId}/move`, credentials, {
@@ -347,10 +348,10 @@ export class OutlookMailProvider implements Provider {
         const VALID_IMPORTANCES = ['low', 'normal', 'high'];
 
         if (flagStatus && !VALID_FLAG_STATUSES.includes(flagStatus)) {
-          throw new Error(`Invalid flagStatus: ${flagStatus}. Must be one of: ${VALID_FLAG_STATUSES.join(', ')}`);
+          throw new GateletError(`Invalid flagStatus: ${flagStatus}. Must be one of: ${VALID_FLAG_STATUSES.join(', ')}`);
         }
         if (importance && !VALID_IMPORTANCES.includes(importance)) {
-          throw new Error(`Invalid importance: ${importance}. Must be one of: ${VALID_IMPORTANCES.join(', ')}`);
+          throw new GateletError(`Invalid importance: ${importance}. Must be one of: ${VALID_IMPORTANCES.join(', ')}`);
         }
 
         const body: Record<string, unknown> = {};

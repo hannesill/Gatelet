@@ -1,6 +1,6 @@
 {
   "name": "gatelet",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Self-hosted MCP permission proxy for AI agents",
   "type": "module",
   "workspaces": [

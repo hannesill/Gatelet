@@ -693,7 +693,7 @@ describe('GmailProvider', () => {
 
       expect(result.messageId).toBe('msg1');
       expect(result.threadId).toBe('t1');
-      expect(result.labelIds).toEqual(['STARRED']);
+      expect(result).not.toHaveProperty('labelIds');
 
       const call = (mockMessages.modify as MockFn).mock.calls[0][0];
       expect(call.requestBody.addLabelIds).toEqual(['STARRED']);
@@ -758,7 +758,7 @@ describe('GmailProvider', () => {
 
       expect(result.messageId).toBe('msg1');
       expect(result.movedTo).toBe('Label_42');
-      expect(result.labelIds).toEqual(['Label_42']);
+      expect(result).not.toHaveProperty('labelIds');
 
       const call = (mockMessages.modify as MockFn).mock.calls[0][0];
       expect(call.requestBody.addLabelIds).toEqual(['Label_42']);

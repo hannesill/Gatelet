@@ -7,6 +7,7 @@ import { parseMessage } from './message-parser.js';
 import { applyContentFilters, filterSearchResult } from '../email/content-filter.js';
 import { sanitizeHeader } from '../email/sanitize.js';
 import { buildGoogleAuth, refreshGoogleTokens, buildGoogleOAuthConfig } from '../google/google.js';
+import { GateletError } from '../gatelet-error.js';
 
 export class GmailProvider implements Provider {
   id = 'google_gmail';
@@ -189,7 +190,6 @@ export class GmailProvider implements Provider {
         return {
           messageId: res.data.id,
           threadId: res.data.threadId,
-          labelIds: res.data.labelIds,
         };
       }
 
@@ -295,12 +295,12 @@ export class GmailProvider implements Provider {
         const protectedLabels = (guards?.protected_labels as string[]) ?? ['TRASH', 'SPAM'];
         for (const labelId of addLabelIds ?? []) {
           if (protectedLabels.includes(labelId)) {
-            throw new Error(`Cannot add protected label: ${labelId}`);
+            throw new GateletError(`Cannot add protected label: ${labelId}`);
           }
         }
         for (const labelId of removeLabelIds ?? []) {
           if (protectedLabels.includes(labelId)) {
-            throw new Error(`Cannot remove protected label: ${labelId}`);
+            throw new GateletError(`Cannot remove protected label: ${labelId}`);
           }
         }
 
@@ -316,7 +316,6 @@ export class GmailProvider implements Provider {
         return {
           messageId: res.data.id,
           threadId: res.data.threadId,
-          labelIds: res.data.labelIds,
         };
       }
 
@@ -334,7 +333,6 @@ export class GmailProvider implements Provider {
         return {
           messageId: res.data.id,
           threadId: res.data.threadId,
-          labelIds: res.data.labelIds,
           archived: true,
         };
       }
@@ -346,7 +344,7 @@ export class GmailProvider implements Provider {
         // Check protected labels — agent cannot move messages to TRASH or SPAM
         const protectedLabels = (guards?.protected_labels as string[]) ?? ['TRASH', 'SPAM'];
         if (protectedLabels.includes(labelId)) {
-          throw new Error(`Cannot move to protected label: ${labelId}`);
+          throw new GateletError(`Cannot move to protected label: ${labelId}`);
         }
 
         const res = await gmail.users.messages.modify({
@@ -361,7 +359,6 @@ export class GmailProvider implements Provider {
         return {
           messageId: res.data.id,
           threadId: res.data.threadId,
-          labelIds: res.data.labelIds,
           movedTo: labelId,
         };
       }

@@ -9,6 +9,32 @@ import {
   refreshMicrosoftTokens,
   buildMicrosoftOAuthConfig,
 } from '../microsoft/graph.js';
+import { GateletError } from '../gatelet-error.js';
+
+function shapeCalendar(cal: Record<string, unknown>) {
+  return {
+    id: cal.id,
+    name: cal.name,
+    ...(cal.isDefaultCalendar ? { isDefault: true } : {}),
+  };
+}
+
+function shapeEvent(evt: Record<string, unknown>) {
+  return {
+    id: evt.id,
+    subject: evt.subject,
+    body: evt.body,
+    webLink: evt.webLink,
+    start: evt.start,
+    end: evt.end,
+    location: evt.location,
+    organizer: evt.organizer,
+    isOrganizer: evt.isOrganizer,
+    attendees: evt.attendees,
+    isAllDay: evt.isAllDay,
+    ...(evt.recurrence ? { recurrence: evt.recurrence } : {}),
+  };
+}
 
 export class OutlookCalendarProvider implements Provider {
   id = 'outlook_calendar';
@@ -34,7 +60,11 @@ export class OutlookCalendarProvider implements Provider {
   ): Promise<unknown> {
     switch (toolName) {
       case 'outlook_list_calendars': {
-        return graphFetch('/me/calendars', credentials);
+        const data = await graphFetch(
+          '/me/calendars?$select=id,name,isDefaultCalendar',
+          credentials,
+        ) as { value?: Array<Record<string, unknown>> };
+        return { calendars: (data.value ?? []).map(shapeCalendar) };
       }
 
       case 'outlook_list_events': {
@@ -43,6 +73,7 @@ export class OutlookCalendarProvider implements Provider {
         const startDateTime = params.startDateTime as string | undefined;
         const endDateTime = params.endDateTime as string | undefined;
         const top = Math.min((params.top as number) ?? 50, 250);
+        const selectFields = 'id,subject,webLink,start,end,location,organizer,isOrganizer,attendees,isAllDay,recurrence';
 
         // Use calendarView when date range is provided, otherwise use events
         if (startDateTime && endDateTime) {
@@ -51,37 +82,46 @@ export class OutlookCalendarProvider implements Provider {
             endDateTime,
             $top: String(top),
             $orderby: 'start/dateTime',
+            $select: selectFields,
           });
           if (params.filter) {
             validateODataFilter(params.filter as string);
             qs.set('$filter', params.filter as string);
           }
-          return graphFetch(`/me/calendars/${calendarId}/calendarView?${qs.toString()}`, credentials);
+          const data = await graphFetch(`/me/calendars/${calendarId}/calendarView?${qs.toString()}`, credentials) as { value?: Array<Record<string, unknown>> };
+          return { events: (data.value ?? []).map(shapeEvent) };
         }
 
         const qs = new URLSearchParams({
           $top: String(top),
           $orderby: 'start/dateTime',
+          $select: selectFields,
         });
         if (params.filter) {
           validateODataFilter(params.filter as string);
           qs.set('$filter', params.filter as string);
         }
-        return graphFetch(`/me/calendars/${calendarId}/events?${qs.toString()}`, credentials);
+        const data = await graphFetch(`/me/calendars/${calendarId}/events?${qs.toString()}`, credentials) as { value?: Array<Record<string, unknown>> };
+        return { events: (data.value ?? []).map(shapeEvent) };
       }
 
       case 'outlook_get_event': {
         validatePathSegment(params.eventId as string, 'eventId');
-        return graphFetch(`/me/events/${params.eventId as string}`, credentials);
+        const data = await graphFetch(
+          `/me/events/${params.eventId as string}?$select=id,subject,body,webLink,start,end,location,organizer,isOrganizer,attendees,isAllDay,recurrence`,
+          credentials,
+        ) as Record<string, unknown>;
+        return shapeEvent(data);
       }
 
       case 'outlook_create_event': {
         const { calendarId, ...body } = params;
         validatePathSegment(calendarId as string, 'calendarId');
-        return graphFetch(`/me/calendars/${calendarId as string}/events`, credentials, {
+        const data = await graphFetch(`/me/calendars/${calendarId as string}/events`, credentials, {
           method: 'POST',
           body,
-        });
+        }) as Record<string, unknown>;
+        return shapeEvent(data);
       }
 
       case 'outlook_update_event': {
@@ -94,17 +134,18 @@ export class OutlookCalendarProvider implements Provider {
             isOrganizer?: boolean;
           };
           if (!existing.isOrganizer) {
-            throw new Error(
+            throw new GateletError(
               'Cannot modify events organized by others. This event is organized by ' +
               `${existing.organizer?.emailAddress?.address ?? 'an external user'}.`,
             );
           }
         }
 
-        return graphFetch(`/me/events/${eventId as string}`, credentials, {
+        const data = await graphFetch(`/me/events/${eventId as string}`, credentials, {
           method: 'PATCH',
           body,
-        });
+        }) as Record<string, unknown>;
+        return shapeEvent(data);
       }
 
       default:

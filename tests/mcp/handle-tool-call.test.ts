@@ -17,6 +17,7 @@ process.env.GATELET_MCP_PORT = String(mcpPort);
 process.env.GATELET_ADMIN_PORT = String(adminPort);
 
 import { handleToolCall } from '../../src/mcp/server.js';
+import { GateletError } from '../../src/providers/gatelet-error.js';
 import type { RegisteredTool } from '../../src/mcp/tool-registry.js';
 import type { ConnectionWithCredentials } from '../../src/db/connections.js';
 import type { Provider } from '../../src/providers/types.js';
@@ -155,6 +156,7 @@ describe('handleToolCall', () => {
     const result = await handleToolCall('test_tool', { query: 'test' }, makeRegisteredTool());
 
     expect(result.content[0].text).toBe('Error: Connection not found');
+    expect(result.isError).toBe(true);
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'error',
@@ -169,6 +171,7 @@ describe('handleToolCall', () => {
     const result = await handleToolCall('test_tool', { query: 'test' }, makeRegisteredTool());
 
     expect(result.content[0].text).toBe('Error: Invalid policy configuration');
+    expect(result.isError).toBe(true);
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'error',
@@ -184,6 +187,7 @@ describe('handleToolCall', () => {
     const result = await handleToolCall('test_tool', { query: 'test' }, registered);
 
     expect(result.content[0].text).toContain('Denied:');
+    expect(result.isError).toBe(true);
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'denied',
@@ -272,6 +276,7 @@ describe('handleToolCall', () => {
     // Agent sees generic message, not raw error
     expect(result.content[0].text).toContain('Error:');
     expect(result.content[0].text).not.toContain('Something went wrong on the server');
+    expect(result.isError).toBe(true);
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         result: 'error',
@@ -322,6 +327,7 @@ describe('handleToolCall', () => {
 
     expect(result.content[0].text).toContain('Authentication failed for test_tool');
     expect(result.content[0].text).toContain('needs to be re-authorized');
+    expect(result.isError).toBe(true);
     expect(mockedSetNeedsReauth).toHaveBeenCalledWith('conn_test123', true);
     expect(mockedAudit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -343,5 +349,36 @@ describe('handleToolCall', () => {
 
     expect(result.content[0].text).toContain('Denied:');
     expect(result.content[0].text).toContain('must_equal');
+    expect(result.isError).toBe(true);
+  });
+
+  it('passes through GateletError message verbatim', async () => {
+    const provider = makeProvider({
+      execute: vi.fn(async () => { throw new GateletError('Cannot add protected label: TRASH'); }),
+    });
+    mockedGetConn.mockReturnValue(makeConnection());
+    mockedGetProvider.mockReturnValue(provider);
+
+    const result = await handleToolCall('test_tool', { query: 'hello' }, makeRegisteredTool());
+
+    expect(result.content[0].text).toBe('Error: Cannot add protected label: TRASH');
+    expect(result.isError).toBe(true);
+    expect(mockedAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: 'error',
+        deny_reason: 'Cannot add protected label: TRASH',
+      }),
+    );
+  });
+
+  it('does not set isError on successful responses', async () => {
+    const provider = makeProvider();
+    mockedGetConn.mockReturnValue(makeConnection());
+    mockedGetProvider.mockReturnValue(provider);
+
+    const result = await handleToolCall('test_tool', { query: 'hello' }, makeRegisteredTool());
+
+    expect(result.content[0].text).toContain('mock result');
+    expect(result.isError).toBeUndefined();
   });
 });

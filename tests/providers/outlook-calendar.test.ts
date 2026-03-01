@@ -25,66 +25,78 @@ describe('OutlookCalendarProvider', () => {
   }
 
   describe('list_calendars', () => {
-    it('fetches calendars from Graph API', async () => {
-      const data = { value: [{ id: 'cal1', name: 'Calendar' }] };
+    it('fetches calendars from Graph API and shapes response', async () => {
+      const data = { value: [{ id: 'cal1', name: 'Calendar', isDefaultCalendar: true, changeKey: 'abc' }] };
       mockFetch(data);
 
-      const result = await provider.execute('outlook_list_calendars', {}, creds);
-      expect(result).toEqual(data);
+      const result = await provider.execute('outlook_list_calendars', {}, creds) as any;
+      expect(result).toEqual({ calendars: [{ id: 'cal1', name: 'Calendar', isDefault: true }] });
 
       const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(fetchCall[0]).toBe('https://graph.microsoft.com/v1.0/me/calendars');
+      expect(fetchCall[0]).toContain('/me/calendars');
+      expect(fetchCall[0]).toContain('$select=');
       expect(fetchCall[1].headers.Authorization).toBe('Bearer tok');
     });
   });
 
   describe('list_events', () => {
-    it('uses calendarView when date range provided', async () => {
-      const data = { value: [{ id: 'evt1', subject: 'Meeting' }] };
+    it('uses calendarView when date range provided and shapes response', async () => {
+      const data = { value: [{ id: 'evt1', subject: 'Meeting', changeKey: 'abc' }] };
       mockFetch(data);
 
-      await provider.execute('outlook_list_events', {
+      const result = await provider.execute('outlook_list_events', {
         calendarId: 'cal1',
         startDateTime: '2024-01-01T00:00:00Z',
         endDateTime: '2024-01-31T23:59:59Z',
-      }, creds);
+      }, creds) as any;
 
       const url = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
       expect(url).toContain('/calendarView');
       expect(url).toContain('startDateTime=');
       expect(url).toContain('endDateTime=');
+      expect(url).toContain('select=');
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0].id).toBe('evt1');
+      expect(result.events[0].subject).toBe('Meeting');
+      expect(result.events[0]).not.toHaveProperty('changeKey');
     });
 
-    it('uses events endpoint without date range', async () => {
+    it('uses events endpoint without date range and shapes response', async () => {
       const data = { value: [] };
       mockFetch(data);
 
-      await provider.execute('outlook_list_events', {
+      const result = await provider.execute('outlook_list_events', {
         calendarId: 'cal1',
-      }, creds);
+      }, creds) as any;
 
       const url = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
       expect(url).toContain('/events');
       expect(url).not.toContain('/calendarView');
+      expect(url).toContain('select=');
+      expect(result.events).toEqual([]);
     });
   });
 
   describe('get_event', () => {
-    it('fetches a single event', async () => {
-      const data = { id: 'evt1', subject: 'Meeting' };
+    it('fetches a single event and shapes response', async () => {
+      const data = { id: 'evt1', subject: 'Meeting', changeKey: 'abc', body: { content: 'notes' } };
       mockFetch(data);
 
-      const result = await provider.execute('outlook_get_event', { eventId: 'evt1' }, creds);
-      expect(result).toEqual(data);
+      const result = await provider.execute('outlook_get_event', { eventId: 'evt1' }, creds) as any;
+      expect(result.id).toBe('evt1');
+      expect(result.subject).toBe('Meeting');
+      expect(result.body).toEqual({ content: 'notes' });
+      expect(result).not.toHaveProperty('changeKey');
 
       const url = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-      expect(url).toBe('https://graph.microsoft.com/v1.0/me/events/evt1');
+      expect(url).toContain('/me/events/evt1');
+      expect(url).toContain('$select=');
     });
   });
 
   describe('create_event', () => {
-    it('creates an event via POST', async () => {
-      const data = { id: 'new1', subject: 'New Meeting' };
+    it('creates an event via POST and shapes response', async () => {
+      const data = { id: 'new1', subject: 'New Meeting', changeKey: 'abc' };
       mockFetch(data);
 
       const result = await provider.execute('outlook_create_event', {
@@ -92,9 +104,11 @@ describe('OutlookCalendarProvider', () => {
         subject: 'New Meeting',
         start: { dateTime: '2024-01-15T10:00:00', timeZone: 'UTC' },
         end: { dateTime: '2024-01-15T11:00:00', timeZone: 'UTC' },
-      }, creds);
+      }, creds) as any;
 
-      expect(result).toEqual(data);
+      expect(result.id).toBe('new1');
+      expect(result.subject).toBe('New Meeting');
+      expect(result).not.toHaveProperty('changeKey');
       const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(fetchCall[0]).toContain('/me/calendars/cal1/events');
       expect(fetchCall[1].method).toBe('POST');
@@ -105,16 +119,18 @@ describe('OutlookCalendarProvider', () => {
   });
 
   describe('update_event', () => {
-    it('updates an event via PATCH', async () => {
-      const data = { id: 'evt1', subject: 'Updated' };
+    it('updates an event via PATCH and shapes response', async () => {
+      const data = { id: 'evt1', subject: 'Updated', changeKey: 'abc' };
       mockFetch(data);
 
       const result = await provider.execute('outlook_update_event', {
         eventId: 'evt1',
         subject: 'Updated',
-      }, creds);
+      }, creds) as any;
 
-      expect(result).toEqual(data);
+      expect(result.id).toBe('evt1');
+      expect(result.subject).toBe('Updated');
+      expect(result).not.toHaveProperty('changeKey');
       const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(fetchCall[0]).toContain('/me/events/evt1');
       expect(fetchCall[1].method).toBe('PATCH');
@@ -197,9 +213,10 @@ describe('OutlookCalendarProvider', () => {
         { eventId: 'evt1', subject: 'Updated' },
         creds,
         { require_organizer_self: true },
-      );
+      ) as any;
 
-      expect(result).toEqual({ id: 'evt1', subject: 'Updated' });
+      expect(result.id).toBe('evt1');
+      expect(result.subject).toBe('Updated');
       expect(callCount).toBe(2);
     });
 

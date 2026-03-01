@@ -4,6 +4,34 @@ import { googleCalendarTools } from './tools.js';
 import { defaultPolicyYaml } from './default-policy.js';
 import { presets as calendarPresets } from './presets.js';
 import { buildGoogleAuth, refreshGoogleTokens, buildGoogleOAuthConfig } from '../google/google.js';
+import { GateletError } from '../gatelet-error.js';
+
+function shapeCalendar(cal: Record<string, unknown>) {
+  return {
+    id: cal.id,
+    name: (cal.summaryOverride as string) || cal.summary,
+    description: cal.description,
+    timeZone: cal.timeZone,
+    accessRole: cal.accessRole,
+    ...(cal.primary ? { primary: true } : {}),
+  };
+}
+
+function shapeEvent(evt: Record<string, unknown>) {
+  return {
+    id: evt.id,
+    status: evt.status,
+    htmlLink: evt.htmlLink,
+    summary: evt.summary,
+    description: evt.description,
+    location: evt.location,
+    start: evt.start,
+    end: evt.end,
+    organizer: evt.organizer,
+    attendees: evt.attendees,
+    ...(evt.recurrence ? { recurrence: evt.recurrence } : {}),
+  };
+}
 
 export class GoogleCalendarProvider implements Provider {
   id = 'google_calendar';
@@ -46,7 +74,7 @@ export class GoogleCalendarProvider implements Provider {
     switch (toolName) {
       case 'calendar_list_calendars': {
         const res = await calendar.calendarList.list();
-        return res.data;
+        return { calendars: ((res.data.items ?? []) as Array<Record<string, unknown>>).map(shapeCalendar) };
       }
 
       case 'calendar_list_events': {
@@ -59,7 +87,12 @@ export class GoogleCalendarProvider implements Provider {
           singleEvents: true,
           orderBy: 'startTime',
         });
-        return res.data;
+        return {
+          calendar: res.data.summary,
+          timeZone: res.data.timeZone,
+          events: ((res.data.items ?? []) as Array<Record<string, unknown>>).map(shapeEvent),
+          ...(res.data.nextPageToken ? { nextPageToken: res.data.nextPageToken } : {}),
+        };
       }
 
       case 'calendar_get_event': {
@@ -67,7 +100,7 @@ export class GoogleCalendarProvider implements Provider {
           calendarId: params.calendarId as string,
           eventId: params.eventId as string,
         });
-        return res.data;
+        return shapeEvent(res.data as Record<string, unknown>);
       }
 
       case 'calendar_create_event': {
@@ -77,7 +110,7 @@ export class GoogleCalendarProvider implements Provider {
           sendUpdates: 'none',
           requestBody: rest as Record<string, unknown>,
         });
-        return res.data;
+        return shapeEvent(res.data as Record<string, unknown>);
       }
 
       case 'calendar_update_event': {
@@ -89,7 +122,7 @@ export class GoogleCalendarProvider implements Provider {
             eventId: eventId as string,
           });
           if (!existing.data.organizer?.self) {
-            throw new Error(
+            throw new GateletError(
               'Cannot modify events organized by others. This event is organized by ' +
               `${existing.data.organizer?.email ?? 'an external user'}.`,
             );
@@ -102,7 +135,7 @@ export class GoogleCalendarProvider implements Provider {
           sendUpdates: 'none',
           requestBody: rest as Record<string, unknown>,
         });
-        return res.data;
+        return shapeEvent(res.data as Record<string, unknown>);
       }
 
       default:
