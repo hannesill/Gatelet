@@ -285,12 +285,21 @@ export function startMcpServer(): http.Server {
         if (transport.sessionId) {
           sessions.set(transport.sessionId, { transport, server: mcpServer, toolHandles, apiKeyId: apiKey.id, lastActive: Date.now() });
         }
+      } else if (sessionId) {
+        // Known session ID that no longer exists (expired or server restarted).
+        // MCP spec requires 404 so clients know to re-initialize.
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Session not found. Please re-initialize.' },
+          id: null,
+        }));
       } else {
-        // Non-init request without valid session
+        // No session ID and not an init request
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           jsonrpc: '2.0',
-          error: { code: -32000, message: 'Bad Request: No valid session. Send an initialize request first.' },
+          error: { code: -32000, message: 'Bad Request: Send an initialize request first.' },
           id: null,
         }));
       }
