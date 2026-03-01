@@ -23,3 +23,5 @@ dashboard/.astro/
 *.md
 !README.md
 !website/src/content/docs/**/*.md
+
+media/

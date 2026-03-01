@@ -100,19 +100,21 @@ import { ThemeToggle } from '../components/ThemeToggle';
           </div>
 
           <!-- Video content area -->
-          <div class="relative flex aspect-video items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-950/80 via-zinc-950 to-purple-950/50">
-            <!-- Subtle grid pattern -->
-            <div class="absolute inset-0 bg-grid-video opacity-30"></div>
+          <div id="demo-video-container" class="relative flex aspect-video items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-950/80 via-zinc-950 to-purple-950/50 cursor-pointer" role="button" tabindex="0" aria-label="Play demo video">
+            <!-- Poster image -->
+            <img src="/demo-poster.jpg" alt="" class="absolute inset-0 h-full w-full object-cover" id="demo-poster" />
 
-            <!-- Play button -->
-            <button class="group relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-white/15 hover:ring-white/30 cursor-pointer active:scale-105">
+            <!-- Play button overlay -->
+            <button id="demo-play-btn" class="group relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-black/30 ring-1 ring-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-black/40 hover:ring-white/30 cursor-pointer active:scale-105">
               <svg class="h-8 w-8 text-white ml-1 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z"/>
               </svg>
             </button>
 
-            <!-- Label -->
-            <p class="absolute bottom-6 text-sm font-medium text-white/30">Demo coming soon</p>
+            <!-- Video (hidden until play) -->
+            <video id="demo-video" class="absolute inset-0 h-full w-full object-cover hidden" preload="none" playsinline>
+              <source src="/demo.mp4" type="video/mp4" />
+            </video>
           </div>
         </div>
 
@@ -417,6 +419,33 @@ import { ThemeToggle } from '../components/ThemeToggle';
   </script>
   <script is:inline async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <script is:inline>
+    // Demo video click-to-play
+    (function() {
+      var container = document.getElementById('demo-video-container');
+      var video = document.getElementById('demo-video');
+      var poster = document.getElementById('demo-poster');
+      var playBtn = document.getElementById('demo-play-btn');
+
+      function startVideo() {
+        video.classList.remove('hidden');
+        video.controls = true;
+        video.play();
+        poster.classList.add('hidden');
+        playBtn.classList.add('hidden');
+        container.style.cursor = 'default';
+        container.removeAttribute('role');
+        container.removeAttribute('tabindex');
+      }
+
+      container.addEventListener('click', startVideo);
+      container.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          startVideo();
+        }
+      });
+    })();
+
     // Nav scroll effect
     (function() {
       var nav = document.getElementById('main-nav');
