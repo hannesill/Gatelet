@@ -10,9 +10,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/hannesill/Gatelet/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="MIT License" /></a>
-  <a href="https://github.com/hannesill/Gatelet/pkgs/container/gatelet"><img src="https://img.shields.io/badge/GHCR-gatelet-4f46e5?style=flat-square&logo=docker&logoColor=white" alt="GHCR" /></a>
-  <a href="https://github.com/hannesill/Gatelet"><img src="https://img.shields.io/github/stars/hannesill/Gatelet?color=4f46e5&style=flat-square" alt="GitHub Stars" /></a>
+  <img src="https://img.shields.io/badge/tests-passing-brightgreen?style=flat-square" alt="Tests Passing" />
+  <a href="https://github.com/hannesill/Gatelet/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hannesill/Gatelet?color=blue&style=flat-square" alt="MIT License" /></a>
+  <a href="https://github.com/hannesill/Gatelet/pkgs/container/gatelet"><img src="https://img.shields.io/badge/GHCR-gatelet-2496ED?style=flat-square&logo=docker&logoColor=white" alt="GHCR" /></a>
+  <a href="https://github.com/hannesill/Gatelet"><img src="https://img.shields.io/github/stars/hannesill/Gatelet?style=flat-square&color=f5c211" alt="GitHub Stars" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-supported-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS" />
+  <img src="https://img.shields.io/badge/Linux-supported-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux" />
+  <img src="https://img.shields.io/badge/Windows-supported-0078D6?style=flat-square&logo=windows11&logoColor=white" alt="Windows" />
 </p>
 
 <p align="center">
