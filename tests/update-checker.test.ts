@@ -147,8 +147,8 @@ describe('startUpdateChecker', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    // Advance 6 hours — should trigger another check
-    await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+    // Advance 1 hour — should trigger another check
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
