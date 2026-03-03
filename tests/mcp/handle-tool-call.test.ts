@@ -286,10 +286,11 @@ describe('handleToolCall', () => {
 
   it('refreshes credentials on 401 and retries', async () => {
     let callCount = 0;
+    const authError = Object.assign(new Error('Invalid Credentials'), { code: 401 });
     const provider = makeProvider({
       execute: vi.fn(async () => {
         callCount++;
-        if (callCount === 1) throw new Error('401 Unauthorized');
+        if (callCount === 1) throw authError;
         return { data: 'refreshed result' };
       }),
       refreshCredentials: vi.fn(async () => ({
@@ -316,8 +317,9 @@ describe('handleToolCall', () => {
   });
 
   it('returns definitive error when refresh permanently fails with auth error', async () => {
+    const authError = Object.assign(new Error('Invalid Credentials'), { code: 401 });
     const provider = makeProvider({
-      execute: vi.fn(async () => { throw new Error('401 Unauthorized'); }),
+      execute: vi.fn(async () => { throw authError; }),
       refreshCredentials: vi.fn(async () => { throw new Error('invalid_grant: Token has been revoked'); }),
     });
     mockedGetConn.mockReturnValue(makeConnection());
@@ -335,6 +337,32 @@ describe('handleToolCall', () => {
         deny_reason: expect.stringContaining('Authentication permanently failed'),
       }),
     );
+  });
+
+  it('proactively refreshes expired tokens before execution', async () => {
+    const provider = makeProvider({
+      refreshCredentials: vi.fn(async () => ({
+        access_token: 'proactively_refreshed_token',
+        refresh_token: 'test_refresh',
+        expiry_date: Date.now() + 3600_000,
+      })),
+    });
+    mockedGetConn.mockReturnValue(makeConnection({
+      credentials: {
+        access_token: 'expired_token',
+        refresh_token: 'test_refresh',
+        expiry_date: Date.now() - 60_000, // expired 1 minute ago
+      },
+    }));
+    mockedGetProvider.mockReturnValue(provider);
+
+    const result = await handleToolCall('test_tool', { query: 'hello' }, makeRegisteredTool());
+
+    expect(result.content[0].text).toContain('mock result');
+    expect(provider.refreshCredentials).toHaveBeenCalled();
+    // executeWithRefresh should have been called with the refreshed credentials
+    const executeCall = (provider.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(executeCall[2]).toHaveProperty('access_token', 'proactively_refreshed_token');
   });
 
   it('returns error when constraint fails', async () => {

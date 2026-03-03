@@ -423,9 +423,20 @@ export async function handleToolCall(
   const strippedFields = Object.keys(policyResult.mutatedParams)
     .filter(k => !(k in finalParams));
 
+  // Proactively refresh expired tokens to avoid a wasted round-trip
+  let credentials = conn.credentials;
+  const expiry = credentials.expiry_date;
+  if (typeof expiry === 'number' && expiry < Date.now() && provider.refreshCredentials) {
+    try {
+      credentials = await refreshConnectionCredentials(conn.id, provider, credentials);
+    } catch {
+      // Fall through — executeWithRefresh will handle the error reactively
+    }
+  }
+
   try {
     const result = await executeWithRefresh(
-      provider, toolName, finalParams, conn.credentials,
+      provider, toolName, finalParams, credentials,
       conn.id, policyResult.guards, settings,
     );
 

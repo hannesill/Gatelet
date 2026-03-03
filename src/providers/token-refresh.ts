@@ -2,10 +2,15 @@ import type { Provider } from './types.js';
 import { getOAuthClientId, getOAuthClientSecret } from '../db/settings.js';
 import { updateConnectionCredentials, setConnectionNeedsReauth } from '../db/connections.js';
 
-const AUTH_ERROR_PATTERNS = ['invalid_grant', 'invalid_client', 'Token has been expired', '401'];
+const AUTH_ERROR_PATTERNS = ['invalid_grant', 'invalid_client', 'Token has been expired', 'Invalid Credentials', '401'];
 
 export function isAuthError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+  // googleapis (gaxios) puts the HTTP status in err.code (string) / err.status (number)
+  const code = (err as { code?: unknown }).code;
+  const status = (err as { status?: unknown }).status;
+  const codeNum = typeof code === 'string' ? parseInt(code, 10) : code;
+  if (codeNum === 401 || codeNum === 403 || status === 401 || status === 403) return true;
   return AUTH_ERROR_PATTERNS.some(p => err.message.includes(p));
 }
 

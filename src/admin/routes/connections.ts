@@ -321,6 +321,10 @@ app.get('/connections/oauth/callback', async (c) => {
 
   const tokens = await tokenRes.json() as Record<string, unknown>;
 
+  if (!tokens.refresh_token) {
+    console.warn(`OAuth callback for ${providerId}: no refresh_token returned by provider`);
+  }
+
   // Discover account name
   let accountName = 'unknown';
   try {
