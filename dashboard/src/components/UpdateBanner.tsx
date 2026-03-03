@@ -26,16 +26,26 @@ export function UpdateBanner({ update }: { update?: UpdateInfo }) {
               {' '}(you're running v{update.currentVersion})
             </span>
           </h3>
-          {update.releaseUrl && (
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {update.releaseUrl && (
+              <a
+                href={update.releaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+              >
+                Release notes &rarr;
+              </a>
+            )}
             <a
-              href={update.releaseUrl}
+              href="https://gatelet.dev/deployment/updating"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+              className="inline-block text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
             >
-              View release notes &rarr;
+              Update instructions &rarr;
             </a>
-          )}
+          </div>
         </div>
         <button
           onClick={() => setDismissed(true)}

@@ -20,7 +20,7 @@ let cached: UpdateInfo = {
 };
 let interval: ReturnType<typeof setInterval> | null = null;
 
-const CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+const CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 /**
  * Compare two semver strings. Returns:
