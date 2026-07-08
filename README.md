@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/hannesill-gatelet-badge.png)](https://mseep.ai/app/hannesill-gatelet)
+
 <p align="center">
   <img src="assets/logo.png" alt="Gatelet" width="120" height="120" />
 </p>
